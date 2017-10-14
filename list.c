@@ -60,7 +60,8 @@ list1_t *add_to_list1(list1_t *head, int size, char **tokens) {
 	}
 	/* Set new node struct fields */
 	strncpy(&new_node->type, &tokens[1][0], 1);
-	new_node->id = atoi(&tokens[1][1]);
+	new_node->id = (char *)malloc(strlen(&tokens[1][1]) * sizeof(char));
+	strcpy(new_node->id, &tokens[1][1]);
 	new_node->probe1 = atoi(&tokens[2][0]);
 	new_node->probe2 = atoi(&tokens[3][0]);
 	sscanf(tokens[4], "%Lf", &new_node->value);
@@ -93,7 +94,8 @@ list2_t *add_to_list2(list2_t *head, int size, char **tokens) {
 
 	/* Set new node struct fields */
 	strncpy(&new_node->type, &tokens[1][0], 1);
-	new_node->id = atoi(&tokens[1][1]);
+	new_node->id = (char *)malloc(strlen(&tokens[1][1]) * sizeof(char));
+	strcpy(new_node->id, &tokens[1][1]);
 	if(new_node->type == 'D' || new_node->type == 'd') {
 		new_node->probe1 = atoi(&tokens[2][0]);
 		new_node->probe2 = atoi(&tokens[3][0]);
@@ -142,7 +144,7 @@ void print_list1(list1_t *head) {
 
 	while(curr != NULL) {
 		printf("Type: %c\n", curr->type);
-		printf("Id: %d\n", curr->id);
+		printf("Id: %s\n", curr->id);
 		printf("Probe1: %d\n", curr->probe1);
 		printf("Probe2: %d\n", curr->probe2);
 		printf("Value: %.20Lf\n", curr->value);
@@ -157,7 +159,7 @@ void print_list2(list2_t *head) {
 
 	while(curr != NULL) {
 		printf("Type: %c\n", curr->type);
-		printf("Id: %d\n", curr->id);
+		printf("Id: %s\n", curr->id);
 		printf("Probe1: %d\n", curr->probe1);
 		printf("Probe2: %d\n", curr->probe2);
 		printf("Probe3: %d\n", curr->probe3);

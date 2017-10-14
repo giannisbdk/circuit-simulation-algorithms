@@ -3,7 +3,7 @@
 
 typedef struct list1 {
 	char type;
-	int id;
+	char *id;
 	int probe1;
 	int probe2;
 	long double value;
@@ -13,7 +13,7 @@ typedef struct list1 {
 
 typedef struct list2 {
 	char type;
-	int id;
+	char *id;
 	int probe1;
 	int probe2;
 	int probe3;
