@@ -16,11 +16,11 @@ int main(int argc, char *argv[]) {
     printf("%s\n", argv[1]);
 
     file_input = fopen(argv[1], "rb");
-    if (file_input == NULL)
+    if (file_input == NULL) {
         exit(EXIT_FAILURE);
+    }
 
-    list_uno_t *head1 = init_list1();
-    list_dos_t *head2 = init_list2();
+    index_t *index = init_lists();
 
     while((read = getline(&line, &len, file_input)) != -1) {
 
@@ -28,13 +28,13 @@ int main(int argc, char *argv[]) {
     	if(tokens == NULL) {
     		continue;
     	}
-        if(add_to_list(head1, head2, tokens) == -1) {
+        if(add_to_list(index, tokens) == 0) {
             exit(EXIT_FAILURE);
         }
     }
 
     printf("Printing the lists\n");
-    print_lists(head1, head2);
+    print_lists(index);
 
     fclose(file_input);
 
