@@ -25,23 +25,19 @@ hash_table_t *ht_create(int capacity) {
 	for(int i = 0; i < capacity; i++) {
 		hashtable->table[i] = NULL;
 	}
-	hashtable->size = 0;
+	hashtable->size = 1;
 	hashtable->capacity = capacity;
-	hashtable->upper_bound_ratio=0.9;
+	hashtable->upper_bound_ratio = 0.9;
 	return hashtable;
 }
 
-int get_hashcode(hash_table_t *hashtable, char *str) {
-	int sum=0;
-	for(int i=0; i<strlen(str); i++) {
-		sum += str[i];
-	}
-	return sum % hashtable->capacity;
+int get_hashcode(hash_table_t *hashtable) {
+	return hashtable->size;
 }
 
 int ht_contains(hash_table_t *hashtable, char *str) {
-	for (int n = 0; n < hashtable->capacity-1; n++){
-		if(hashtable->table[n] != NULL){
+	for (int n = 0; n <= hashtable->size; n++) {
+		if(hashtable->table[n] != NULL) {
 			if(strcmp(hashtable->table[n], str) == 0) {
 				return n;
 			}
@@ -51,28 +47,23 @@ int ht_contains(hash_table_t *hashtable, char *str) {
 }
 
 int ht_inner_add(hash_table_t *hashtable, char *str) {
-	int hashcode = get_hashcode(hashtable, str);
 	int contains = ht_contains(hashtable, str);
 	if (contains != FAILURE) {
 		return contains;
-	} else{
-		for (int n = 0; n < hashtable->capacity-1; n++){
-			if(hashtable->table[hashcode] == NULL) {
-				hashtable->table[hashcode] = (char *)malloc(sizeof(char) * strlen(str));
-				strcpy(hashtable->table[hashcode], str);
-				hashtable->size++;
-
-				return hashcode;
-			}
-			else if(n == hashtable->capacity-1) {
-				return FAILURE;
-			}
-			if(hashcode == hashtable->capacity-1) {
-				hashcode = 0;
-			}
-			else {
-				hashcode++;
-			}
+	}
+	else {
+		if (strcmp(str, "0") == 0) {
+			// We dont need to increase size in this case
+			hashtable->table[0] = (char *)malloc(sizeof(char) * strlen(str));
+			strcpy(hashtable->table[0], str);
+			return 0;
+		}
+		else {
+			int hashcode = get_hashcode(hashtable);
+			hashtable->table[hashcode] = (char *)malloc(sizeof(char) * strlen(str));
+			strcpy(hashtable->table[hashcode], str);
+			hashtable->size++;
+			return hashcode;
 		}
 	}
 	return FAILURE;
@@ -80,18 +71,19 @@ int ht_inner_add(hash_table_t *hashtable, char *str) {
 
 int extend_ht(hash_table_t *hashtable){
 	if(hashtable->size/(double)(hashtable->capacity) > hashtable->upper_bound_ratio) {
-		hashtable->capacity = hashtable->capacity*2;
-		hashtable->table = (char **)realloc(hashtable->table,hashtable->capacity * sizeof(char *));
+		hashtable->capacity = hashtable->capacity * 2;
+		hashtable->table = (char **)realloc(hashtable->table, hashtable->capacity * sizeof(char *));
 		if(hashtable->table == NULL) {
 			return FAILURE;
-		}else{
+		}
+		else{
 			for(int i = hashtable->capacity/2; i < hashtable->capacity; i++) {
 				hashtable->table[i] = NULL;
 			}
 		}
 		return SUCCESS;
-
-	}else{
+	}
+	else {
 		return 0;
 	}
 }
@@ -109,16 +101,13 @@ int ht_add(hash_table_t *hashtable, char *str){
 }
 
 char *ht_get_value(hash_table_t *hashtable, int hashcode) {
-	// Check if value is NULL or NOT?
-
 	if(hashcode == -1) {
 		return "empty";
 	}
-
-	if(hashtable->table[hashcode] != NULL){
+	if(hashtable->table[hashcode] != NULL) {
 		return hashtable->table[hashcode];
-	} else {
-		printf("The hashcode provided leads to a not existing cell\n");
+	}
+	else {
 		return NULL;
 	}
 }
