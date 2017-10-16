@@ -1,6 +1,8 @@
 #ifndef LIST_H
 #define LIST_H
 
+#include "hash_table.h"
+
 typedef struct list1 {
 	char type;
 	char *id;
@@ -35,11 +37,11 @@ typedef struct index {
 
 
 index_t *init_lists();
-int add_to_list(index_t *, char **);
-list1_t *add_to_list1(list1_t *, int, char **);
-list2_t *add_to_list2(list2_t *, int, char **);
-void print_lists(index_t *);
-void print_list1(list1_t *);
-void print_list2(list2_t *);
+int add_to_list(index_t *, char **, hash_table_t *);
+list1_t *add_to_list1(list1_t *, int, char **, hash_table_t *);
+list2_t *add_to_list2(list2_t *, int, char **, hash_table_t *);
+void print_lists(index_t *, hash_table_t *);
+void print_list1(list1_t *, hash_table_t *);
+void print_list2(list2_t *, hash_table_t *);
 
 #endif

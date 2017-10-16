@@ -1,149 +1,124 @@
-#define _XOPEN_SOURCE 500 /* Enable certain library functions (strdup) on linux.  See feature_test_macros(7) */
+//This is a small implementation of a extensible hashtable
+//Initialy the user must specify the capacity of the hashtable in order to perform any additions to it
+//If the size becomes bigger than the upper_bound_ratio then the hashtable capacity becomes twice as big
+
+//Functions to use in main are:
+//	-hash_table_t *ht_create(int capacity) *Creation of hashtable
+//	-int ht_add(hash_table_t *hashtable, char *str) *This function enters the input string into the hashtable and returns the a unique key whitch is a positive number. If the element already exists in the hashtable the function returns the key of it.
+// 	-char *get_ht_value(hash_table_t *hashtable,int hashcode) *This function simply returns the inner of the specified hashtable cell
+
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <limits.h>
 #include <string.h>
+#include "hash_table.h"
 
-struct entry_s {
-	char *key;
-	char *value;
-	struct entry_s *next;
-};
+hash_table_t *ht_create(int capacity) {
+	hash_table_t *hashtable;
 
-typedef struct entry_s entry_t;
-
-struct hashtable_s {
-	int size;
-	struct entry_s **table;	
-};
-
-typedef struct hashtable_s hashtable_t;
-
-/* Create a new hashtable. */
-hashtable_t *ht_create(int size) {
-
-	hashtable_t *hashtable = NULL;
-	int i;
-
-	if(size < 1) return NULL;
-
-	/* Allocate the table itself. */
-	if((hashtable = malloc(sizeof(hashtable_t))) == NULL) {
+	if((hashtable = (hash_table_t *)malloc(sizeof(hash_table_t))) == NULL) {
 		return NULL;
 	}
-
-	/* Allocate pointers to the head nodes. */
-	if((hashtable->table = malloc(sizeof(entry_t *)* size)) == NULL ) {
+	if((hashtable->table = (char **)malloc(capacity * sizeof(char *))) == NULL) {
 		return NULL;
 	}
-	for(i = 0; i < size; i++) {
+	for(int i = 0; i < capacity; i++) {
 		hashtable->table[i] = NULL;
 	}
-
-	hashtable->size = size;
-
-	return hashtable;	
+	hashtable->size = 0;
+	hashtable->capacity = capacity;
+	hashtable->upper_bound_ratio=0.9;
+	return hashtable;
 }
 
-/* Hash a string for a particular hash table. */
-int ht_hash(hashtable_t *hashtable, char *key) {
-
-	unsigned long int hashval;
-	int i = 0;
-
-	/* Convert our string to an integer */
-	while(hashval < ULONG_MAX && i < strlen(key)) {
-		hashval = hashval << 8;
-		hashval += key[ i ];
-		i++;
+int get_hashcode(hash_table_t *hashtable, char *str) {
+	int sum=0;
+	for(int i=0; i<strlen(str); i++) {
+		sum += str[i];
 	}
-
-	return hashval % hashtable->size;
+	return sum % hashtable->capacity;
 }
 
-/* Create a key-value pair. */
-entry_t *ht_newpair(char *key, char *value) {
-	entry_t *newpair;
-
-	if((newpair = malloc(sizeof(entry_t))) == NULL) {
-		return NULL;
-	}
-
-	if((newpair->key = strdup(key)) == NULL) {
-		return NULL;
-	}
-
-	if((newpair->value = strdup(value)) == NULL) {
-		return NULL;
-	}
-
-	newpair->next = NULL;
-
-	return newpair;
+int ht_contains(hash_table_t *hashtable, char *str) {
+	for (int n = 0; n < hashtable->capacity-1; n++){
+		if(hashtable->table[n] != NULL){
+			if(strcmp(hashtable->table[n], str) == 0) {
+				return n;
+			}
+		}
+	}	
+	return FAILURE;
 }
 
-/* Insert a key-value pair into a hash table. */
-void ht_set(hashtable_t *hashtable, char *key, char *value) {
-	int bin = 0;
-	entry_t *newpair = NULL;
-	entry_t *next = NULL;
-	entry_t *last = NULL;
+int ht_inner_add(hash_table_t *hashtable, char *str) {
+	int hashcode = get_hashcode(hashtable, str);
+	int contains = ht_contains(hashtable, str);
+	if (contains != FAILURE) {
+		return contains;
+	} else{
+		for (int n = 0; n < hashtable->capacity-1; n++){
+			if(hashtable->table[hashcode] == NULL) {
+				hashtable->table[hashcode] = (char *)malloc(sizeof(char) * strlen(str));
+				strcpy(hashtable->table[hashcode], str);
+				hashtable->size++;
 
-	bin = ht_hash(hashtable, key);
-
-	next = hashtable->table[ bin ];
-
-	while(next != NULL && next->key != NULL && strcmp(key, next->key) > 0) {
-		last = next;
-		next = next->next;
-	}
-
-	/* There's already a pair.  Let's replace that string. */
-	if(next != NULL && next->key != NULL && strcmp(key, next->key) == 0) {
-
-		// free( next->value );
-		// next->value = strdup( value );
-
-	/* Nope, could't find it.  Time to grow a pair. */
-	} else {
-		newpair = ht_newpair( key, value );
-
-		/* We're at the start of the linked list in this bin. */
-		if(next == hashtable->table[bin]) {
-			newpair->next = next;
-			hashtable->table[bin] = newpair;
-	
-		/* We're at the end of the linked list in this bin. */
-		} else if (next == NULL) {
-			last->next = newpair;
-	
-		/* We're in the middle of the list. */
-		} else {
-			newpair->next = next;
-			last->next = newpair;
+				return hashcode;
+			}
+			else if(n == hashtable->capacity-1) {
+				return FAILURE;
+			}
+			if(hashcode == hashtable->capacity-1) {
+				hashcode = 0;
+			}
+			else {
+				hashcode++;
+			}
 		}
 	}
+	return FAILURE;
 }
 
-/* Retrieve a key-value pair from a hash table. */
-char *ht_get(hashtable_t *hashtable, char *key) {
-	int bin = 0;
-	entry_t *pair;
+int extend_ht(hash_table_t *hashtable){
+	if(hashtable->size/(double)(hashtable->capacity) > hashtable->upper_bound_ratio) {
+		hashtable->capacity = hashtable->capacity*2;
+		hashtable->table = (char **)realloc(hashtable->table,hashtable->capacity * sizeof(char *));
+		if(hashtable->table == NULL) {
+			return FAILURE;
+		}else{
+			for(int i = hashtable->capacity/2; i < hashtable->capacity; i++) {
+				hashtable->table[i] = NULL;
+			}
+		}
+		return SUCCESS;
 
-	bin = ht_hash(hashtable, key);
+	}else{
+		return 0;
+	}
+}
 
-	/* Step through the bin, looking for our value. */
-	pair = hashtable->table[bin];
-	while(pair != NULL && pair->key != NULL && strcmp(key, pair->key) > 0) {
-		pair = pair->next;
+int ht_add(hash_table_t *hashtable, char *str){
+	int rehash = 0;
+	int add = ht_inner_add(hashtable,str);
+	if (add != FAILURE){
+		rehash = extend_ht(hashtable);
+		if(rehash == FAILURE) {
+			return FAILURE;
+		}
+	}
+	return add;
+}
+
+char *ht_get_value(hash_table_t *hashtable, int hashcode) {
+	// Check if value is NULL or NOT?
+
+	if(hashcode == -1) {
+		return "empty";
 	}
 
-	/* Did we actually find anything? */
-	if(pair == NULL || pair->key == NULL || strcmp(key, pair->key) != 0) {
-		return NULL;
-
+	if(hashtable->table[hashcode] != NULL){
+		return hashtable->table[hashcode];
 	} else {
-		return pair->value;
+		printf("The hashcode provided leads to a not existing cell\n");
+		return NULL;
 	}
 }
