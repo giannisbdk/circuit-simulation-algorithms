@@ -27,13 +27,31 @@ void create_mna_arrays(mna_arrays_t *mna, index_t *index, hash_table_t *hash_tab
 		int probe2_id = ht_get_id(hash_table, curr->probe2);
 		int i = probe1_id - 1;
 		int j = probe2_id - 1;
-		// int i = curr->probe1 - 1;
-		// int j = curr->probe2 - 1;
 		if(curr->type == 'C' || curr->type == 'c') {
 			continue;
 		}
 		else if(curr->type == 'L' || curr->type == 'l') {
-			value = 0;
+			/* We treat the Inductor like a voltage source with value 0 */
+			value = 0.0;
+			if(probe1_id == 0) {
+				mna->left[j][offset + volt_sources_cnt] = 1.0;
+				mna->left[offset + volt_sources_cnt][j] = 1.0;
+				mna->right[offset + volt_sources_cnt][0] += value;
+			}
+			else if(probe2_id == 0) {
+				mna->left[i][offset + volt_sources_cnt] = 1.0;
+				mna->left[offset + volt_sources_cnt][i] = 1.0;
+				mna->right[offset + volt_sources_cnt][0] += value;
+			}
+			else {
+				mna->left[i][offset + volt_sources_cnt] =  1.0;
+				mna->left[j][offset + volt_sources_cnt] = -1.0;
+				mna->left[offset + volt_sources_cnt][i] =  1.0;
+				mna->left[offset + volt_sources_cnt][j] = -1.0;
+				mna->right[offset + volt_sources_cnt][0] += value;
+			}
+			// Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found
+			volt_sources_cnt++;
 		}
 		else if(curr->type == 'R' || curr->type == 'r') {
 			value = 1 / curr->value;
@@ -53,20 +71,20 @@ void create_mna_arrays(mna_arrays_t *mna, index_t *index, hash_table_t *hash_tab
 		else if(curr->type == 'V' || curr->type == 'v') {
 			value = curr->value;
 			if(probe1_id == 0) {
-				mna->left[j][offset + volt_sources_cnt] = 1;
-				mna->left[offset + volt_sources_cnt][j] = 1;
+				mna->left[j][offset + volt_sources_cnt] = 1.0;
+				mna->left[offset + volt_sources_cnt][j] = 1.0;
 				mna->right[offset + volt_sources_cnt][0] += value;
 			}
 			else if(probe2_id == 0) {
-				mna->left[i][offset + volt_sources_cnt] = 1;
-				mna->left[offset + volt_sources_cnt][i] = 1;
+				mna->left[i][offset + volt_sources_cnt] = 1.0;
+				mna->left[offset + volt_sources_cnt][i] = 1.0;
 				mna->right[offset + volt_sources_cnt][0] += value;
 			}
 			else {
-				mna->left[i][offset + volt_sources_cnt] =  1;
-				mna->left[j][offset + volt_sources_cnt] = -1;
-				mna->left[offset + volt_sources_cnt][i] =  1;
-				mna->left[offset + volt_sources_cnt][j] = -1;
+				mna->left[i][offset + volt_sources_cnt] =  1.0;
+				mna->left[j][offset + volt_sources_cnt] = -1.0;
+				mna->left[offset + volt_sources_cnt][i] =  1.0;
+				mna->left[offset + volt_sources_cnt][j] = -1.0;
 				mna->right[offset + volt_sources_cnt][0] += value;
 			}
 			// Keep track of how many voltage sources we have already found

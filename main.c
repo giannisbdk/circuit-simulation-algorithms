@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
         if(add_to_list(index, tokens, hash_table) == FAILURE) {
             exit(EXIT_FAILURE);
         }
-        if(tokens[1][0] == 'V' || tokens[1][0] == 'v') {
+        if(tokens[1][0] == 'V' || tokens[1][0] == 'v' || tokens[1][0] == 'L' || tokens[1][0] == 'l') {
             num_branches++;
         }
         /* Free all the memory we allocated */
