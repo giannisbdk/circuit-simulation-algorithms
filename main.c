@@ -22,7 +22,12 @@ int main(int argc, char *argv[]) {
     index_t *index = init_lists();
     hash_table_t *hash_table = ht_create(HASH_TABLE_SIZE);
 
-    printf("%s\n", argv[1]);
+    if(argc < 2) {
+        printf("You must specify input file from cmd arguments.\nExiting....\n");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Input file is: %s\n", argv[1]);
 
     file_input = fopen(argv[1], "rb");
     if (file_input == NULL) {
@@ -51,43 +56,26 @@ int main(int argc, char *argv[]) {
     printf("Printing the lists\n");
     print_lists(index, hash_table);
 
-    for(int i=0; i<=hash_table->size; i++) {
-        if(ht_get_value(hash_table, i) != NULL)
-            printf("Key: %d, Value: %s\n", i, ht_get_value(hash_table, i));
-    }
-
     mna_arrays_t mna;
 
-    int num_nodes = hash_table->size - 1;
+    int num_nodes = hash_table->seq - 1;
     int size = num_nodes + num_branches;
-    printf("size: %d, num_nodes: %d, num_branches: %d\n", size, num_nodes, num_branches);
+    printf("size: %d\nnum_nodes(w/o ground): %d\nnum_branches_g2: %d\n\n", size, num_nodes, num_branches);
     
     // Initialize the arrays
     mna.left = init_array(size, size);
     mna.right = init_array(size, 1);
 
-    create_mna_arrays(&mna, index, num_nodes);
+    create_mna_arrays(&mna, index, hash_table, num_nodes);
 
-    printf("\n");
-    for (int i = 0; i < size; ++i) {
-        for (int j = 0; j < size; ++j) {
-            printf("%lf\t", mna.left[i][j]);
-        }
-        printf("\n");
-    }
-    printf("\n");
-
-    for (int i = 0; i < size; ++i) {
-        for (int j = 0; j < 1; ++j) {
-            printf("%lf\t", mna.right[i][j]);
-        }
-        printf("\n");
-    }
+    print_mna_left(&mna, size);
+    print_mna_right(&mna, size);
 
     fclose(file_input);
     if (line) {
         free(line);
     }
+    ht_free(hash_table);
 
     exit(EXIT_SUCCESS);
 

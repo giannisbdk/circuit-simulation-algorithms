@@ -3,11 +3,16 @@
 
 #include "hash_table.h"
 
+#define SUCCESS 	 1
+#define FAILURE -1
+
 typedef struct list1 {
 	char type;
 	char *id;
-	int probe1;
-	int probe2;
+	char *probe1;
+	char *probe2;
+	// int probe1;
+	// int probe2;
 	long double value;
 	struct list1 *next;
 	struct list1 *prev;
@@ -16,10 +21,10 @@ typedef struct list1 {
 typedef struct list2 {
 	char type;
 	char *id;
-	int probe1;
-	int probe2;
-	int probe3;
-	int probe4;
+	char *probe1;
+	char *probe2;
+	char *probe3;
+	char *probe4;
 	int model_name;
 	int area;	
 	long double length;

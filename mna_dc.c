@@ -15,15 +15,20 @@ double **init_array(int row, int col) {
 	return array;
 }
 
-void create_mna_arrays(mna_arrays_t *mna, index_t *index, int offset) {
+void create_mna_arrays(mna_arrays_t *mna, index_t *index, hash_table_t *hash_table, int offset) {
 
 	list1_t *curr;
 	double value;
 	int volt_sources_cnt = 0; 
 
 	for (curr = index->head1; curr != NULL; curr = curr->next) {
-		int i = curr->probe1 - 1;
-		int j = curr->probe2 - 1;
+
+		int probe1_id = ht_get_id(hash_table, curr->probe1);
+		int probe2_id = ht_get_id(hash_table, curr->probe2);
+		int i = probe1_id - 1;
+		int j = probe2_id - 1;
+		// int i = curr->probe1 - 1;
+		// int j = curr->probe2 - 1;
 		if(curr->type == 'C' || curr->type == 'c') {
 			continue;
 		}
@@ -32,10 +37,10 @@ void create_mna_arrays(mna_arrays_t *mna, index_t *index, int offset) {
 		}
 		else if(curr->type == 'R' || curr->type == 'r') {
 			value = 1 / curr->value;
-			if(curr->probe1 == 0) {
+			if(probe1_id == 0) {
 				mna->left[j][j] += value;
 			}
-			else if(curr->probe2 == 0) {
+			else if(probe2_id == 0) {
 				mna->left[i][i] += value;
 			}
 			else {
@@ -47,12 +52,12 @@ void create_mna_arrays(mna_arrays_t *mna, index_t *index, int offset) {
 		}
 		else if(curr->type == 'V' || curr->type == 'v') {
 			value = curr->value;
-			if(curr->probe1 == 0) {
+			if(probe1_id == 0) {
 				mna->left[j][offset + volt_sources_cnt] = 1;
 				mna->left[offset + volt_sources_cnt][j] = 1;
 				mna->right[offset + volt_sources_cnt][0] += value;
 			}
-			else if(curr->probe2 == 0) {
+			else if(probe2_id == 0) {
 				mna->left[i][offset + volt_sources_cnt] = 1;
 				mna->left[offset + volt_sources_cnt][i] = 1;
 				mna->right[offset + volt_sources_cnt][0] += value;
@@ -69,10 +74,10 @@ void create_mna_arrays(mna_arrays_t *mna, index_t *index, int offset) {
 		}
 		else if(curr->type == 'I' || curr->type == 'i') {
 			value = curr->value;
-			if(curr->probe1 == 0) {
+			if(probe1_id == 0) {
 				mna->right[j][0] += value;
 			}
-			else if(curr->probe2 == 0) {
+			else if(probe2_id == 0) {
 				mna->right[i][0] += value;
 			}
 			else {
@@ -81,4 +86,26 @@ void create_mna_arrays(mna_arrays_t *mna, index_t *index, int offset) {
 			}
 		}
 	}
+}
+
+void print_mna_left(mna_arrays_t *mna, int size) {
+	printf("MNA left array:\n\n");
+    for (int i = 0; i < size; ++i) {
+        for (int j = 0; j < size; ++j) {
+            printf("%lf\t", mna->left[i][j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+void print_mna_right(mna_arrays_t *mna, int size) {
+	printf("MNA right array:\n\n");
+	for (int i = 0; i < size; ++i) {
+        for (int j = 0; j < 1; ++j) {
+            printf("%lf\t", mna->right[i][j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
 }

@@ -1,18 +1,24 @@
-#ifndef HASHTABLE_H
-#define HASHTABLE_H
+#ifndef HASH_TABLE_H
+#define HASH_TABLE_H
 
-#define SUCCESS 1
-#define FAILURE -1
+typedef struct entry {
+	char *key;
+	unsigned int id;
+	struct entry *next;
+} entry_t;
 
-typedef struct hash_table_s {
+
+typedef struct hash_table {
 	unsigned int size;
-  	unsigned int capacity;
-  	double upper_bound_ratio;
-  	char **table;
+	unsigned int seq;
+	entry_t **table;
 } hash_table_t;
 
-hash_table_t *ht_create(int);
-int ht_add(hash_table_t *, char *);
-char *ht_get_value(hash_table_t *, int);
+hash_table_t *ht_create(int size);
+entry_t *ht_new_node(hash_table_t *hash_table, char *key);
+int ht_hash(hash_table_t *hash_table, char *key );
+void ht_set(hash_table_t *hash_table, char *key);
+int ht_get_id(hash_table_t *hash_table, char *key);
+void ht_free(hash_table_t *hash_table);
 
 #endif

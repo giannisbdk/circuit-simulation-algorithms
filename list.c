@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "list.h"
+
 #include "hash_table.h"
 
 index_t* init_lists() {
@@ -69,11 +70,12 @@ list1_t *add_to_list1(list1_t *head, int size, char **tokens, hash_table_t *hash
 	strncpy(&new_node->type, &tokens[1][0], 1);
 	new_node->id = (char *)malloc(strlen(&tokens[1][1]) * sizeof(char));
 	strcpy(new_node->id, &tokens[1][1]);
-	new_node->probe1 = ht_add(hash_table, &tokens[2][0]);
-	new_node->probe2 = ht_add(hash_table, &tokens[3][0]);
-	if(new_node->probe1 == FAILURE || new_node->probe2 == FAILURE) {
-		return NULL;
-	}
+	new_node->probe1 = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
+	new_node->probe2 = (char *)malloc(strlen(&tokens[3][0]) * sizeof(char));
+	strcpy(new_node->probe1, &tokens[2][0]);
+	strcpy(new_node->probe2, &tokens[3][0]);
+	ht_set(hash_table, &tokens[2][0]);
+	ht_set(hash_table, &tokens[3][0]);
 	sscanf(tokens[4], "%Lf", &new_node->value);
 	return head;
 }
@@ -106,41 +108,50 @@ list2_t *add_to_list2(list2_t *head, int size, char **tokens, hash_table_t *hash
 	strncpy(&new_node->type, &tokens[1][0], 1);
 	new_node->id = (char *)malloc(strlen(&tokens[1][1]) * sizeof(char));
 	strcpy(new_node->id, &tokens[1][1]);
+	// Init probes to NULL
+	new_node->probe1 = NULL;
+	new_node->probe2 = NULL;
+	new_node->probe3 = NULL;
+	new_node->probe4 = NULL;
 	if(new_node->type == 'D' || new_node->type == 'd') {
-		new_node->probe1 = ht_add(hash_table, &tokens[2][0]);
-		new_node->probe2 = ht_add(hash_table, &tokens[3][0]);
-		if(new_node->probe1 == FAILURE || new_node->probe2 == FAILURE) {
-			return NULL;
-		}
-		new_node->probe3 = -1;
-		new_node->probe4 = -1;
+		new_node->probe1 = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
+		new_node->probe2 = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
+		strcpy(new_node->probe1, &tokens[2][0]);
+		strcpy(new_node->probe1, &tokens[3][0]);
+		ht_set(hash_table, &tokens[2][0]);
+		ht_set(hash_table, &tokens[3][0]);
 		new_node->model_name = -1;
 		new_node->length = new_node->width = -1;
 		/* For now we ignore mode_name, thus we use 3 */
 		new_node->area = num_tokens > 3 ? atoi(&tokens[4][0]) : 1;
 	}
 	else if(new_node->type == 'M' || new_node->type == 'm') {
-		new_node->probe1 = ht_add(hash_table, &tokens[2][0]);
-		new_node->probe2 = ht_add(hash_table, &tokens[3][0]);
-		new_node->probe3 = ht_add(hash_table, &tokens[4][0]);
-		new_node->probe4 = ht_add(hash_table, &tokens[5][0]);
-		if(new_node->probe1 == FAILURE || new_node->probe2 == FAILURE ||
-			new_node->probe3 == FAILURE || new_node->probe4 == FAILURE) {
-			return NULL;
-		}
+		new_node->probe1 = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
+		new_node->probe2 = (char *)malloc(strlen(&tokens[3][0]) * sizeof(char));
+		new_node->probe3 = (char *)malloc(strlen(&tokens[4][0]) * sizeof(char));
+		new_node->probe4 = (char *)malloc(strlen(&tokens[5][0]) * sizeof(char));
+		strcpy(new_node->probe1, &tokens[2][0]);
+		strcpy(new_node->probe1, &tokens[3][0]);
+		strcpy(new_node->probe1, &tokens[4][0]);
+		strcpy(new_node->probe1, &tokens[5][0]);
+		ht_set(hash_table, &tokens[2][0]);
+		ht_set(hash_table, &tokens[3][0]);
+		ht_set(hash_table, &tokens[4][0]);
+		ht_set(hash_table, &tokens[5][0]);
 		new_node->model_name = -1;
 		sscanf(tokens[6], "%Lf", &new_node->length);
 		sscanf(tokens[7], "%Lf", &new_node->width);
 	}
 	else if(new_node->type == 'Q' || new_node->type == 'q') {
-		new_node->probe1 = ht_add(hash_table, &tokens[2][0]);
-		new_node->probe2 = ht_add(hash_table, &tokens[3][0]);
-		new_node->probe3 = ht_add(hash_table, &tokens[4][0]);
-		if(new_node->probe1 == FAILURE || new_node->probe2 == FAILURE ||
-			new_node->probe3 == FAILURE) {
-			return NULL;
-		}
-		new_node->probe4 = -1;
+		new_node->probe1 = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
+		new_node->probe2 = (char *)malloc(strlen(&tokens[3][0]) * sizeof(char));
+		new_node->probe3 = (char *)malloc(strlen(&tokens[4][0]) * sizeof(char));
+		strcpy(new_node->probe1, &tokens[2][0]);
+		strcpy(new_node->probe1, &tokens[3][0]);
+		strcpy(new_node->probe1, &tokens[4][0]);
+		ht_set(hash_table, &tokens[2][0]);
+		ht_set(hash_table, &tokens[3][0]);
+		ht_set(hash_table, &tokens[4][0]);
 		new_node->model_name = -1;
 		new_node->length = new_node->width = -1;
 		/* For now we ignore mode_name, thus we use 4 */
@@ -166,9 +177,11 @@ void print_list1(list1_t *head, hash_table_t *hash_table) {
 	while(curr != NULL) {
 		printf("Type: %c\n", curr->type);
 		printf("Id: %s\n", curr->id);
-		printf("Probe1: %s\n", ht_get_value(hash_table, curr->probe1));
-		printf("Probe2: %s\n", ht_get_value(hash_table, curr->probe2));
+		printf("Probe1: %s\n", curr->probe1);
+		printf("Probe2: %s\n", curr->probe2);
 		printf("Value: %.20Lf\n", curr->value);
+		printf("Probe1 id: %d\n", ht_get_id(hash_table, curr->probe1));
+		printf("Probe2 id: %d\n", ht_get_id(hash_table, curr->probe2));
 		printf("\n");
 		curr = curr->next;
 	}
@@ -180,11 +193,25 @@ void print_list2(list2_t *head, hash_table_t *hash_table) {
 
 	while(curr != NULL) {
 		printf("Type: %c\n", curr->type);
-		printf("Id: %s\n", curr->id);
-		printf("Probe1: %s\n", ht_get_value(hash_table, curr->probe1));
-		printf("Probe2: %s\n", ht_get_value(hash_table, curr->probe2));
-		printf("Probe3: %s\n", ht_get_value(hash_table, curr->probe3));
-		printf("Probe4: %s\n", ht_get_value(hash_table, curr->probe4));
+		printf("Element: %s\n", curr->id);
+		printf("Probe1: %s\n", curr->probe1);
+		printf("Probe2: %s\n", curr->probe2);
+		printf("Probe1 id: %d\n", ht_get_id(hash_table, curr->probe1));
+		printf("Probe2 id: %d\n", ht_get_id(hash_table, curr->probe2));
+		if(curr->probe3 != NULL) {
+			printf("Probe3: %s\n", curr->probe3);
+			printf("Probe3 id: %d\n", ht_get_id(hash_table, curr->probe3));
+		}
+		else {
+			printf("Probe3: NULL\n");
+		}
+		if(curr->probe4 != NULL) {
+			printf("Probe4: %s\n", curr->probe4);
+			printf("Probe4 id: %d\n", ht_get_id(hash_table, curr->probe4));
+		}
+		else {
+			printf("Probe4: NULL\n");
+		}
 		printf("Model_name: %d\n", curr->model_name);
 		printf("Area: %d\n", curr->area);
 		printf("Length %.20Lf\nWidth: %.20Lf\n", curr->length, curr->width);
