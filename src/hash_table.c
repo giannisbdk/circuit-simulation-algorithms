@@ -101,7 +101,9 @@ void ht_set(hash_table_t *hash_table, char *key) {
 	// In case its empty create new node
 	if(curr == NULL) {
 		new_node = ht_new_node(hash_table, key);
+#ifdef DEBUGH
 		printf("Inserted new node with key: %s and id: %d at bin: %d\n", key, new_node->id, bin);
+#endif
 		hash_table->table[bin] = new_node;
 		return;
 	}
@@ -109,7 +111,9 @@ void ht_set(hash_table_t *hash_table, char *key) {
 		for(; curr != NULL; curr = curr->next) {
 			if(strcmp(key, curr->key) == 0) {
 				/* Means we have already stored that string */
+#ifdef DEBUGH
 				printf("Key: %s, has already been stored.\n", key);
+#endif
 				return;
 			}
 			last = curr;
@@ -123,7 +127,9 @@ void ht_set(hash_table_t *hash_table, char *key) {
 		return;
 	}
 	last->next = new_node;
+#ifdef DEBUGH
 	printf("Inserted new node at the end of list at bin: %d with key: %s and id: %d\n", bin, key, new_node->id);
+#endif
 }
 
 /* Retrieve a key-value pair from a hash table. */

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "parser.h"
+
 #include "list.h"
 #include "hash_table.h"
 #include "mna_dc.h"
@@ -52,15 +53,17 @@ int main(int argc, char *argv[]) {
         }
         free(tokens);
     }
-
+#ifdef DEBUGL
     printf("Printing the lists\n");
     print_lists(index, hash_table);
+#endif
+    printf("Finished parsing %d circuit elements.\n", index->size1 + index->size2);
 
     mna_arrays_t mna;
 
     int num_nodes = hash_table->seq - 1;
     int size = num_nodes + num_branches;
-    printf("size: %d\nnum_nodes(w/o ground): %d\nnum_branches_g2: %d\n\n", size, num_nodes, num_branches);
+    printf("\nsize: %d\nnum_nodes(w/o ground): %d\nnum_branches_g2: %d\n\n", size, num_nodes, num_branches);
     
     // Initialize the arrays
     mna.left = init_array(size, size);
@@ -75,6 +78,8 @@ int main(int argc, char *argv[]) {
     if (line) {
         free(line);
     }
+    
+    /* Free the hashtable memory */
     ht_free(hash_table);
 
     exit(EXIT_SUCCESS);

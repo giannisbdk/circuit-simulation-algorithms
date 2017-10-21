@@ -3,16 +3,14 @@
 
 #include "hash_table.h"
 
-#define SUCCESS 	 1
-#define FAILURE -1
+#define SUCCESS	 1
+#define FAILURE	-1
 
 typedef struct list1 {
 	char type;
 	char *id;
 	char *probe1;
 	char *probe2;
-	// int probe1;
-	// int probe2;
 	long double value;
 	struct list1 *next;
 	struct list1 *prev;
@@ -34,19 +32,23 @@ typedef struct list2 {
 } list2_t;
 
 typedef struct index {
+	/* Pointers to the head and tail of the list1 */
 	list1_t *head1;
+	list1_t *tail1;
+	/* Pointers to the head and tail of the list2 */
 	list2_t *head2;
+	list2_t *tail2;
 	unsigned int size1;
 	unsigned int size2;
 } index_t;
 
 
 index_t *init_lists();
-int add_to_list(index_t *, char **, hash_table_t *);
-list1_t *add_to_list1(list1_t *, int, char **, hash_table_t *);
-list2_t *add_to_list2(list2_t *, int, char **, hash_table_t *);
-void print_lists(index_t *, hash_table_t *);
-void print_list1(list1_t *, hash_table_t *);
-void print_list2(list2_t *, hash_table_t *);
+int add_to_list(index_t *index, char **tokens, hash_table_t *hash_table);
+int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table);
+int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table);
+void print_lists(index_t *index, hash_table_t *hash_table);
+void print_list1(list1_t *head, hash_table_t *hash_table);
+void print_list2(list2_t *head, hash_table_t *hash_table);
 
 #endif

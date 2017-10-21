@@ -33,27 +33,25 @@ int get_num_tokens(char *line) {
 /* Tokenizes the current line and returns the number of tokens and the tokens */
 char **tokenizer(char *line, int *num_tokens) {
 
-	const char delim[2] = " ";
+	const char delim[] = " ";
+	const char CRLF[] = "\r\n";
 	char **tokens, *token;
-	int i = 1;
+	short int i = 1;
 
-	/* In case the line starts with a comment */
-	if (line[0] == '*') {
+	/* In case the line starts with a comment or it's an empty line ignore */
+	if(line[0] == '*' || line[0] == '\n' || strcmp(line, CRLF) == 0) {
 		return NULL;
 	}
 
 	*num_tokens = get_num_tokens(line);
-
 	if(*num_tokens == 0) {
 		return NULL;
 	}
 
 	tokens = (char **)malloc((*num_tokens + 1) * sizeof(char *));
-
 	tokens[0] = (char *)malloc(sizeof(char));
 
 	sprintf(tokens[0], "%d", *num_tokens);
-
 	token = strtok(line, delim);
 
 	while(token != NULL && i <= *num_tokens) {
@@ -62,11 +60,9 @@ char **tokenizer(char *line, int *num_tokens) {
 		token = strtok(NULL, delim);
 		i++;
 	}
-
 	/* Trim '\n' if necessary */
 	if(tokens[i-1][strlen(tokens[i-1])-1] == '\n') {
 		tokens[i-1][strlen(tokens[i-1])-1] = '\0';
 	}
-
 	return tokens;
 }

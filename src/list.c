@@ -1,27 +1,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "list.h"
 
+#include "list.h"
 #include "hash_table.h"
 
-index_t* init_lists() {
+// TODO add free for the lists
+
+index_t *init_lists() {
+	/* Allocate memory for the index that stores the lists */
 	index_t *index = (index_t *)malloc(sizeof(index_t));
-	index->head1 = NULL;
-	index->head2 = NULL;
-	index->size1 = 0;
-	index->size2 = 0;
+	/* Initiliaze the fields */
+	index->head1 = index->tail1 = NULL;
+	index->head2 = index->tail2 = NULL;
+	index->size1 = index->size2 = 0;
 	return index;
 }
 
-/* General method to add new node to the appropriate list */
 int add_to_list(index_t *index, char **tokens, hash_table_t *hash_table) {
-
+	int res;
+	/* Get the type of the circuit element */
 	char type = tokens[1][0];
 	if(type == 'R' || type == 'C' || type == 'I' || type == 'V' || type == 'L' ||
 		type == 'r' || type == 'c' || type == 'i' || type == 'v' || type == 'l') {
-		index->head1 = add_to_list1(index->head1, index->size1, tokens, hash_table);
-		if(index->head1 != NULL) {
+		res = add_to_list1(index, tokens, hash_table);
+		if(res == SUCCESS) {
 			index->size1++;
 		}
 		else {
@@ -30,8 +33,8 @@ int add_to_list(index_t *index, char **tokens, hash_table_t *hash_table) {
 	}
 	else if(type == 'M' || type == 'Q' || type == 'D' ||
 		type == 'm' || type == 'q' || type == 'd') {
-		index->head2 = add_to_list2(index->head2, index->size2, tokens, hash_table);
-		if(index->head2 != NULL) {
+		res = add_to_list2(index, tokens, hash_table);
+		if(res == SUCCESS) {
 			index->size2++;
 		}
 		else {
@@ -39,76 +42,88 @@ int add_to_list(index_t *index, char **tokens, hash_table_t *hash_table) {
 		}
 	}
 	else {
-		printf("Something is totally wrong with the input.\n");
+		printf("Circuit element has wrong type %c\n", type);
 		return FAILURE;
 	}
 	return SUCCESS;
 }
 
-list1_t *add_to_list1(list1_t *head, int size, char **tokens, hash_table_t *hash_table) {
-
+/* Add new node to the end of the list */
+int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 	list1_t *new_node = (list1_t *)malloc(sizeof(list1_t));
 	if(new_node == NULL) {
-		printf("Something went wrong with malloc\n");
-		return NULL;
+		printf("Could not allocate memory for new node!\n");
+		return FAILURE;
 	}
-	/* In case the list is empty */
-	if(size == 0) {
+	/* In case list is empty */
+	if(index->size1 == 0) {
 		new_node->prev = NULL;
 		new_node->next = NULL;
-		head = new_node;
+		index->head1 = new_node;
+		index->tail1 = new_node;
+#ifdef DEBUGL
+		printf("Adding node to the head of list1, new_node: %p, head1: %p, tail1: %p\n", new_node, index->head1, index->tail1);
+#endif
 	}
+	/* If it is not empty add element to the end of the list */
 	else {
-		list1_t *curr;
-		/* Find the last node */
-		for(curr = head; curr->next != NULL; curr = curr->next);
-		curr->next = new_node;
-		new_node->prev = curr;
+		new_node->prev = index->tail1;
+		index->tail1->next = new_node;
+		index->tail1 = new_node;
 		new_node->next = NULL;
+#ifdef DEBUGL
+		printf("Adding node to the end of list1, new_node: %p, new_node->prev: %p\n", new_node, new_node->prev);
+#endif
 	}
 	/* Set new node struct fields */
 	strncpy(&new_node->type, &tokens[1][0], 1);
 	new_node->id = (char *)malloc(strlen(&tokens[1][1]) * sizeof(char));
-	strcpy(new_node->id, &tokens[1][1]);
 	new_node->probe1 = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
 	new_node->probe2 = (char *)malloc(strlen(&tokens[3][0]) * sizeof(char));
+	strcpy(new_node->id, &tokens[1][1]);
 	strcpy(new_node->probe1, &tokens[2][0]);
 	strcpy(new_node->probe2, &tokens[3][0]);
+	/* Add probes to the hashtable */
+	// TODO perhaps replace &tokens with new_node probes
 	ht_set(hash_table, &tokens[2][0]);
 	ht_set(hash_table, &tokens[3][0]);
 	sscanf(tokens[4], "%Lf", &new_node->value);
-	return head;
+	return SUCCESS;
 }
 
-list2_t *add_to_list2(list2_t *head, int size, char **tokens, hash_table_t *hash_table) {
-
-	//TODO error handling
+/* Add new node to the end of the list */
+int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table) {
 	int num_tokens = atoi(tokens[0]);
-
 	list2_t *new_node = (list2_t *)malloc(sizeof(list2_t));
 	if(new_node == NULL) {
-		return NULL;
+		printf("Could not allocate memory for new node!\n");
+		return FAILURE;
 	}
-	/* In case the list is empty */
-	if(size == 0) {
+	/* In case list is empty */
+	if(index->size2 == 0) {
 		new_node->prev = NULL;
 		new_node->next = NULL;
-		head = new_node;
+		index->head2 = new_node;
+		index->tail2 = new_node;
+#ifdef DEBUGL
+		printf("Adding node to the head of list2, new_node: %p, head1: %p, tail1: %p\n", new_node, index->head1, index->tail1);
+#endif
 	}
+	/* If it is not empty add element to the end of the list */
 	else {
-		list2_t *curr;
-		/* Find the last node */
-		for(curr = head; curr->next != NULL; curr = curr->next);
-		curr->next = new_node;
-		new_node->prev = curr;
+		new_node->prev = index->tail2;
+		index->tail2->next = new_node;
+		index->tail2 = new_node;
 		new_node->next = NULL;
+#ifdef DEBUGL
+		printf("Adding node to the end of list2, new_node: %p, new_node->prev: %p\n", new_node, new_node->prev);
+#endif
 	}
-
 	/* Set new node struct fields */
 	strncpy(&new_node->type, &tokens[1][0], 1);
 	new_node->id = (char *)malloc(strlen(&tokens[1][1]) * sizeof(char));
 	strcpy(new_node->id, &tokens[1][1]);
-	// Init probes to NULL
+	/* Init probes to NULL */
 	new_node->probe1 = NULL;
 	new_node->probe2 = NULL;
 	new_node->probe3 = NULL;
@@ -118,6 +133,7 @@ list2_t *add_to_list2(list2_t *head, int size, char **tokens, hash_table_t *hash
 		new_node->probe2 = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
 		strcpy(new_node->probe1, &tokens[2][0]);
 		strcpy(new_node->probe1, &tokens[3][0]);
+		/* Add probes to the hashtable */
 		ht_set(hash_table, &tokens[2][0]);
 		ht_set(hash_table, &tokens[3][0]);
 		new_node->model_name = -1;
@@ -134,6 +150,7 @@ list2_t *add_to_list2(list2_t *head, int size, char **tokens, hash_table_t *hash
 		strcpy(new_node->probe1, &tokens[3][0]);
 		strcpy(new_node->probe1, &tokens[4][0]);
 		strcpy(new_node->probe1, &tokens[5][0]);
+		/* Add probes to the hashtable */
 		ht_set(hash_table, &tokens[2][0]);
 		ht_set(hash_table, &tokens[3][0]);
 		ht_set(hash_table, &tokens[4][0]);
@@ -149,6 +166,7 @@ list2_t *add_to_list2(list2_t *head, int size, char **tokens, hash_table_t *hash
 		strcpy(new_node->probe1, &tokens[2][0]);
 		strcpy(new_node->probe1, &tokens[3][0]);
 		strcpy(new_node->probe1, &tokens[4][0]);
+		/* Add probes to the hashtable */
 		ht_set(hash_table, &tokens[2][0]);
 		ht_set(hash_table, &tokens[3][0]);
 		ht_set(hash_table, &tokens[4][0]);
@@ -157,23 +175,18 @@ list2_t *add_to_list2(list2_t *head, int size, char **tokens, hash_table_t *hash
 		/* For now we ignore mode_name, thus we use 4 */
 		new_node->area = num_tokens > 4 ? atoi(&tokens[5][0]) : 1;
 	}
-	else {
-		printf("ERROR: Unknown circuit element\n");
-		return 0;
-	}
-	return head;
+	return SUCCESS;
 }
 
+/* Print the lists */
 void print_lists(index_t *index, hash_table_t *hash_table) {
-
 	print_list1(index->head1, hash_table);
 	print_list2(index->head2, hash_table);
 }
 
+/* Print list1 elements */
 void print_list1(list1_t *head, hash_table_t *hash_table) {
-
 	list1_t *curr = head;
-
 	while(curr != NULL) {
 		printf("Type: %c\n", curr->type);
 		printf("Id: %s\n", curr->id);
@@ -187,10 +200,9 @@ void print_list1(list1_t *head, hash_table_t *hash_table) {
 	}
 }
 
+/* Print list2 elements */
 void print_list2(list2_t *head, hash_table_t *hash_table) {
-
 	list2_t *curr = head;
-
 	while(curr != NULL) {
 		printf("Type: %c\n", curr->type);
 		printf("Element: %s\n", curr->id);

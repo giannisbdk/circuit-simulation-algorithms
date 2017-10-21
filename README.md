@@ -1,12 +1,12 @@
 # Circuit Simulation Algorithms CE530 #
 
 
-### This repository contains our work in this course.###
+### This repository contains our work in this course. ###
 
-### Enviroment:###
+### Enviroment: ###
 * Programming Language: **C**
 
-### Members:###
+### Members: ###
 * Tsakiris Tryfon
 * Badakis Ioannis
 * Katsaros Nikos
