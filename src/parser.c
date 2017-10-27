@@ -12,12 +12,8 @@ int get_num_tokens(char *line) {
 	if(found_char == 1) {
 		tokens++;
 	}
-
 	for (int i = 1; i < len; ++i) {
-		if(line[i] == '\t') {
-			line[i] = ' ';
-		}
-		if(line[i] == ' ') {
+		if(line[i] == ' ' || line[i] == '\t') {
 			found_char = 0;
 		}
 		else if(line[i] > 32) {
@@ -33,7 +29,7 @@ int get_num_tokens(char *line) {
 /* Tokenizes the current line and returns the number of tokens and the tokens */
 char **tokenizer(char *line, int *num_tokens) {
 
-	const char delim[] = " ";
+	const char delim[] = " \t";
 	const char CRLF[] = "\r\n";
 	char **tokens, *token;
 	short int i = 1;
@@ -50,8 +46,8 @@ char **tokenizer(char *line, int *num_tokens) {
 
 	tokens = (char **)malloc((*num_tokens + 1) * sizeof(char *));
 	tokens[0] = (char *)malloc(sizeof(char));
-
 	sprintf(tokens[0], "%d", *num_tokens);
+
 	token = strtok(line, delim);
 
 	while(token != NULL && i <= *num_tokens) {
