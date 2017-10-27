@@ -1,12 +1,6 @@
 #ifndef MNA_DC_H
 #define MNA_DC_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-#include <gsl/gsl_vector.h>
-#include <gsl/gsl_matrix.h>
 #include <gsl/gsl_linalg.h>
 
 #include "list.h"

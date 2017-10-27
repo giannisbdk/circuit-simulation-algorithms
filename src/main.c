@@ -2,12 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include "parser.h"
-
+#include <errno.h>
 #include "list.h"
 #include "hash_table.h"
 #include "mna_dc.h"
 
 #define HASH_TABLE_SIZE 65536
+
+int errno;
 
 int main(int argc, char *argv[]) {
 
@@ -66,13 +68,39 @@ int main(int argc, char *argv[]) {
     
     /* Initialize the MNA_system */
     mna = init_mna_system(size);
-    int SPD = 1;
+    int SPD = 0;
     create_mna_system(mna, index, hash_table, num_nodes);
     print_mna_system(mna);
     gsl_vector *sol_x = solve_mna_system(mna, SPD);
     printf("Solution of the MNA system:\n\n");
     print_vector(sol_x);
 
+    FILE *file_out = fopen("DC_Opearting_Point.txt", "w");
+    if (file_out == NULL) {
+        fprintf(stderr, "Error opening file: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    fprintf(file_out, "%-15s%-15s\n", "Node", "Value");
+    entry_t *curr;
+    double value;
+    int id;
+    for (int i = 0; i < hash_table->size; i++) {
+        for (curr = hash_table->table[i]; curr != NULL; curr = curr->next) {
+            /* Get node name */
+            id = curr->id;
+            if (id == 0) {
+                continue;
+            }
+            else {
+                id -= 1;
+            }
+            /* Get the corresponding cell of the solution vector */
+            value = gsl_vector_get(sol_x, id);
+            /* Output to the file */
+            fprintf(file_out, "%-15s%-15lf\n", curr->key, value);
+        }
+    }
+    fclose(file_out);
     fclose(file_input);
     if (line) {
         free(line);

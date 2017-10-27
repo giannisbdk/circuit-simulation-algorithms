@@ -158,7 +158,7 @@ int ht_get_id(hash_table_t *hash_table, char *key) {
 void ht_free(hash_table_t* hash_table) {
 	entry_t *curr, *prev;
 	// Cycle through the hash_table
-	for(int i=0; i<hash_table->size; i++) {
+	for (int i = 0; i < hash_table->size; i++) {
 		curr = hash_table->table[i];
 		// Free every node in the list in a cell of the hash_table
 		while(curr != NULL) {
