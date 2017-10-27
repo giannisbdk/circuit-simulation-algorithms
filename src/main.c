@@ -17,7 +17,6 @@ int main(int argc, char *argv[]) {
     size_t len = 0;
     ssize_t read;
     char **tokens;
-
     int num_branches = 0;
 
     index_t *index = init_lists();
@@ -65,16 +64,22 @@ int main(int argc, char *argv[]) {
     int size = num_nodes + num_branches;
     printf("\nsize: %d\nnum_nodes(w/o ground): %d\nnum_branches_g2: %d\n\n", size, num_nodes, num_branches);
     
-    // Initialize the arrays
+    /* Initialize the MNA_system */
     mna = init_mna_system(size);
+    int SPD = 1;
     create_mna_system(mna, index, hash_table, num_nodes);
     print_mna_system(mna);
+    gsl_vector *sol_x = solve_mna_system(mna, SPD);
+    printf("Solution of the MNA system:\n\n");
+    print_vector(sol_x);
 
     fclose(file_input);
     if (line) {
         free(line);
     }
-    /* Free the hashtable memory */
+    //TODO free the lists
+    /* Free all the dynamic allocated memory */
+    free_mna_system(mna);
     ht_free(hash_table);
 	return 0;
 }

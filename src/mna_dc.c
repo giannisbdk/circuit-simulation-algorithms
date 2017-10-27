@@ -1,26 +1,38 @@
 #include "mna_dc.h"
 
+/* Allocate memory for the MNA system */
 mna_system_t *init_mna_system(int dimension) {
 	mna_system_t *mna = (mna_system_t *)malloc(sizeof(mna_system_t));
 	assert(mna != NULL);
 	mna->dimension = dimension;
 	mna->A = init_array(dimension, dimension);
 	mna->b = init_vector(dimension);
+	mna->P = init_permutation(dimension);
 	return mna;
 }
 
+/* Allocate memory for the GSL matrix of the MNA system */
 gsl_matrix *init_array(int row, int col) {
-    gsl_matrix *A;
-    A = gsl_matrix_calloc(row, col);
-    return A;
+    gsl_matrix *array;
+    array = gsl_matrix_calloc(row, col);
+    return array;
 }
 
+/* Allocate memory for the GSL vector of the MNA system */
 gsl_vector *init_vector(int row) {
-	gsl_vector *b;
-	b = gsl_vector_calloc(row);
-	return b;
+	gsl_vector *vector;
+	vector = gsl_vector_calloc(row);
+	return vector;
 }
 
+/* Allocate memory for the GSL permutation matrix of the MNA system */
+gsl_permutation *init_permutation(int dimension) {
+	gsl_permutation *P;
+	P = gsl_permutation_calloc(dimension);
+	return P;
+}
+
+/* Create the MNA system array and vector */
 void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, int offset) {
 
 	list1_t *curr;
@@ -96,19 +108,61 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 	}
 }
 
+/* LU or Cholesky decomposition and solution of the MNA system Ax=b and returns the solution vector x */
+gsl_vector *solve_mna_system(mna_system_t *mna, int SPD) {
+	if (SPD) {
+		return solve_cholesky(mna);
+	}
+	return solve_lu(mna);
+}
+
+/* Solve the MNA system using LU decomposition */
+gsl_vector *solve_lu(mna_system_t *mna) {
+	/* The sign of the permutation matrix */
+	int signum; 
+	/* Allocate memory for the solution vector */
+	gsl_vector *x = gsl_vector_calloc(mna->dimension);
+	/* LU decomposition on A, PA = LU */
+	gsl_linalg_LU_decomp(mna->A, mna->P, &signum);
+	/* Solve the LU system */
+	gsl_linalg_LU_solve(mna->A, mna->P, mna->b, x);
+	return x;
+}
+
+/* Solve the MNA system using cholesky decomposition */
+gsl_vector *solve_cholesky(mna_system_t *mna) {
+	/* Allocate memory for the solution vector */
+	gsl_vector *x = gsl_vector_calloc(mna->dimension);
+	/* Cholesky decomposition A = LL^T*/
+	gsl_linalg_cholesky_decomp(mna->A);
+	/* Solve the cholesky system */
+	gsl_linalg_cholesky_solve(mna->A, mna->b, x);
+	return x;
+}
+
+/* Print the MNA system */
 void print_mna_system(mna_system_t *mna) {
+	printf("MNA A array:\n\n");
 	print_array(mna->A);
+	printf("MNA b vector:\n\n");
 	print_vector(mna->b);
 }
 
+/* Print the array */
 void print_array(gsl_matrix *A) {
-	printf("MNA A array:\n\n");
 	gsl_matrix_fprintf(stdout, A, "%lf");
 	printf("\n");
 }
 
+/* Print the vector */
 void print_vector(gsl_vector *b) {
-	printf("MNA b vector:\n\n");
 	gsl_vector_fprintf(stdout, b, "%lf");
     printf("\n");
+}
+
+/* Free all the memory allocated for the MNA system */
+void free_mna_system(mna_system_t *mna) {
+	gsl_matrix_free(mna->A);
+	gsl_vector_free(mna->b);
+	free(mna);
 }
