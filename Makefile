@@ -4,6 +4,8 @@ CC = gcc
 CFLAGS = -g -Wall
 # Compile with -O3 optimization
 OPTFLAGS = -O3
+# GSL config paths
+GSLFLAGS = $(shell gsl-config --cflags --libs)
 # Directories
 SRC = src
 OBJ = obj
@@ -11,14 +13,14 @@ OBJ = obj
 SOURCES = $(wildcard $(SRC)/*.c)
 OBJECTS = $(patsubst $(SRC)/%.c,$(OBJ)/%.o,$(SOURCES))
 
-debug: DBGFLAGS = -DDEBUGL -DDEBUGH
-debug: main
-
 main: $(OBJECTS)
-	$(CC) $(CFLAGS) $^ -o $@ $(DBGFLAGS)
+	$(CC) $(CFLAGS) $^ $(GSLFLAGS) -o $@ $(DBGFLAGS)
 
 $(OBJ)/%.o: $(SRC)/%.c
-	$(CC) $(CFLAGS) -I$(SRC) -c $< -o $@ $(DBGFLAGS)
+	$(CC) $(CFLAGS) -I$(SRC) -c $< $(GSLFLAGS) -o $@ $(DBGFLAGS)
+
+debug: DBGFLAGS = -DDEBUGL -DDEBUGH
+debug: main
 
 .PHONY: clean
 # Clean only the executable

@@ -59,30 +59,22 @@ int main(int argc, char *argv[]) {
 #endif
     printf("Finished parsing %d circuit elements.\n", index->size1 + index->size2);
 
-    mna_arrays_t mna;
+    mna_system_t *mna;
 
     int num_nodes = hash_table->seq - 1;
     int size = num_nodes + num_branches;
     printf("\nsize: %d\nnum_nodes(w/o ground): %d\nnum_branches_g2: %d\n\n", size, num_nodes, num_branches);
     
     // Initialize the arrays
-    mna.left = init_array(size, size);
-    mna.right = init_array(size, 1);
-
-    create_mna_arrays(&mna, index, hash_table, num_nodes);
-
-    print_mna_left(&mna, size);
-    print_mna_right(&mna, size);
+    mna = init_mna_system(size);
+    create_mna_system(mna, index, hash_table, num_nodes);
+    print_mna_system(mna);
 
     fclose(file_input);
     if (line) {
         free(line);
     }
-    
     /* Free the hashtable memory */
     ht_free(hash_table);
-
-    exit(EXIT_SUCCESS);
-
 	return 0;
 }
