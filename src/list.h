@@ -8,7 +8,7 @@
 
 typedef struct list1 {
 	char type;
-	char *id;
+	char *element;
 	char *probe1;
 	char *probe2;
 	long double value;
@@ -18,7 +18,7 @@ typedef struct list1 {
 
 typedef struct list2 {
 	char type;
-	char *id;
+	char *element;
 	char *probe1;
 	char *probe2;
 	char *probe3;

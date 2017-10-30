@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "parser.h"
+
 int get_num_tokens(char *line) {
 
 	int tokens = 0;
@@ -61,4 +63,11 @@ char **tokenizer(char *line, int *num_tokens) {
 		tokens[i-1][strlen(tokens[i-1])-1] = '\0';
 	}
 	return tokens;
+}
+
+/* Initializes all options to the default values = false */
+void init_options(options_t *options) {
+	options->SPD 	= false;
+	options->ITER 	= false;
+	options->SPARSE = false;
 }

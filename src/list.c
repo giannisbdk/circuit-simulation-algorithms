@@ -77,12 +77,12 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 	}
 	/* Set new node struct fields */
 	strncpy(&new_node->type, &tokens[1][0], 1);
-	new_node->id = (char *)malloc(strlen(&tokens[1][1]) * sizeof(char));
-	new_node->probe1 = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
-	new_node->probe2 = (char *)malloc(strlen(&tokens[3][0]) * sizeof(char));
-	strcpy(new_node->id, &tokens[1][1]);
-	strcpy(new_node->probe1, &tokens[2][0]);
-	strcpy(new_node->probe2, &tokens[3][0]);
+	new_node->element = (char *)malloc(strlen(&tokens[1][0]) * sizeof(char));
+	new_node->probe1  = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
+	new_node->probe2  = (char *)malloc(strlen(&tokens[3][0]) * sizeof(char));
+	strcpy(new_node->element, &tokens[1][0]);
+	strcpy(new_node->probe1,  &tokens[2][0]);
+	strcpy(new_node->probe2,  &tokens[3][0]);
 	/* Add probes to the hashtable */
 	// TODO perhaps replace &tokens with new_node probes
 	ht_set(hash_table, &tokens[2][0]);
@@ -121,8 +121,8 @@ int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table) {
 	}
 	/* Set new node struct fields */
 	strncpy(&new_node->type, &tokens[1][0], 1);
-	new_node->id = (char *)malloc(strlen(&tokens[1][1]) * sizeof(char));
-	strcpy(new_node->id, &tokens[1][1]);
+	new_node->element = (char *)malloc(strlen(&tokens[1][0]) * sizeof(char));
+	strcpy(new_node->element, &tokens[1][0]);
 	/* Init probes to NULL */
 	new_node->probe1 = NULL;
 	new_node->probe2 = NULL;
@@ -189,7 +189,7 @@ void print_list1(list1_t *head, hash_table_t *hash_table) {
 	list1_t *curr = head;
 	while(curr != NULL) {
 		printf("Type: %c\n", curr->type);
-		printf("Id: %s\n", curr->id);
+		printf("Element: %s\n", curr->element);
 		printf("Probe1: %s\n", curr->probe1);
 		printf("Probe2: %s\n", curr->probe2);
 		printf("Value: %.20Lf\n", curr->value);
@@ -205,7 +205,7 @@ void print_list2(list2_t *head, hash_table_t *hash_table) {
 	list2_t *curr = head;
 	while(curr != NULL) {
 		printf("Type: %c\n", curr->type);
-		printf("Element: %s\n", curr->id);
+		printf("Element: %s\n", curr->element);
 		printf("Probe1: %s\n", curr->probe1);
 		printf("Probe2: %s\n", curr->probe2);
 		printf("Probe1 id: %d\n", ht_get_id(hash_table, curr->probe1));
