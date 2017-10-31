@@ -11,6 +11,7 @@
 
 #define HASH_TABLE_SIZE 65536
 #define DC_ANALYSIS_NUM 25
+#define MAX_FILE_NAME   50
 
 int errno;
 
@@ -22,12 +23,12 @@ int main(int argc, char *argv[]) {
     size_t len = 0;
     ssize_t read;
     char **tokens;
-    int num_branches = 0;
+    int num_g2_elem = 0;
 
     options_t options;
     /* Array to hold .DC options */
     dc_analysis_t dc_analysis[DC_ANALYSIS_NUM];
-    int dc_analysis_cnt = 0;
+    int dc_cnt = 0;
 
     index_t *index = init_lists();
     hash_table_t *hash_table = ht_create(HASH_TABLE_SIZE);
@@ -47,7 +48,7 @@ int main(int argc, char *argv[]) {
     init_options(&options);
 
     //TODO define all the below to the parser
-    //TODO parser should return num_branches
+    //TODO parser should return num_g2_elem
     //TODO num_tokens is redundant we have it stored at &tokens[0][0]
     while((read = getline(&line, &len, file_input)) != -1) {
 
@@ -64,26 +65,26 @@ int main(int argc, char *argv[]) {
                 }
             }
             else if (strcmp(".DC", &tokens[1][0]) == 0) {
-                dc_analysis[dc_analysis_cnt].volt_source = 
+                dc_analysis[dc_cnt].volt_source = 
                     (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
                 //TODO change strcpy to sscanf in list.h
-                sscanf(tokens[2], "%s", dc_analysis[dc_analysis_cnt].volt_source);
-                sscanf(tokens[3], "%lf", &dc_analysis[dc_analysis_cnt].start);
-                sscanf(tokens[4], "%lf", &dc_analysis[dc_analysis_cnt].end);
-                sscanf(tokens[5], "%lf", &dc_analysis[dc_analysis_cnt].increment);
+                sscanf(tokens[2], "%s", dc_analysis[dc_cnt].volt_source);
+                sscanf(tokens[3], "%lf", &dc_analysis[dc_cnt].start);
+                sscanf(tokens[4], "%lf", &dc_analysis[dc_cnt].end);
+                sscanf(tokens[5], "%lf", &dc_analysis[dc_cnt].increment);
             }
             else if (strcmp(".PLOT", &tokens[1][0]) == 0 ||
                      strcmp(".PRINT", &tokens[1][0]) == 0) {
-                dc_analysis[dc_analysis_cnt].nodes = (char **)malloc(num_tokens * sizeof(char *));
-                dc_analysis[dc_analysis_cnt].num_nodes = 0;
+                dc_analysis[dc_cnt].nodes = (char **)malloc(num_tokens * sizeof(char *));
+                dc_analysis[dc_cnt].num_nodes = 0;
                 for (int i = 2; i <= num_tokens; i++) {
                     /* Allocate memory for the node name ommiting the parentheses and the V */
-                    dc_analysis[dc_analysis_cnt].nodes[i-2] = (char *)malloc((strlen(tokens[i]) - 3) * sizeof(char));
+                    dc_analysis[dc_cnt].nodes[i-2] = (char *)malloc((strlen(tokens[i]) - 3) * sizeof(char));
                     /* Strip V and the parentheses around node name */
-                    strncpy(dc_analysis[dc_analysis_cnt].nodes[i-2], tokens[i] + 2, (strlen(tokens[i]) - 3));
-                    dc_analysis[dc_analysis_cnt].num_nodes++;
+                    strncpy(dc_analysis[dc_cnt].nodes[i-2], tokens[i] + 2, (strlen(tokens[i]) - 3));
+                    dc_analysis[dc_cnt].num_nodes++;
                 }
-                dc_analysis_cnt++;
+                dc_cnt++;
             }
         }
         else {
@@ -92,7 +93,7 @@ int main(int argc, char *argv[]) {
             } 
             if (tokens[1][0] == 'V' || tokens[1][0] == 'v' || 
                 tokens[1][0] == 'L' || tokens[1][0] == 'l') {
-                num_branches++;
+                num_g2_elem++;
             }
         }
        
@@ -112,11 +113,11 @@ int main(int argc, char *argv[]) {
     mna_system_t *mna;
 
     int num_nodes = hash_table->seq - 1;
-    int size = num_nodes + num_branches;
-    printf("\nsize: %d\nnum_nodes(w/o ground): %d\nnum_branches_g2: %d\n\n", size, num_nodes, num_branches);
+    int size = num_nodes + num_g2_elem;
+    printf("\nsize: %d\nnum_nodes(w/o ground): %d\nnum_branches_g2: %d\n\n", size, num_nodes, num_g2_elem);
     
     /* Initialize the MNA_system */
-    mna = init_mna_system(size);
+    mna = init_mna_system(num_nodes, num_g2_elem);
     create_mna_system(mna, index, hash_table, num_nodes);
     print_mna_system(mna);
     gsl_vector *sol_x = solve_mna_system(mna, options.SPD);
@@ -157,27 +158,25 @@ int main(int argc, char *argv[]) {
         free(line);
     }
 
-    char file_name[50] = "dc_analysis_";
+    char prefix[] = "dc_analysis_";
+    char file_name[MAX_FILE_NAME];
     /* Cycle through dc analyisis targets */
-    for (int i = 0; i < dc_analysis_cnt; i++) {
+    for (int i = 0; i < dc_cnt; i++) {
         list1_t *curr;
         for (curr = index->head1; curr != NULL; curr = curr->next) {
             /* Find the voltage source for the analysis */
             if (strcmp(dc_analysis[i].volt_source, curr->element) == 0) {
-                // int probe1 = ht_get_id(hash_table, curr->probe1) - 1;
-                // int probe2 = ht_get_id(hash_table, curr->probe2) - 1;
-                int probe1 = ht_get_id(hash_table, curr->probe1);
-                int probe2 = ht_get_id(hash_table, curr->probe2);
                 /* Create an array with file names for every node */
-                char *file_names[dc_analysis[i].num_nodes];
                 FILE *files[dc_analysis[i].num_nodes];
                 /* Open different files for each node in plot/print array */
                 for (int j = 0; j < dc_analysis[i].num_nodes; j++) {
-                    strcpy(file_names[j], file_name);
-                    strcat(file_names[j], dc_analysis[i].nodes[j]);
-                    strcat(file_names[j], ".txt");
+                    strcpy(file_name, prefix);
+                    strcat(file_name, dc_analysis[i].volt_source);
+                    strcat(file_name, "_");
+                    strcat(file_name, dc_analysis[i].nodes[j]);
+                    strcat(file_name, ".txt");
                     /* Open the output file */
-                    files[j] = fopen(file_names[j], "w");
+                    files[j] = fopen(file_name, "w");
                     if (files[j] == NULL) {
                         fprintf(stderr, "Error opening file: %s\n", strerror(errno));
                         exit(EXIT_FAILURE);
@@ -185,29 +184,27 @@ int main(int argc, char *argv[]) {
                     fprintf(files[j], "%-15s%-15s\n", "Step", "Value");
                 }
                 /* Run the DC analysis with the step */
-                for (double val = dc_analysis[i].start; val <= dc_analysis[i].end; val += dc_analysis[i].increment) {
-                    if (probe1 == 0) {
-                        gsl_vector_set(mna->b, probe2-1, val);
-                    }
-                    else if (probe2 == 0) {
-                        gsl_vector_set(mna->b, probe1-1, val);
-                    }
-                    else {
-                        gsl_vector_set(mna->b, probe1-1, val);
-                        gsl_vector_set(mna->b, probe2-1, val);
-                    }
+                int n_steps = (dc_analysis[i].end - dc_analysis[i].start) / dc_analysis[i].increment;
+                double val  = dc_analysis[i].start;
+                int volt_indx = g2_elem_indx(mna->g2_indx, mna->num_nodes, mna->num_g2_elem, dc_analysis[i].volt_source);
+                for (int step = 0; step <= n_steps; step++) {
+                    gsl_vector_set(mna->b, volt_indx, val);
                     /* Solve the system */
+                    print_vector(mna->b);
                     sol_x = solve_mna_system(mna, options.SPD);
-                    /* DC analysis to every file */
+                    print_vector(sol_x);
+                    /* DC analysis output to every file */
                     int offset;
                     for (int j = 0; j < dc_analysis[i].num_nodes; j++) {
-                        offset = (ht_get_id(hash_table, dc_analysis[i].nodes[j]) - 1);
+                        offset = ht_get_id(hash_table, dc_analysis[i].nodes[j]) - 1;
                         fprintf(files[j], "%-15lf%-15lf\n", val, gsl_vector_get(sol_x, offset));
                     }
+                    val += dc_analysis[i].increment;
                 }
-                // for (int j = 0; j < dc_analysis[i].num_nodes; j++) {
-                //     // fclose(files[j]);
-                // }
+                /* Close the file descriptors for the current dc analysis */
+                for (int j = 0; j < dc_analysis[i].num_nodes; j++) {
+                    fclose(files[j]);
+                }
             }
         }
     }

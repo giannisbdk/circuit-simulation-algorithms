@@ -7,14 +7,17 @@
 #include "mna_dc.h"
 
 /* Allocate memory for the MNA system */
-mna_system_t *init_mna_system(int dimension) {
+mna_system_t *init_mna_system(int num_nodes, int num_g2_elem) {
+	int dimension = num_nodes + num_g2_elem;
 	mna_system_t *mna = (mna_system_t *)malloc(sizeof(mna_system_t));
 	assert(mna != NULL);
-	mna->dimension = dimension;
 	mna->A = init_array(dimension, dimension);
 	mna->b = init_vector(dimension);
 	mna->P = init_permutation(dimension);
 	mna->is_decomp = 0;
+	mna->num_nodes = num_nodes;
+	mna->num_g2_elem = num_g2_elem;
+	mna->g2_indx = (g2_indx_t *)malloc(num_g2_elem * sizeof(g2_indx_t));
 	return mna;
 }
 
@@ -92,6 +95,9 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 			else if (curr->type == 'V' || curr->type == 'v') {
 				value = curr->value;
 			}
+			/* Save the g2 element source you find, keep indexing */
+			mna->g2_indx[volt_sources_cnt].element = (char *)malloc(strlen(curr->element) * sizeof(char));
+			strcpy(mna->g2_indx[volt_sources_cnt].element, curr->element);
 			if (probe1_id == 0) {
 				gsl_matrix_set(mna->A, j, offset + volt_sources_cnt, 1.0);
 				gsl_matrix_set(mna->A, offset + volt_sources_cnt, j, 1.0);
@@ -115,6 +121,17 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 	}
 }
 
+/* Searches through the g2_indx of the mna system and returns the index of the argument element */
+int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *element) {
+	for (int i = 0; i < num_g2_elem; i++) {
+		if(strcmp(element, g2_indx[i].element) == 0) {
+			/* Return the offset index */
+			return num_nodes + i;
+		}
+	}
+	return FAILURE;
+}
+
 /* LU or Cholesky decomposition and solution of the MNA system Ax=b and returns the solution vector x */
 gsl_vector *solve_mna_system(mna_system_t *mna, bool SPD) {
 	if (SPD) {
@@ -127,8 +144,9 @@ gsl_vector *solve_mna_system(mna_system_t *mna, bool SPD) {
 gsl_vector *solve_lu(mna_system_t *mna) {
 	/* The sign of the permutation matrix */
 	int signum; 
+	int dimension = mna->num_nodes + mna->num_g2_elem;
 	/* Allocate memory for the solution vector */
-	gsl_vector *x = gsl_vector_calloc(mna->dimension);
+	gsl_vector *x = gsl_vector_calloc(dimension);
 	if (!mna->is_decomp) {
 		/* LU decomposition on A, PA = LU */
 		gsl_linalg_LU_decomp(mna->A, mna->P, &signum);
@@ -141,8 +159,9 @@ gsl_vector *solve_lu(mna_system_t *mna) {
 
 /* Solve the MNA system using cholesky decomposition */
 gsl_vector *solve_cholesky(mna_system_t *mna) {
+	int dimension = mna->num_nodes + mna->num_g2_elem;
 	/* Allocate memory for the solution vector */
-	gsl_vector *x = gsl_vector_calloc(mna->dimension);
+	gsl_vector *x = gsl_vector_calloc(dimension);
 	if (!mna->is_decomp) {
 		/* Cholesky decomposition A = LL^T*/
 		gsl_linalg_cholesky_decomp(mna->A);
