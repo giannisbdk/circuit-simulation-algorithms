@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +17,7 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem) {
 	mna->num_nodes = num_nodes;
 	mna->num_g2_elem = num_g2_elem;
 	mna->g2_indx = (g2_indx_t *)malloc(num_g2_elem * sizeof(g2_indx_t));
+	assert(mna->g2_indx != NULL);
 	return mna;
 }
 
@@ -44,18 +44,14 @@ gsl_permutation *init_permutation(int dimension) {
 
 /* Create the MNA system array and vector */
 void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, int offset) {
-
 	list1_t *curr;
 	double value;
-	int volt_sources_cnt = 0; 
-
+	int volt_sources_cnt = 0;
 	for (curr = index->head1; curr != NULL; curr = curr->next) {
-
 		int probe1_id = ht_get_id(hash_table, curr->probe1);
 		int probe2_id = ht_get_id(hash_table, curr->probe2);
 		int i = probe1_id - 1;
 		int j = probe2_id - 1;
-
 		if (curr->type == 'C' || curr->type == 'c') {
 			continue;
 		}
@@ -97,6 +93,7 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 			}
 			/* Save the g2 element source you find, keep indexing */
 			mna->g2_indx[volt_sources_cnt].element = (char *)malloc(strlen(curr->element) * sizeof(char));
+			assert(mna->g2_indx[volt_sources_cnt].element != NULL);
 			strcpy(mna->g2_indx[volt_sources_cnt].element, curr->element);
 			if (probe1_id == 0) {
 				gsl_matrix_set(mna->A, j, offset + volt_sources_cnt, 1.0);
@@ -143,7 +140,7 @@ gsl_vector *solve_mna_system(mna_system_t *mna, bool SPD) {
 /* Solve the MNA system using LU decomposition */
 gsl_vector *solve_lu(mna_system_t *mna) {
 	/* The sign of the permutation matrix */
-	int signum; 
+	int signum;
 	int dimension = mna->num_nodes + mna->num_g2_elem;
 	/* Allocate memory for the solution vector */
 	gsl_vector *x = gsl_vector_calloc(dimension);
@@ -193,8 +190,18 @@ void print_vector(gsl_vector *b) {
 }
 
 /* Free all the memory allocated for the MNA system */
-void free_mna_system(mna_system_t *mna) {
-	gsl_matrix_free(mna->A);
-	gsl_vector_free(mna->b);
-	free(mna);
+void free_mna_system(mna_system_t **mna) {
+	/* Free everything we allocated from GSL */
+	gsl_matrix_free((*mna)->A);
+	gsl_vector_free((*mna)->b);
+	gsl_permutation_free((*mna)->P);
+	/* Free every string allocated for the group2 elements */
+	for (int i = 0; i < (*mna)->num_g2_elem; i++) {
+		free((*mna)->g2_indx[i].element);
+	}
+	/* Free the array */
+	free((*mna)->g2_indx);
+	free(*mna);
+	/* Set mna to NULL to limit further acesses */
+	*mna = NULL;
 }

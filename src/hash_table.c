@@ -2,18 +2,17 @@
 #include <stdio.h>
 #include <limits.h>
 #include <string.h>
+#include <assert.h>
 
 #include "hash_table.h"
 
-// unsigned int id = 1;
-
 /* Create a new hash_table. */
 hash_table_t *ht_create(int size) {
-
 	hash_table_t *hash_table = NULL;
 	int i;
-
-	if(size < 1) return NULL;
+	if(size < 1) {
+		return NULL;
+	}
 
 	/* Allocate the table itself. */
 	if((hash_table = (hash_table_t *)malloc(sizeof(hash_table_t))) == NULL) {
@@ -28,19 +27,15 @@ hash_table_t *ht_create(int size) {
 	for(i = 0; i < size; i++) {
 		hash_table->table[i] = NULL;
 	}
-
 	hash_table->size = size;
 	hash_table->seq = 1;
-
 	return hash_table;	
 }
 
 /* Hash a string for a particular hash table. */
 int ht_hash( hash_table_t *hash_table, char *key ) {
-
 	unsigned long int hashval = 0;
 	int i = 0;
-
 	/* Convert our string to an integer */
 	while(hashval < ULONG_MAX && i < strlen(key)) {
 		hashval = hashval << 8;
@@ -87,18 +82,14 @@ entry_t *ht_new_node(hash_table_t *hash_table, char *key) {
 
 /* Insert a key-value pair into a hash table. */
 void ht_set(hash_table_t *hash_table, char *key) {
-
 	int bin = 0;
-
 	bin = ht_hash(hash_table, key);
-
 	entry_t *new_node = NULL;
 	entry_t *curr = NULL;
 	entry_t *last = NULL;
-	
-	curr = hash_table->table[bin];
 
-	// In case its empty create new node
+	curr = hash_table->table[bin];
+	/* In case its empty create new node */
 	if(curr == NULL) {
 		new_node = ht_new_node(hash_table, key);
 #ifdef DEBUGH
@@ -119,7 +110,6 @@ void ht_set(hash_table_t *hash_table, char *key) {
 			last = curr;
 		}
 	}
-
 	/* Last contains the last node in the list */
 	new_node = ht_new_node(hash_table, key);
 	if(new_node == NULL) {
@@ -136,9 +126,7 @@ void ht_set(hash_table_t *hash_table, char *key) {
 int ht_get_id(hash_table_t *hash_table, char *key) {
 
 	int bin = 0;
-
 	entry_t *curr = NULL;
-
 	bin = ht_hash(hash_table, key);
 	
 	/* Step through the bin, looking for our value. */
@@ -155,17 +143,18 @@ int ht_get_id(hash_table_t *hash_table, char *key) {
 }
 
 /* Free the memory allocated */
-void ht_free(hash_table_t* hash_table) {
+void ht_free(hash_table_t **hash_table) {
 	entry_t *curr, *prev;
-	// Cycle through the hash_table
-	for (int i = 0; i < hash_table->size; i++) {
-		curr = hash_table->table[i];
-		// Free every node in the list in a cell of the hash_table
+	/* Cycle through the hash_table */
+	for (int i = 0; i < (*hash_table)->size; i++) {
+		curr = (*hash_table)->table[i];
+		/* Free every node in the list in a cell of the hash_table */
 		while(curr != NULL) {
 			prev = curr;
 			curr = curr->next;
 			free(prev);
 		}
 	}
-	free(hash_table);
+	free(*hash_table);
+	*hash_table = NULL;
 }

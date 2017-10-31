@@ -1,15 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "list.h"
 #include "hash_table.h"
 
-// TODO add free for the lists
-
 index_t *init_lists() {
 	/* Allocate memory for the index that stores the lists */
 	index_t *index = (index_t *)malloc(sizeof(index_t));
+	assert(index != NULL);
 	/* Initiliaze the fields */
 	index->head1 = index->tail1 = NULL;
 	index->head2 = index->tail2 = NULL;
@@ -80,6 +80,9 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 	new_node->element = (char *)malloc(strlen(&tokens[1][0]) * sizeof(char));
 	new_node->probe1  = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
 	new_node->probe2  = (char *)malloc(strlen(&tokens[3][0]) * sizeof(char));
+	assert(new_node->element != NULL);
+	assert(new_node->probe1 != NULL);
+	assert(new_node->probe2 != NULL);
 	strcpy(new_node->element, &tokens[1][0]);
 	strcpy(new_node->probe1,  &tokens[2][0]);
 	strcpy(new_node->probe2,  &tokens[3][0]);
@@ -122,6 +125,7 @@ int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table) {
 	/* Set new node struct fields */
 	strncpy(&new_node->type, &tokens[1][0], 1);
 	new_node->element = (char *)malloc(strlen(&tokens[1][0]) * sizeof(char));
+	assert(new_node->element != NULL);
 	strcpy(new_node->element, &tokens[1][0]);
 	/* Init probes to NULL */
 	new_node->probe1 = NULL;
@@ -131,6 +135,8 @@ int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table) {
 	if(new_node->type == 'D' || new_node->type == 'd') {
 		new_node->probe1 = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
 		new_node->probe2 = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
+		assert(new_node->probe1 != NULL);
+		assert(new_node->probe2 != NULL);
 		strcpy(new_node->probe1, &tokens[2][0]);
 		strcpy(new_node->probe1, &tokens[3][0]);
 		/* Add probes to the hashtable */
@@ -146,6 +152,10 @@ int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table) {
 		new_node->probe2 = (char *)malloc(strlen(&tokens[3][0]) * sizeof(char));
 		new_node->probe3 = (char *)malloc(strlen(&tokens[4][0]) * sizeof(char));
 		new_node->probe4 = (char *)malloc(strlen(&tokens[5][0]) * sizeof(char));
+		assert(new_node->probe1 != NULL);
+		assert(new_node->probe2 != NULL);
+		assert(new_node->probe3 != NULL);
+		assert(new_node->probe4 != NULL);
 		strcpy(new_node->probe1, &tokens[2][0]);
 		strcpy(new_node->probe1, &tokens[3][0]);
 		strcpy(new_node->probe1, &tokens[4][0]);
@@ -163,6 +173,9 @@ int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table) {
 		new_node->probe1 = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
 		new_node->probe2 = (char *)malloc(strlen(&tokens[3][0]) * sizeof(char));
 		new_node->probe3 = (char *)malloc(strlen(&tokens[4][0]) * sizeof(char));
+		assert(new_node->probe1 != NULL);
+		assert(new_node->probe2 != NULL);
+		assert(new_node->probe3 != NULL);
 		strcpy(new_node->probe1, &tokens[2][0]);
 		strcpy(new_node->probe1, &tokens[3][0]);
 		strcpy(new_node->probe1, &tokens[4][0]);
@@ -176,6 +189,56 @@ int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table) {
 		new_node->area = num_tokens > 4 ? atoi(&tokens[5][0]) : 1;
 	}
 	return SUCCESS;
+}
+
+/* Free all the dynamic memory allocated for the lists index */
+void free_index(index_t **index) {
+	/* Free the the lists */
+	free_list1(&(*index)->head1);
+	free_list2(&(*index)->head2);
+	free(*index);
+	/* Set index to NULL to limit further acesses */
+	*index = NULL;
+}
+
+/* Free the elements from list1 */
+void free_list1(list1_t **head) {
+	list1_t *curr = *head;
+	list1_t *next;
+	while (curr != NULL) {
+		/* Keep the next node */
+		next = curr->next;
+		/* Free everything from the current node */
+		free(curr->element);
+		free(curr->probe1);
+		free(curr->probe2);
+		free(curr->next);
+		free(curr->prev);
+		curr = next;
+	}
+	/* Set head to NULL to limit further acesses */
+	*head = NULL;
+}
+
+/* Free the elements from list2 */
+void free_list2(list2_t **head) {
+	list2_t *curr = *head;
+	list2_t *next;
+	while (curr != NULL) {
+		/* Keep the next node*/
+		next = curr->next;
+		/* Free everything from the current node */
+		free(curr->element);
+		free(curr->probe1);
+		free(curr->probe2);
+		free(curr->probe3);
+		free(curr->probe4);
+		free(curr->next);
+		free(curr->prev);
+		curr = next;
+	}
+	/* Set head to NULL to limit further acesses */
+	*head = NULL;
 }
 
 /* Print the lists */

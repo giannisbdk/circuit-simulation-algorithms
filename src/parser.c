@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "parser.h"
 
@@ -48,12 +49,15 @@ char **tokenizer(char *line, int *num_tokens) {
 
 	tokens = (char **)malloc((*num_tokens + 1) * sizeof(char *));
 	tokens[0] = (char *)malloc(sizeof(char));
+	assert(tokens != NULL);
+	assert(tokens[0] != NULL);
 	sprintf(tokens[0], "%d", *num_tokens);
 
 	token = strtok(line, delim);
 
 	while(token != NULL && i <= *num_tokens) {
 		tokens[i] = (char *)malloc(strlen(token) * sizeof(char));
+		assert(tokens[i] != NULL);
 		strcpy(tokens[i], token);
 		token = strtok(NULL, delim);
 		i++;

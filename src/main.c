@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "parser.h"
 #include <errno.h>
+#include <assert.h>
 
+#include "parser.h"
 #include "list.h"
 #include "hash_table.h"
 #include "mna_dc.h"
@@ -51,7 +52,6 @@ int main(int argc, char *argv[]) {
     //TODO parser should return num_g2_elem
     //TODO num_tokens is redundant we have it stored at &tokens[0][0]
     while((read = getline(&line, &len, file_input)) != -1) {
-
     	tokens = tokenizer(line, &num_tokens);
     	if (tokens == NULL) {
     		continue;
@@ -65,21 +65,21 @@ int main(int argc, char *argv[]) {
                 }
             }
             else if (strcmp(".DC", &tokens[1][0]) == 0) {
-                dc_analysis[dc_cnt].volt_source = 
-                    (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
-                //TODO change strcpy to sscanf in list.h
+                dc_analysis[dc_cnt].volt_source = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
+                assert(dc_analysis[dc_cnt].volt_source != NULL);
                 sscanf(tokens[2], "%s", dc_analysis[dc_cnt].volt_source);
                 sscanf(tokens[3], "%lf", &dc_analysis[dc_cnt].start);
                 sscanf(tokens[4], "%lf", &dc_analysis[dc_cnt].end);
                 sscanf(tokens[5], "%lf", &dc_analysis[dc_cnt].increment);
             }
-            else if (strcmp(".PLOT", &tokens[1][0]) == 0 ||
-                     strcmp(".PRINT", &tokens[1][0]) == 0) {
+            else if (strcmp(".PLOT", &tokens[1][0]) == 0 || strcmp(".PRINT", &tokens[1][0]) == 0) {
                 dc_analysis[dc_cnt].nodes = (char **)malloc(num_tokens * sizeof(char *));
+                assert(dc_analysis[dc_cnt].nodes != NULL);
                 dc_analysis[dc_cnt].num_nodes = 0;
                 for (int i = 2; i <= num_tokens; i++) {
                     /* Allocate memory for the node name ommiting the parentheses and the V */
                     dc_analysis[dc_cnt].nodes[i-2] = (char *)malloc((strlen(tokens[i]) - 3) * sizeof(char));
+                    assert(dc_analysis[dc_cnt].nodes[i-2] != NULL);
                     /* Strip V and the parentheses around node name */
                     strncpy(dc_analysis[dc_cnt].nodes[i-2], tokens[i] + 2, (strlen(tokens[i]) - 3));
                     dc_analysis[dc_cnt].num_nodes++;
@@ -91,8 +91,7 @@ int main(int argc, char *argv[]) {
             if (add_to_list(index, tokens, hash_table) == FAILURE) {
                 exit(EXIT_FAILURE);
             } 
-            if (tokens[1][0] == 'V' || tokens[1][0] == 'v' || 
-                tokens[1][0] == 'L' || tokens[1][0] == 'l') {
+            if (tokens[1][0] == 'V' || tokens[1][0] == 'v' || tokens[1][0] == 'L' || tokens[1][0] == 'l') {
                 num_g2_elem++;
             }
         }
@@ -170,6 +169,7 @@ int main(int argc, char *argv[]) {
                 FILE *files[dc_analysis[i].num_nodes];
                 /* Open different files for each node in plot/print array */
                 for (int j = 0; j < dc_analysis[i].num_nodes; j++) {
+                    /* Construct the file name */
                     strcpy(file_name, prefix);
                     strcat(file_name, dc_analysis[i].volt_source);
                     strcat(file_name, "_");
@@ -190,9 +190,7 @@ int main(int argc, char *argv[]) {
                 for (int step = 0; step <= n_steps; step++) {
                     gsl_vector_set(mna->b, volt_indx, val);
                     /* Solve the system */
-                    print_vector(mna->b);
                     sol_x = solve_mna_system(mna, options.SPD);
-                    print_vector(sol_x);
                     /* DC analysis output to every file */
                     int offset;
                     for (int j = 0; j < dc_analysis[i].num_nodes; j++) {
@@ -208,10 +206,9 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-
-    //TODO free the lists
     /* Free all the dynamic allocated memory */
-    free_mna_system(mna);
-    ht_free(hash_table);
+    free_index(&index);
+    free_mna_system(&mna);
+    ht_free(&hash_table);
 	return 0;
 }
