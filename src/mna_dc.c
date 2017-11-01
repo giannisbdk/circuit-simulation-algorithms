@@ -97,7 +97,7 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 			strcpy(mna->g2_indx[volt_sources_cnt].element, curr->element);
 			if (probe1_id == 0) {
 				gsl_matrix_set(mna->A, j, offset + volt_sources_cnt, -1.0);
-				gsl_matrix_set(mna->A, offset + volt_sources_cnt, j,  1.0);
+				gsl_matrix_set(mna->A, offset + volt_sources_cnt, j, -1.0);
 				gsl_vector_set(mna->b, offset + volt_sources_cnt, gsl_vector_get(mna->b, offset + volt_sources_cnt) + value);
 			}
 			else if (probe2_id == 0) {

@@ -187,22 +187,20 @@ int main(int argc, char *argv[]) {
                 int volt_indx = g2_elem_indx(mna->g2_indx, mna->num_nodes, mna->num_g2_elem, dc_analysis[i].volt_source);
                 int probe1_id = ht_get_id(hash_table, curr->probe1);
                 int probe2_id = ht_get_id(hash_table, curr->probe2);
-                int i = probe1_id - 1;
-                int j = probe2_id - 1;
                 for (int step = 0; step <= n_steps; step++) {
                     if (dc_analysis[i].volt_source[0] == 'V' || dc_analysis[i].volt_source[0] == 'v') {
                         gsl_vector_set(mna->b, volt_indx, val);
                     }
-                    else if(dc_analysis[i].volt_source[0] == 'i' || dc_analysis[i].volt_source[0] == 'I') {
+                    else if(dc_analysis[i].volt_source[0] == 'I' || dc_analysis[i].volt_source[0] == 'i') {
                         if (probe1_id == 0) {
-                            gsl_vector_set(mna->b, j, val);
+                            gsl_vector_set(mna->b, probe2_id - 1, val);
                         }
                         else if (probe2_id == 0) {
-                            gsl_vector_set(mna->b, i, -val);
+                            gsl_vector_set(mna->b, probe1_id - 1, -val);
                         }
                         else {
-                            gsl_vector_set(mna->b, i, -val);
-                            gsl_vector_set(mna->b, j, val);
+                            gsl_vector_set(mna->b, probe1_id - 1, -val);
+                            gsl_vector_set(mna->b, probe2_id - 1, val);
                         }
                     }
                     /* Solve the system */
