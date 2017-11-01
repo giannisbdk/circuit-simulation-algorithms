@@ -76,10 +76,10 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 				gsl_vector_set(mna->b, j, gsl_vector_get(mna->b, j) + value);
 			}
 			else if (probe2_id == 0) {
-				gsl_vector_set(mna->b, i, gsl_vector_get(mna->b, i) + value);
+				gsl_vector_set(mna->b, i, gsl_vector_get(mna->b, i) - value);
 			}
 			else {
-				gsl_vector_set(mna->b, i, gsl_vector_get(mna->b, i) + value);
+				gsl_vector_set(mna->b, i, gsl_vector_get(mna->b, i) - value);
 				gsl_vector_set(mna->b, j, gsl_vector_get(mna->b, j) + value);
 			}
 		}
@@ -126,7 +126,7 @@ int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *eleme
 			return num_nodes + i;
 		}
 	}
-	return FAILURE;
+	return 0;
 }
 
 /* LU or Cholesky decomposition and solution of the MNA system Ax=b and returns the solution vector x */
@@ -148,6 +148,9 @@ gsl_vector *solve_lu(mna_system_t *mna) {
 		/* LU decomposition on A, PA = LU */
 		gsl_linalg_LU_decomp(mna->A, mna->P, &signum);
 		mna->is_decomp = true;
+		printf("LU Matrix:\n\n");
+		print_array(mna->A);
+		printf("\n\n");
 	}
 	/* Solve the LU system */
 	gsl_linalg_LU_solve(mna->A, mna->P, mna->b, x);
@@ -163,6 +166,9 @@ gsl_vector *solve_cholesky(mna_system_t *mna) {
 		/* Cholesky decomposition A = LL^T*/
 		gsl_linalg_cholesky_decomp(mna->A);
 		mna->is_decomp = true;
+		printf("Cholesky Matrix:\n\n");
+		print_array(mna->A);
+		printf("\n\n");
 	}
 	/* Solve the cholesky system */
 	gsl_linalg_cholesky_solve(mna->A, mna->b, x);
@@ -179,7 +185,14 @@ void print_mna_system(mna_system_t *mna) {
 
 /* Print the array */
 void print_array(gsl_matrix *A) {
-	gsl_matrix_fprintf(stdout, A, "%lf");
+	int rows = A->size1;
+	int cols = A->size2;
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+			printf("%-15.4lf", gsl_matrix_get(A, i, j));
+		}
+		printf("\n");
+	}
 	printf("\n");
 }
 
