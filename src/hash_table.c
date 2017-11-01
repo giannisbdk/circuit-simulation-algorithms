@@ -10,21 +10,19 @@
 hash_table_t *ht_create(int size) {
 	hash_table_t *hash_table = NULL;
 	int i;
-	if(size < 1) {
+	if (size < 1) {
 		return NULL;
 	}
-
 	/* Allocate the table itself. */
-	if((hash_table = (hash_table_t *)malloc(sizeof(hash_table_t))) == NULL) {
+	if ((hash_table = (hash_table_t *)malloc(sizeof(hash_table_t))) == NULL) {
 		return NULL;
 	}
-
 	/* Allocate pointers to the head nodes. */
-	if((hash_table->table = (entry_t **)malloc(sizeof(entry_t *) * size)) == NULL) {
+	if ((hash_table->table = (entry_t **)malloc(sizeof(entry_t *) * size)) == NULL) {
 		free(hash_table);
 		return NULL;
 	}
-	for(i = 0; i < size; i++) {
+	for (i = 0; i < size; i++) {
 		hash_table->table[i] = NULL;
 	}
 	hash_table->size = size;
@@ -45,31 +43,26 @@ int ht_hash( hash_table_t *hash_table, char *key ) {
 	return hashval % hash_table->size;
 }
 
+/* Just another hash function */
 // unsigned long ht_hash(char* str) {
-
 // 	unsigned long hash = 5381;
 // 	int c;
-
 // 	while ((c = *str++))
 // 		hash = ((hash << 5) + hash) + c;  /* hash * 33 + c */
-
 // 	return hash;
 // }
 
-/* Create a key-value pair. */
+/* Create a new node */
 entry_t *ht_new_node(hash_table_t *hash_table, char *key) {
-
 	entry_t *new_node;
-
-	if((new_node = (entry_t *)malloc(sizeof(entry_t))) == NULL) {
+	if ((new_node = (entry_t *)malloc(sizeof(entry_t))) == NULL) {
 		return NULL;
 	}
-
-	if((new_node->key = strdup(key)) == NULL) {
+	if ((new_node->key = strdup(key)) == NULL) {
 		return NULL;
 	}
 	/* Give to ground the id 0 */
-	if(strcmp(key, "0") == 0) {
+	if (strcmp(key, "0") == 0) {
 		new_node->id = 0;
 	}
 	else {
@@ -87,10 +80,9 @@ void ht_set(hash_table_t *hash_table, char *key) {
 	entry_t *new_node = NULL;
 	entry_t *curr = NULL;
 	entry_t *last = NULL;
-
 	curr = hash_table->table[bin];
 	/* In case its empty create new node */
-	if(curr == NULL) {
+	if (curr == NULL) {
 		new_node = ht_new_node(hash_table, key);
 #ifdef DEBUGH
 		printf("Inserted new node with key: %s and id: %d at bin: %d\n", key, new_node->id, bin);
@@ -100,7 +92,7 @@ void ht_set(hash_table_t *hash_table, char *key) {
 	}
 	else {
 		for(; curr != NULL; curr = curr->next) {
-			if(strcmp(key, curr->key) == 0) {
+			if (strcmp(key, curr->key) == 0) {
 				/* Means we have already stored that string */
 #ifdef DEBUGH
 				printf("Key: %s, has already been stored.\n", key);
@@ -112,7 +104,7 @@ void ht_set(hash_table_t *hash_table, char *key) {
 	}
 	/* Last contains the last node in the list */
 	new_node = ht_new_node(hash_table, key);
-	if(new_node == NULL) {
+	if (new_node == NULL) {
 		printf("Something went wrong\n");
 		return;
 	}
@@ -122,19 +114,17 @@ void ht_set(hash_table_t *hash_table, char *key) {
 #endif
 }
 
-/* Retrieve a key-value pair from a hash table. */
+/* Retrieve a key-value pair from the hash table */
 int ht_get_id(hash_table_t *hash_table, char *key) {
-
 	int bin = 0;
 	entry_t *curr = NULL;
 	bin = ht_hash(hash_table, key);
-	
-	/* Step through the bin, looking for our value. */
+	/* Step through the bin, looking for our value */
 	curr = hash_table->table[bin];
 	while(curr != NULL && strcmp(key, curr->key) != 0) {
 		curr = curr->next;
 	}
-	if(curr == NULL) {
+	if (curr == NULL) {
 		return -1;
 	}
 	else {

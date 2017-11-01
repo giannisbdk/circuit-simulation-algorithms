@@ -27,7 +27,7 @@ debug: main
 clean:
 	$(RM) main
 
-# Cleans the executable and the object files
+# Cleans the executable, the object files and the all the txt from analysis
 .PHONY: cleanall
 cleanall: clean
-	$(RM) $(OBJECTS)
+	$(RM) $(OBJECTS) dc_*.txt

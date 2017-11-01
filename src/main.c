@@ -17,7 +17,6 @@
 int errno;
 
 int main(int argc, char *argv[]) {
-
 	FILE *file_input;
     char *line = NULL;
     int num_tokens = 0;
@@ -124,9 +123,8 @@ int main(int argc, char *argv[]) {
     print_vector(sol_x);
 
     FILE *file_out;
-
     /* DC Operating Point to file */
-    file_out = fopen("DC_Opearting_Point.txt", "w");
+    file_out = fopen("dc_opearting_point.txt", "w");
     if (file_out == NULL) {
         fprintf(stderr, "Error opening file: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
