@@ -34,6 +34,7 @@ gsl_permutation *init_permutation(int dimension);
 void print_mna_system(mna_system_t *mna);
 void print_array(gsl_matrix *A);
 void print_vector(gsl_vector *b);
+void print_permutation(gsl_permutation *P);
 void free_mna_system(mna_system_t **mna);
 
 #endif

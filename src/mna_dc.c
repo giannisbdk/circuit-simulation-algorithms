@@ -96,8 +96,8 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 			assert(mna->g2_indx[volt_sources_cnt].element != NULL);
 			strcpy(mna->g2_indx[volt_sources_cnt].element, curr->element);
 			if (probe1_id == 0) {
-				gsl_matrix_set(mna->A, j, offset + volt_sources_cnt, 1.0);
-				gsl_matrix_set(mna->A, offset + volt_sources_cnt, j, 1.0);
+				gsl_matrix_set(mna->A, j, offset + volt_sources_cnt, -1.0);
+				gsl_matrix_set(mna->A, offset + volt_sources_cnt, j,  1.0);
 				gsl_vector_set(mna->b, offset + volt_sources_cnt, gsl_vector_get(mna->b, offset + volt_sources_cnt) + value);
 			}
 			else if (probe2_id == 0) {
@@ -106,10 +106,10 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 				gsl_vector_set(mna->b, offset + volt_sources_cnt, gsl_vector_get(mna->b, offset + volt_sources_cnt) + value);
 			}
 			else {
-				gsl_matrix_set(mna->A, i, offset + volt_sources_cnt, 1.0);
-				gsl_matrix_set(mna->A, j, offset + volt_sources_cnt, 1.0);
-				gsl_matrix_set(mna->A, offset + volt_sources_cnt, i, 1.0);
-				gsl_matrix_set(mna->A, offset + volt_sources_cnt, j, 1.0);
+				gsl_matrix_set(mna->A, i, offset + volt_sources_cnt,  1.0);
+				gsl_matrix_set(mna->A, j, offset + volt_sources_cnt, -1.0);
+				gsl_matrix_set(mna->A, offset + volt_sources_cnt, i,  1.0);
+				gsl_matrix_set(mna->A, offset + volt_sources_cnt, j, -1.0);
 				gsl_vector_set(mna->b, offset + volt_sources_cnt, gsl_vector_get(mna->b, offset + volt_sources_cnt) + value);
 			}
 			/* Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found */
@@ -141,8 +141,8 @@ gsl_vector *solve_mna_system(mna_system_t *mna, bool SPD) {
 gsl_vector *solve_lu(mna_system_t *mna) {
 	/* The sign of the permutation matrix */
 	int signum;
-	int dimension = mna->num_nodes + mna->num_g2_elem;
 	/* Allocate memory for the solution vector */
+	int dimension = mna->num_nodes + mna->num_g2_elem;
 	gsl_vector *x = gsl_vector_calloc(dimension);
 	if (!mna->is_decomp) {
 		/* LU decomposition on A, PA = LU */
@@ -150,7 +150,8 @@ gsl_vector *solve_lu(mna_system_t *mna) {
 		mna->is_decomp = true;
 		printf("LU Matrix:\n\n");
 		print_array(mna->A);
-		printf("\n\n");
+		printf("Permutation Vector:\n\n");
+		print_permutation(mna->P);
 	}
 	/* Solve the LU system */
 	gsl_linalg_LU_solve(mna->A, mna->P, mna->b, x);
@@ -200,6 +201,15 @@ void print_array(gsl_matrix *A) {
 void print_vector(gsl_vector *b) {
 	gsl_vector_fprintf(stdout, b, "%lf");
     printf("\n");
+}
+
+/* Print the permutation */
+void print_permutation(gsl_permutation *P) {
+	int dimension = P->size;
+	for (int i = 0; i < dimension; i++) {
+		printf("%zu ", gsl_permutation_get(P, i));
+	}
+	printf("\n\n");
 }
 
 /* Free all the memory allocated for the MNA system */
