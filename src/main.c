@@ -201,6 +201,7 @@ int main(int argc, char *argv[]) {
                 for (int j = 0; j < dc_analysis[i].num_nodes; j++) {
                     fclose(files[j]);
                 }
+                break;
             }
         }
     }
