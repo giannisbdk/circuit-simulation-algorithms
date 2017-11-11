@@ -2,7 +2,8 @@
 #define PARSER_H
 
 #include <stdbool.h>
-#define DEFAULT_ITOL    0.001
+
+#define DEFAULT_ITOL 0.001
 
 /* Struct to hold the different options for analysis */
 typedef struct options {

@@ -35,13 +35,15 @@ int ht_hash( hash_table_t *hash_table, char *key ) {
 	unsigned long int hashval = 0;
 	int i = 0;
 	/* Convert our string to an integer */
-	while(hashval < ULONG_MAX && i < strlen(key)) {
+	while (hashval < ULONG_MAX && i < strlen(key)) {
 		hashval = hashval << 8;
 		hashval += key[ i ];
 		i++;
 	}
 	return hashval % hash_table->size;
 }
+
+//TODO Perhaps change the hash function to the below one
 
 /* Just another hash function */
 // unsigned long ht_hash(char* str) {
@@ -91,7 +93,7 @@ void ht_set(hash_table_t *hash_table, char *key) {
 		return;
 	}
 	else {
-		for(; curr != NULL; curr = curr->next) {
+		for (; curr != NULL; curr = curr->next) {
 			if (strcmp(key, curr->key) == 0) {
 				/* Means we have already stored that string */
 #ifdef DEBUGH
@@ -121,7 +123,7 @@ int ht_get_id(hash_table_t *hash_table, char *key) {
 	bin = ht_hash(hash_table, key);
 	/* Step through the bin, looking for our value */
 	curr = hash_table->table[bin];
-	while(curr != NULL && strcmp(key, curr->key) != 0) {
+	while (curr != NULL && strcmp(key, curr->key) != 0) {
 		curr = curr->next;
 	}
 	if (curr == NULL) {
@@ -139,7 +141,7 @@ void ht_free(hash_table_t **hash_table) {
 	for (int i = 0; i < (*hash_table)->size; i++) {
 		curr = (*hash_table)->table[i];
 		/* Free every node in the list in a cell of the hash_table */
-		while(curr != NULL) {
+		while (curr != NULL) {
 			prev = curr;
 			curr = curr->next;
 			free(prev);

@@ -26,6 +26,7 @@ int main(int argc, char *argv[]) {
     int num_g2_elem = 0;
 
     options_t options;
+    
     /* Array to hold .DC options */
     dc_analysis_t dc_analysis[DC_ANALYSIS_NUM];
     int dc_cnt = 0;
@@ -50,7 +51,7 @@ int main(int argc, char *argv[]) {
     //TODO define all the below to the parser
     //TODO parser should return num_g2_elem
     //TODO num_tokens is redundant we have it stored at &tokens[0][0]
-    while((read = getline(&line, &len, file_input)) != -1) {
+    while ((read = getline(&line, &len, file_input)) != -1) {
     	tokens = tokenizer(line, &num_tokens);
     	if (tokens == NULL) {
     		continue;
@@ -195,11 +196,12 @@ int main(int argc, char *argv[]) {
                 int volt_indx = g2_elem_indx(mna->g2_indx, mna->num_nodes, mna->num_g2_elem, dc_analysis[i].volt_source);
                 int probe1_id = ht_get_id(hash_table, curr->probe1);
                 int probe2_id = ht_get_id(hash_table, curr->probe2);
+                //TODO Add a method in mna_dc.c to set the vector, so that we don't copy-pate the below
                 for (int step = 0; step <= n_steps; step++) {
                     if (dc_analysis[i].volt_source[0] == 'V' || dc_analysis[i].volt_source[0] == 'v') {
                         mna->b[volt_indx] = val;
                     }
-                    else if(dc_analysis[i].volt_source[0] == 'I' || dc_analysis[i].volt_source[0] == 'i') {
+                    else if (dc_analysis[i].volt_source[0] == 'I' || dc_analysis[i].volt_source[0] == 'i') {
                         if (probe1_id == 0) {
                             mna->b[probe2_id - 1] = val;
                         }

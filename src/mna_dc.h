@@ -25,10 +25,10 @@ typedef struct mna_system {
 
 mna_system_t *init_mna_system(int num_nodes, int num_g2_elem);
 void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, int offset);
-int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *element);
 void solve_mna_system(mna_system_t *mna, double **x, options_t *options);
 void solve_lu(mna_system_t *mna, gsl_vector_view x);
 void solve_cholesky(mna_system_t *mna, gsl_vector_view x);
+int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *element);
 double **init_array(int row, int col);
 double *init_vector(int row);
 gsl_permutation *init_permutation(int dimension);

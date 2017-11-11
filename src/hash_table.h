@@ -7,7 +7,6 @@ typedef struct entry {
 	struct entry *next;
 } entry_t;
 
-
 typedef struct hash_table {
 	unsigned int size;
 	unsigned int seq;

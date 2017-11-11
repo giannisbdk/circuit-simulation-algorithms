@@ -22,14 +22,11 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem) {
 	return mna;
 }
 
-/* Allocate memory for the GSL matrix of the MNA system */
+/* Allocate memory for the matrix of the MNA system */
 double **init_array(int row, int col) {
-
-	double **array;
-
-	array = (double **) malloc(row * sizeof(double *));
+	double **array = (double **)malloc(row * sizeof(double *));
 	assert(array !=NULL);
-	array[0] = (double *) calloc(row * col, sizeof(double));
+	array[0] = (double *)calloc(row * col, sizeof(double));
 	assert(array[0] !=NULL);
 	for (int i = 1; i < row; i++) {
 		array[i] = array[i-1] + col;
@@ -37,12 +34,9 @@ double **init_array(int row, int col) {
 	return array;
 }
 
-/* Allocate memory for the GSL vector of the MNA system */
+/* Allocate memory for the vector of the MNA system */
 double *init_vector(int row) {
-
-	double *vector;
-
-	vector = (double *) calloc(row, sizeof(double));
+	double *vector = (double *) calloc(row, sizeof(double));;
 	assert(vector != NULL);
 	return vector;
 }
@@ -133,7 +127,7 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 /* Searches through the g2_indx of the mna system and returns the index of the argument element */
 int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *element) {
 	for (int i = 0; i < num_g2_elem; i++) {
-		if(strcmp(element, g2_indx[i].element) == 0) {
+		if (strcmp(element, g2_indx[i].element) == 0) {
 			/* Return the offset index */
 			return num_nodes + i;
 		}
@@ -141,20 +135,19 @@ int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *eleme
 	return 0;
 }
 
-/* LU or Cholesky decomposition and solution of the MNA system Ax=b and returns the solution vector x */
+/* Solves the mna system according to the specified method provided by options argument
+ * (LU, Cholesky, Iterative Conj_Grad / Bi-Conj_Grad) and stores the solution on the supplied vector x
+ */
 void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
-
 	int dimension = mna->num_nodes + mna->num_g2_elem;
-	
 	gsl_vector_view view_x = gsl_vector_view_array(*x, dimension);
-
-	if(options->ITER) {
+	if (options->ITER) {
 		if (options->SPD) {
-			int iterations = cg(*x, options->itol, dimension, dimension, mna->b, mna->A);
-			printf("Iterations of cg are %d\n", iterations);
+			int iterations = conj_grad(mna->A, *x, mna->b, dimension, options->itol, dimension);
+			printf("Iterations of conj_grad are %d\n", iterations);
 		}
 		else {
-			// int iterations = bi_cg(x, options->itol, dimension, dimension, mna->b, mna->A);
+			// int iterations = bi_conj_grad(mna->A, *x, mna->b, dimension, options->itol, dimension);
 		}
 	}
 	else {
@@ -247,7 +240,7 @@ void print_permutation(gsl_permutation *P) {
 
 /* Free all the memory allocated for the MNA system */
 void free_mna_system(mna_system_t **mna) {
-	/* Free everything we allocated from GSL */
+	/* Free everything we allocated for the MNA and GSL */
 	free((*mna)->A[0]);
 	free((*mna)->A);
 	free((*mna)->b);
