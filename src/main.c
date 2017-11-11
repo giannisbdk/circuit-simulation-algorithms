@@ -61,6 +61,12 @@ int main(int argc, char *argv[]) {
                     if (strcmp("SPD", &tokens[i][0]) == 0) {
                         options.SPD = true;
                     }
+                    if (strcmp("ITER", &tokens[i][0]) == 0) {
+                        options.ITER = true;
+                    }
+                    if (strncmp("ITOL", &tokens[i][0], 4) == 0) {
+                        sscanf((&tokens[i][0]) + 5, "%lf", &options.itol);
+                    }
                 }
             }
             else if (strcmp(".DC", &tokens[1][0]) == 0) {
@@ -118,9 +124,10 @@ int main(int argc, char *argv[]) {
     mna = init_mna_system(num_nodes, num_g2_elem);
     create_mna_system(mna, index, hash_table, num_nodes);
     print_mna_system(mna);
-    gsl_vector *sol_x = solve_mna_system(mna, options.SPD);
+    double *sol_x = (double *)calloc(size, sizeof(double));
+    solve_mna_system(mna, &sol_x, &options);
     printf("Solution of the MNA system:\n\n");
-    gsl_vector_fprintf(stdout, sol_x, "%lf");
+    print_vector(sol_x, size);
     printf("\n");
 
     FILE *file_out;
@@ -145,7 +152,7 @@ int main(int argc, char *argv[]) {
                 id -= 1;
             }
             /* Get the corresponding cell of the solution vector */
-            value = gsl_vector_get(sol_x, id);
+            value = sol_x[id];
             /* Output to the file */
             fprintf(file_out, "%-15s%-15lf\n", curr->key, value);
         }
@@ -201,16 +208,16 @@ int main(int argc, char *argv[]) {
                         }
                         else {
                             mna->b[probe1_id - 1] = -val;
-                            mna->b[probe2_id - 1] = val;
+                            mna->b[probe2_id - 1] =  val;
                         }
                     }
                     /* Solve the system */
-                    sol_x = solve_mna_system(mna, options.SPD);
+                    solve_mna_system(mna, &sol_x, &options);
                     /* DC analysis output to every file */
                     int offset;
                     for (int j = 0; j < dc_analysis[i].num_nodes; j++) {
                         offset = ht_get_id(hash_table, dc_analysis[i].nodes[j]) - 1;
-                        fprintf(files[j], "%-15lf%-15lf\n", val, gsl_vector_get(sol_x, offset));
+                        fprintf(files[j], "%-15lf%-15lf\n", val, sol_x[offset]);
                     }
                     val += dc_analysis[i].increment;
                 }

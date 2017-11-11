@@ -2,12 +2,14 @@
 #define PARSER_H
 
 #include <stdbool.h>
+#define DEFAULT_ITOL    0.001
 
 /* Struct to hold the different options for analysis */
 typedef struct options {
 	bool SPD;
 	bool SPARSE;
 	bool ITER;
+	double itol;
 } options_t;
 
 /* Struct to hold the different DC analysis options */

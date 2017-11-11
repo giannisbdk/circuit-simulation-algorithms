@@ -74,4 +74,5 @@ void init_options(options_t *options) {
 	options->SPD 	= false;
 	options->ITER 	= false;
 	options->SPARSE = false;
+	options->itol 	= DEFAULT_ITOL;
 }

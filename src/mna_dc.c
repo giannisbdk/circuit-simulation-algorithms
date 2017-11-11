@@ -4,6 +4,7 @@
 #include <assert.h>
 
 #include "mna_dc.h"
+#include "iter.h"
 
 /* Allocate memory for the MNA system */
 mna_system_t *init_mna_system(int num_nodes, int num_g2_elem) {
@@ -141,22 +142,39 @@ int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *eleme
 }
 
 /* LU or Cholesky decomposition and solution of the MNA system Ax=b and returns the solution vector x */
-gsl_vector *solve_mna_system(mna_system_t *mna, bool SPD) {
-	if (SPD) {
-		return solve_cholesky(mna);
+void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
+
+	int dimension = mna->num_nodes + mna->num_g2_elem;
+	
+	gsl_vector_view view_x = gsl_vector_view_array(*x, dimension);
+
+	if(options->ITER) {
+		if (options->SPD) {
+			int iterations = cg(*x, options->itol, dimension, dimension, mna->b, mna->A);
+			printf("Iterations of cg are %d\n", iterations);
+		}
+		else {
+			// int iterations = bi_cg(x, options->itol, dimension, dimension, mna->b, mna->A);
+		}
 	}
-	return solve_lu(mna);
+	else {
+		if (options->SPD) {
+			solve_cholesky(mna, view_x);
+		}
+		else {
+			solve_lu(mna, view_x);
+		}
+	}
 }
 
 /* Solve the MNA system using LU decomposition */
-gsl_vector *solve_lu(mna_system_t *mna) {
+void solve_lu(mna_system_t *mna, gsl_vector_view x) {
 	/* The sign of the permutation matrix */
 	int signum;
 	/* Allocate memory for the solution vector */
 	int dimension = mna->num_nodes + mna->num_g2_elem;
 	gsl_matrix_view view_A = gsl_matrix_view_array(mna->A[0], dimension, dimension);
 	gsl_vector_view view_b = gsl_vector_view_array(mna->b, dimension);
-	gsl_vector *x = gsl_vector_calloc(dimension);
 	if (!mna->is_decomp) {
 		/* LU decomposition on A, PA = LU */
 		gsl_linalg_LU_decomp(&view_A.matrix, mna->P, &signum);
@@ -167,17 +185,15 @@ gsl_vector *solve_lu(mna_system_t *mna) {
 		print_permutation(mna->P);
 	}
 	/* Solve the LU system */
-	gsl_linalg_LU_solve(&view_A.matrix, mna->P, &view_b.vector, x);
-	return x;
+	gsl_linalg_LU_solve(&view_A.matrix, mna->P, &view_b.vector, &x.vector);
 }
 
 /* Solve the MNA system using cholesky decomposition */
-gsl_vector *solve_cholesky(mna_system_t *mna) {
+void solve_cholesky(mna_system_t *mna, gsl_vector_view x) {
 	int dimension = mna->num_nodes + mna->num_g2_elem;
 	/* Allocate memory for the solution vector */
 	gsl_matrix_view view_A = gsl_matrix_view_array(mna->A[0], dimension, dimension);
 	gsl_vector_view view_b = gsl_vector_view_array(mna->b, dimension);
-	gsl_vector *x = gsl_vector_calloc(dimension);
 	if (!mna->is_decomp) {
 		/* Cholesky decomposition A = LL^T*/
 		gsl_linalg_cholesky_decomp(&view_A.matrix);
@@ -187,8 +203,7 @@ gsl_vector *solve_cholesky(mna_system_t *mna) {
 		printf("\n\n");
 	}
 	/* Solve the cholesky system */
-	gsl_linalg_cholesky_solve(&view_A.matrix, &view_b.vector, x);
-	return x;
+	gsl_linalg_cholesky_solve(&view_A.matrix, &view_b.vector, &x.vector);
 }
 
 /* Print the MNA system */
