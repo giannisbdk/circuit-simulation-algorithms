@@ -22,16 +22,27 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem) {
 }
 
 /* Allocate memory for the GSL matrix of the MNA system */
-gsl_matrix *init_array(int row, int col) {
-    gsl_matrix *array;
-    array = gsl_matrix_calloc(row, col);
-    return array;
+double **init_array(int row, int col) {
+
+	double **array;
+
+	array = (double **) malloc(row * sizeof(double *));
+	assert(array !=NULL);
+	array[0] = (double *) calloc(row * col, sizeof(double));
+	assert(array[0] !=NULL);
+	for (int i = 1; i < row; i++) {
+		array[i] = array[i-1] + col;
+	}
+	return array;
 }
 
 /* Allocate memory for the GSL vector of the MNA system */
-gsl_vector *init_vector(int row) {
-	gsl_vector *vector;
-	vector = gsl_vector_calloc(row);
+double *init_vector(int row) {
+
+	double *vector;
+
+	vector = (double *) calloc(row, sizeof(double));
+	assert(vector != NULL);
 	return vector;
 }
 
@@ -58,29 +69,29 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 		else if (curr->type == 'R' || curr->type == 'r') {
 			value = 1 / curr->value;
 			if (probe1_id == 0) {
-				gsl_matrix_set(mna->A, j, j, gsl_matrix_get(mna->A, j, j) + value);
+				mna->A[j][j] += value; 
 			}
 			else if (probe2_id == 0) {
-				gsl_matrix_set(mna->A, i, i, gsl_matrix_get(mna->A, i, i) + value);
+				mna->A[i][i] += value; 
 			}
 			else {
-				gsl_matrix_set(mna->A, i, i, gsl_matrix_get(mna->A, i, i) + value);
-				gsl_matrix_set(mna->A, j, j, gsl_matrix_get(mna->A, j, j) + value);
-				gsl_matrix_set(mna->A, i, j, gsl_matrix_get(mna->A, i, j) - value);
-				gsl_matrix_set(mna->A, j, i, gsl_matrix_get(mna->A, j, i) - value);
+				mna->A[i][i] += value;
+				mna->A[j][j] += value;
+				mna->A[i][j] -= value;
+				mna->A[j][i] -= value;
 			}
 		}
 		else if (curr->type == 'I' || curr->type == 'i') {
 			value = curr->value;
 			if (probe1_id == 0) {
-				gsl_vector_set(mna->b, j, gsl_vector_get(mna->b, j) + value);
+				mna->b[j] += value;
 			}
 			else if (probe2_id == 0) {
-				gsl_vector_set(mna->b, i, gsl_vector_get(mna->b, i) - value);
+				mna->b[i] -= value;
 			}
 			else {
-				gsl_vector_set(mna->b, i, gsl_vector_get(mna->b, i) - value);
-				gsl_vector_set(mna->b, j, gsl_vector_get(mna->b, j) + value);
+				mna->b[i] -= value;
+				mna->b[j] += value;
 			}
 		}
 		else {
@@ -96,21 +107,21 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 			assert(mna->g2_indx[volt_sources_cnt].element != NULL);
 			strcpy(mna->g2_indx[volt_sources_cnt].element, curr->element);
 			if (probe1_id == 0) {
-				gsl_matrix_set(mna->A, j, offset + volt_sources_cnt, -1.0);
-				gsl_matrix_set(mna->A, offset + volt_sources_cnt, j, -1.0);
-				gsl_vector_set(mna->b, offset + volt_sources_cnt, gsl_vector_get(mna->b, offset + volt_sources_cnt) + value);
+				mna->A[j][offset + volt_sources_cnt] = -1.0;
+				mna->A[offset + volt_sources_cnt][j] = -1.0;
+				mna->b[offset + volt_sources_cnt] += value; 
 			}
 			else if (probe2_id == 0) {
-				gsl_matrix_set(mna->A, i, offset + volt_sources_cnt, 1.0);
-				gsl_matrix_set(mna->A, offset + volt_sources_cnt, i, 1.0);
-				gsl_vector_set(mna->b, offset + volt_sources_cnt, gsl_vector_get(mna->b, offset + volt_sources_cnt) + value);
+				mna->A[i][offset + volt_sources_cnt] = 1.0;
+				mna->A[offset + volt_sources_cnt][i] = 1.0;
+				mna->b[offset + volt_sources_cnt] += value;
 			}
 			else {
-				gsl_matrix_set(mna->A, i, offset + volt_sources_cnt,  1.0);
-				gsl_matrix_set(mna->A, j, offset + volt_sources_cnt, -1.0);
-				gsl_matrix_set(mna->A, offset + volt_sources_cnt, i,  1.0);
-				gsl_matrix_set(mna->A, offset + volt_sources_cnt, j, -1.0);
-				gsl_vector_set(mna->b, offset + volt_sources_cnt, gsl_vector_get(mna->b, offset + volt_sources_cnt) + value);
+				mna->A[i][offset + volt_sources_cnt] =  1.0;
+				mna->A[j][offset + volt_sources_cnt] = -1.0;
+				mna->A[offset + volt_sources_cnt][i] =  1.0;
+				mna->A[offset + volt_sources_cnt][j] = -1.0;
+				mna->b[offset + volt_sources_cnt] += value;
 			}
 			/* Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found */
 			volt_sources_cnt++;
@@ -143,18 +154,20 @@ gsl_vector *solve_lu(mna_system_t *mna) {
 	int signum;
 	/* Allocate memory for the solution vector */
 	int dimension = mna->num_nodes + mna->num_g2_elem;
+	gsl_matrix_view view_A = gsl_matrix_view_array(mna->A[0], dimension, dimension);
+	gsl_vector_view view_b = gsl_vector_view_array(mna->b, dimension);
 	gsl_vector *x = gsl_vector_calloc(dimension);
 	if (!mna->is_decomp) {
 		/* LU decomposition on A, PA = LU */
-		gsl_linalg_LU_decomp(mna->A, mna->P, &signum);
+		gsl_linalg_LU_decomp(&view_A.matrix, mna->P, &signum);
 		mna->is_decomp = true;
 		printf("LU Matrix:\n\n");
-		print_array(mna->A);
+		print_array(mna->A, dimension);
 		printf("Permutation Vector:\n\n");
 		print_permutation(mna->P);
 	}
 	/* Solve the LU system */
-	gsl_linalg_LU_solve(mna->A, mna->P, mna->b, x);
+	gsl_linalg_LU_solve(&view_A.matrix, mna->P, &view_b.vector, x);
 	return x;
 }
 
@@ -162,35 +175,38 @@ gsl_vector *solve_lu(mna_system_t *mna) {
 gsl_vector *solve_cholesky(mna_system_t *mna) {
 	int dimension = mna->num_nodes + mna->num_g2_elem;
 	/* Allocate memory for the solution vector */
+	gsl_matrix_view view_A = gsl_matrix_view_array(mna->A[0], dimension, dimension);
+	gsl_vector_view view_b = gsl_vector_view_array(mna->b, dimension);
 	gsl_vector *x = gsl_vector_calloc(dimension);
 	if (!mna->is_decomp) {
 		/* Cholesky decomposition A = LL^T*/
-		gsl_linalg_cholesky_decomp(mna->A);
+		gsl_linalg_cholesky_decomp(&view_A.matrix);
 		mna->is_decomp = true;
 		printf("Cholesky Matrix:\n\n");
-		print_array(mna->A);
+		print_array(mna->A, dimension);
 		printf("\n\n");
 	}
 	/* Solve the cholesky system */
-	gsl_linalg_cholesky_solve(mna->A, mna->b, x);
+	gsl_linalg_cholesky_solve(&view_A.matrix, &view_b.vector, x);
 	return x;
 }
 
 /* Print the MNA system */
 void print_mna_system(mna_system_t *mna) {
+	int dimension = mna->num_nodes + mna->num_g2_elem;
 	printf("MNA A array:\n\n");
-	print_array(mna->A);
+	print_array(mna->A, dimension);
 	printf("MNA b vector:\n\n");
-	print_vector(mna->b);
+	print_vector(mna->b, dimension);
 }
 
 /* Print the array */
-void print_array(gsl_matrix *A) {
-	int rows = A->size1;
-	int cols = A->size2;
+void print_array(double **A, int dimension) {
+	int rows = dimension;
+	int cols = dimension;
 	for (int i = 0; i < rows; i++) {
 		for (int j = 0; j < cols; j++) {
-			printf("%-15.4lf", gsl_matrix_get(A, i, j));
+			printf("%-15.4lf", A[i][j]);
 		}
 		printf("\n");
 	}
@@ -198,8 +214,10 @@ void print_array(gsl_matrix *A) {
 }
 
 /* Print the vector */
-void print_vector(gsl_vector *b) {
-	gsl_vector_fprintf(stdout, b, "%lf");
+void print_vector(double *b, int dimension) {
+	for (int i = 0; i< dimension; i++) {
+		printf("%lf\n", b[i]);
+	}
     printf("\n");
 }
 
@@ -215,8 +233,9 @@ void print_permutation(gsl_permutation *P) {
 /* Free all the memory allocated for the MNA system */
 void free_mna_system(mna_system_t **mna) {
 	/* Free everything we allocated from GSL */
-	gsl_matrix_free((*mna)->A);
-	gsl_vector_free((*mna)->b);
+	free((*mna)->A[0]);
+	free((*mna)->A);
+	free((*mna)->b);
 	gsl_permutation_free((*mna)->P);
 	/* Free every string allocated for the group2 elements */
 	for (int i = 0; i < (*mna)->num_g2_elem; i++) {

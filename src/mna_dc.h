@@ -12,8 +12,8 @@ typedef struct g2_indx {
 } g2_indx_t;
 
 typedef struct mna_system {
-	gsl_matrix *A;
-	gsl_vector *b;
+	double **A;
+	double *b;
 	gsl_permutation *P;
 	bool is_decomp;
 	int num_nodes;
@@ -28,12 +28,12 @@ int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *eleme
 gsl_vector *solve_mna_system(mna_system_t *mna, bool SPD);
 gsl_vector *solve_lu(mna_system_t *mna);
 gsl_vector *solve_cholesky(mna_system_t *mna);
-gsl_matrix *init_array(int row, int col);
-gsl_vector *init_vector(int row);
+double **init_array(int row, int col);
+double *init_vector(int row);
 gsl_permutation *init_permutation(int dimension);
 void print_mna_system(mna_system_t *mna);
-void print_array(gsl_matrix *A);
-void print_vector(gsl_vector *b);
+void print_array(double **A, int dimension);
+void print_vector(double *b, int dimension);
 void print_permutation(gsl_permutation *P);
 void free_mna_system(mna_system_t **mna);
 

@@ -120,7 +120,8 @@ int main(int argc, char *argv[]) {
     print_mna_system(mna);
     gsl_vector *sol_x = solve_mna_system(mna, options.SPD);
     printf("Solution of the MNA system:\n\n");
-    print_vector(sol_x);
+    gsl_vector_fprintf(stdout, sol_x, "%lf");
+    printf("\n");
 
     FILE *file_out;
     /* DC Operating Point to file */
@@ -189,18 +190,18 @@ int main(int argc, char *argv[]) {
                 int probe2_id = ht_get_id(hash_table, curr->probe2);
                 for (int step = 0; step <= n_steps; step++) {
                     if (dc_analysis[i].volt_source[0] == 'V' || dc_analysis[i].volt_source[0] == 'v') {
-                        gsl_vector_set(mna->b, volt_indx, val);
+                        mna->b[volt_indx] = val;
                     }
                     else if(dc_analysis[i].volt_source[0] == 'I' || dc_analysis[i].volt_source[0] == 'i') {
                         if (probe1_id == 0) {
-                            gsl_vector_set(mna->b, probe2_id - 1, val);
+                            mna->b[probe2_id - 1] = val;
                         }
                         else if (probe2_id == 0) {
-                            gsl_vector_set(mna->b, probe1_id - 1, -val);
+                            mna->b[probe1_id - 1] = -val;
                         }
                         else {
-                            gsl_vector_set(mna->b, probe1_id - 1, -val);
-                            gsl_vector_set(mna->b, probe2_id - 1, val);
+                            mna->b[probe1_id - 1] = -val;
+                            mna->b[probe2_id - 1] = val;
                         }
                     }
                     /* Solve the system */
