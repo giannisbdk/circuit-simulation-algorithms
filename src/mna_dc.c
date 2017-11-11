@@ -14,7 +14,7 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem) {
 	mna->A = init_array(dimension, dimension);
 	mna->b = init_vector(dimension);
 	mna->P = init_permutation(dimension);
-	mna->is_decomp = 0;
+	mna->is_decomp = false;
 	mna->num_nodes = num_nodes;
 	mna->num_g2_elem = num_g2_elem;
 	mna->g2_indx = (g2_indx_t *)malloc(num_g2_elem * sizeof(g2_indx_t));
@@ -144,7 +144,7 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 	if (options->ITER) {
 		if (options->SPD) {
 			int iterations = conj_grad(mna->A, *x, mna->b, dimension, options->itol, dimension);
-			printf("Iterations of conj_grad are %d\n", iterations);
+			printf("Conjugate gradient method did %d iterations.\n", iterations);
 		}
 		else {
 			// int iterations = bi_conj_grad(mna->A, *x, mna->b, dimension, options->itol, dimension);

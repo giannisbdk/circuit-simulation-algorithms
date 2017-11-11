@@ -8,7 +8,7 @@
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
-/* Computes the dest = a*x + y ,  x and y are vectors and a is a constant */
+/* Computes the dest = a*x + y , x and y are vectors and a is a constant */
 void axpy(double *dest, double a, double *x, double *y, int n) {
     for (int i = 0; i < n; i++)
         dest[i] = a * x[i] + y[i];
@@ -42,7 +42,7 @@ double norm2(double *x, int n) {
 	return sqrt(dot_product(x, x, n));
 }
 
-/* Multiplies matrix A with vector x */
+/* Multiplies matrix A with vector x and stores the reuslt in supplied vector Ax */
 void mat_vec_mul(double *Ax, double **A, double *x, int n) {
     for (int i = 0; i < n; i++) {
         Ax[i] = 0;
@@ -52,10 +52,10 @@ void mat_vec_mul(double *Ax, double **A, double *x, int n) {
     }
 }
 
-/* Creation of a Jacobi preconditioner , zeros are not stored */
+/* Creation of a Jacobi preconditioner and stores it in supplied vector M, zeros are not stored */
 void jacobi_precond(double *M, double **A, int n) {
     for (int i = 0; i < n; i++) {
-    	/* We don't want to add zeros , we replace them with 1 instead */
+    	/* We don't want to add zeros, we replace them with 1 instead */
     	//TODO perhaps instead of 0 we check with EPSILON? CAUSE DOUBLE??
     	if(A[i][i] == 0) {
     		M[i] = 1;
@@ -66,7 +66,7 @@ void jacobi_precond(double *M, double **A, int n) {
     }
 }
 
-/* Apply Jacobi preconditioner */
+/* Apply Jacobi preconditioner and store it in vector M_fin */
 void precond_solve(double *M_fin, double *M, double *x, int n) {
     for (int i = 0; i < n; i++) {
 		M_fin[i] = M[i] * x[i];
@@ -111,7 +111,7 @@ int conj_grad(double **A, double *x, double *b, int dimension, double itol, int 
 		/* rho = r*z */
 		rho = dot_product(r, z, dimension);
 		if (iter == 1) {
-			p = z;
+			*p = *z;
 		}
 		else {
 			beta = rho / rho1;
