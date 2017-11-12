@@ -142,12 +142,19 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 	int dimension = mna->num_nodes + mna->num_g2_elem;
 	gsl_vector_view view_x = gsl_vector_view_array(*x, dimension);
 	if (options->ITER) {
+		int iterations = 0;
 		if (options->SPD) {
-			int iterations = conj_grad(mna->A, *x, mna->b, dimension, options->itol, dimension);
+		 	iterations = conj_grad(mna->A, *x, mna->b, dimension, options->itol, dimension);
 			printf("Conjugate gradient method did %d iterations.\n", iterations);
 		}
 		else {
-			// int iterations = bi_conj_grad(mna->A, *x, mna->b, dimension, options->itol, dimension);
+			iterations = bi_conj_grad(mna->A, *x, mna->b, dimension, options->itol, dimension);
+			printf("Bi-Conjugate gradient method did %d iterations.\n", iterations);
+			if (iterations == 0) {
+				free(*x);
+				/* The idea of assigning NULL to it afterwards is so that the callee sees the NULL value */
+				*x = NULL;
+			}
 		}
 	}
 	else {

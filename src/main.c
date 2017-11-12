@@ -128,6 +128,10 @@ int main(int argc, char *argv[]) {
     print_mna_system(mna);
     double *sol_x = (double *)calloc(size, sizeof(double));
     solve_mna_system(mna, &sol_x, &options);
+    if (sol_x == NULL) {
+        printf("Bi-Conjugate gradient failed\n");
+        exit(EXIT_FAILURE);
+    }
     printf("Solution of the MNA system:\n\n");
     print_vector(sol_x, size);
     printf("\n");
@@ -164,7 +168,7 @@ int main(int argc, char *argv[]) {
     if (line) {
         free(line);
     }
-
+    
     char prefix[] = "dc_analysis_";
     char file_name[MAX_FILE_NAME];
     /* Cycle through dc analyisis targets */
@@ -219,6 +223,10 @@ int main(int argc, char *argv[]) {
                     }
                     /* Solve the system */
                     solve_mna_system(mna, &sol_x, &options);
+                    if (sol_x == NULL) {
+                        printf("Biconjugate gradient failed\n");
+                        exit(EXIT_FAILURE);
+                    }
                     /* DC analysis output to every file */
                     int offset;
                     for (int j = 0; j < dc_analysis[i].num_nodes; j++) {

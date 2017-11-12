@@ -77,11 +77,11 @@ void precond_solve(double *M_fin, double *M, double *x, int n) {
  * stores the result in vector x and also returns the number of iterations
  */ 
 int conj_grad(double **A, double *x, double *b, int dimension, double itol, int maxiter) {
-	/* Residual vector r */
-	double *r  = (double *)malloc(dimension * sizeof(double));
+	double *Ax = (double *)malloc(dimension * sizeof(double));
 	/* Preconditioner M */
 	double *M  = (double *)malloc(dimension * sizeof(double));
-	double *Ax = (double *)malloc(dimension * sizeof(double));
+	/* Residual vector r */
+	double *r  = (double *)malloc(dimension * sizeof(double));
 	/* Alocate z vector: solution of preconditioner */
 	double *z  = (double *)malloc(dimension * sizeof(double));
 	double *p  = (double *)malloc(dimension * sizeof(double));
@@ -91,14 +91,12 @@ int conj_grad(double **A, double *x, double *b, int dimension, double itol, int 
 
 	/* Initialize M preconditioner */
 	jacobi_precond(M, A, dimension);
-
 	/* Compute A*x and store it to Ax */
 	mat_vec_mul(Ax, A, x, dimension);
-
 	/* Compute r = b - Ax */
 	sub_vector(r, b, Ax, dimension);
 
-	/* Initialize norm2 of b and r */
+	/* Initialize norm2 of b and r vectors */
 	r_norm = norm2(r, dimension);
 	b_norm = norm2(b, dimension);
 	/* Set b_norm = 1 in case it's zero to avoid seg fault */
@@ -131,9 +129,9 @@ int conj_grad(double **A, double *x, double *b, int dimension, double itol, int 
 		r_norm = norm2(r, dimension);
 	}
 	/* Free all the memory we allocated */
-	free(r);
-	free(M);
 	free(Ax);
+	free(M);
+	free(r);
 	free(z);
 	free(p);
 	free(q);
@@ -142,5 +140,95 @@ int conj_grad(double **A, double *x, double *b, int dimension, double itol, int 
 
 /* Solve the system with bi-conjugate gradient method and return the number of iterations */
 int bi_conj_grad(double **A, double *x, double *b, int dimension, double itol, int maxiter) {
-	return 0;
+	double *Ax = (double *)malloc(dimension * sizeof(double));
+	/* Preconditioner M */
+	double *M = (double *)malloc(dimension * sizeof(double));
+	/* Residual vector r */
+	double *r = (double *)malloc(dimension * sizeof(double));
+	/* Alocate z vector: solution of preconditioner */
+	double *z = (double *)malloc(dimension * sizeof(double));
+	double *p = (double *)malloc(dimension * sizeof(double));
+	double *q = (double *)malloc(dimension * sizeof(double));
+	/* Residual vector r_tilde */
+	double *r_tilde = (double *)malloc(dimension * sizeof(double));
+	/* Alocate z_tilde vector: solution of preconditioner */
+	double *z_tilde = (double *)malloc(dimension * sizeof(double));
+	double *p_tilde = (double *)malloc(dimension * sizeof(double));
+	double *q_tilde = (double *)malloc(dimension * sizeof(double));
+	double r_norm, b_norm, rho, rho1, alpha, beta, omega;
+	int iter = 0;
+
+	/* Initialize M preconditioner */
+	jacobi_precond(M, A, dimension);
+	/* Compute A*x and store it to Ax */
+	mat_vec_mul(Ax, A, x, dimension);
+	/* Compute r = b - Ax */
+	sub_vector(r, b, Ax, dimension);
+	/* Compute r_tilde = b - Ax = r,               *
+	 * sub_vector(r_tilde, b, Ax, dimension);      */
+	memcpy(r_tilde, r, dimension * sizeof(double));
+
+	/* Initialize norm2 of b and r vectors */
+	r_norm = norm2(r, dimension);
+	b_norm = norm2(b, dimension);
+	/* Set b_norm = 1 in case it's zero to avoid seg fault */
+	b_norm = b_norm == 0 ? 1 : b_norm;
+	while (iter < maxiter && (r_norm / b_norm) > itol) {
+		iter++;
+		/* Solution of the preconditioner Mz = r */
+		precond_solve(z, M, r, dimension);
+		/* Solution of the preconditioner M'z_tilde = r_tilde, *
+		 * M' = M because is a diagonal matrix                 */
+		precond_solve(z_tilde, M, r_tilde, dimension);
+		/* rho = r_tilde*z */
+		rho = dot_product(r_tilde, z, dimension);
+		
+		if (fabs(rho) < EPSILON) {
+			/* Algorithm failure (EPSILON = 1e-16) */
+			return 0;
+		}
+		if (iter == 1) {
+			/* Set p = z */
+			memcpy(p, z, dimension * sizeof(double));
+			/* Set p_tilde = z_tilde */
+			memcpy(p_tilde, z_tilde, dimension * sizeof(double));
+		}
+		else {
+			beta = rho / rho1;
+			/* p = z + beta*p */
+			axpy(p, beta, p, z, dimension);
+			/* p_tilde = z_tilde + beta*p_tilde */
+			axpy(p_tilde, beta, p_tilde, z_tilde, dimension);
+		}
+		rho1 = rho;
+		/* q = A*p */
+		mat_vec_mul(q, A, p, dimension);
+		/* q_tilde = A'*p_tilde, A' = A */
+		mat_vec_mul(q_tilde, A, p_tilde, dimension);
+		omega = dot_product(p_tilde, q, dimension);
+		if (fabs(omega) < EPSILON) {
+			/* Algorithm failure (EPSILON = 1e-16) */
+			return 0;
+		}
+		alpha = rho / omega;
+		/* x = x + alpha*p */
+		axpy(x,  alpha, p, x, dimension);
+		/* r = r - alpha*q */
+		axpy(r, -alpha, q, r, dimension);
+		/* r_tilde = r_tilde - alpha*q_tilde */
+		axpy(r_tilde, -alpha, q_tilde, r_tilde, dimension);
+		r_norm = norm2(r, dimension);
+	}
+	/* Free all the memory we allocated */
+	free(Ax);
+	free(M);
+	free(r);
+	free(z);
+	free(p);
+	free(q);
+	free(r_tilde);
+	free(z_tilde);
+	free(p_tilde);
+	free(q_tilde);
+	return iter;
 }

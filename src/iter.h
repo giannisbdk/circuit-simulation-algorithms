@@ -1,6 +1,8 @@
 #ifndef ITER_H
 #define ITER_H
 
+#define EPSILON 1e-16
+
 double dot_product(double *x, double *y, int n);
 double norm2(double *x, int n);
 void axpy(double *dest, double a, double *x, double *y, int n);
