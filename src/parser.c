@@ -74,3 +74,12 @@ void init_options(options_t *options) {
 	options->SPARSE = false;
 	options->itol 	= DEFAULT_ITOL;
 }
+
+/* Print all the specified options from the netlist */
+void print_options(options_t *options) {
+	printf("\nNetlist Specified Options:\n");
+	printf("SPD:\t%s\n",    options->SPD    ? "true" : "false");
+	printf("ITER:\t%s\n",   options->ITER   ? "true" : "false");
+	printf("SPARSE:\t%s\n", options->SPARSE ? "true" : "false");
+	printf("ITOL:\t%lf\n",  options->itol);
+}

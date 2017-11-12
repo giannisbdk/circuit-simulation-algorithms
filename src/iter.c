@@ -111,7 +111,8 @@ int conj_grad(double **A, double *x, double *b, int dimension, double itol, int 
 		/* rho = r*z */
 		rho = dot_product(r, z, dimension);
 		if (iter == 1) {
-			*p = *z;
+			/* Set p = z */
+			memcpy(p, z, dimension * sizeof(double));
 		}
 		else {
 			beta = rho / rho1;

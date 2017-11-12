@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    printf("Input file is: %s\n", argv[1]);
+    printf("\nInput file is: %s\n", argv[1]);
 
     file_input = fopen(argv[1], "rb");
     if (file_input == NULL) {
@@ -119,6 +119,7 @@ int main(int argc, char *argv[]) {
 
     int num_nodes = hash_table->seq - 1;
     int size = num_nodes + num_g2_elem;
+    print_options(&options);
     printf("\nsize: %d\nnum_nodes(w/o ground): %d\nnum_branches_g2: %d\n\n", size, num_nodes, num_g2_elem);
     
     /* Initialize the MNA_system */
@@ -196,6 +197,9 @@ int main(int argc, char *argv[]) {
                 int volt_indx = g2_elem_indx(mna->g2_indx, mna->num_nodes, mna->num_g2_elem, dc_analysis[i].volt_source);
                 int probe1_id = ht_get_id(hash_table, curr->probe1);
                 int probe2_id = ht_get_id(hash_table, curr->probe2);
+                /* We need to zero out the sol_x vector from the previous operating point analysis value */
+                /* Important notice that we don't use memset because we are dealing with double */
+                zero_out_vec(sol_x, size);
                 //TODO Add a method in mna_dc.c to set the vector, so that we don't copy-pate the below
                 for (int step = 0; step <= n_steps; step++) {
                     if (dc_analysis[i].volt_source[0] == 'V' || dc_analysis[i].volt_source[0] == 'v') {

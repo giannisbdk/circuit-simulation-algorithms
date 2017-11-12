@@ -255,3 +255,10 @@ void free_mna_system(mna_system_t **mna) {
 	/* Set mna to NULL to limit further acesses */
 	*mna = NULL;
 }
+
+/* Zero outs the supplied vector x */
+void zero_out_vec(double *x, int dimension) {
+	for (int i = 0; i < dimension; i++) {
+		x[i] = 0.0;
+	}
+}

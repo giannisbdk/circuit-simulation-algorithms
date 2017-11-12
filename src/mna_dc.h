@@ -37,5 +37,6 @@ void print_array(double **A, int dimension);
 void print_vector(double *b, int dimension);
 void print_permutation(gsl_permutation *P);
 void free_mna_system(mna_system_t **mna);
+void zero_out_vec(double *x, int dimension);
 
 #endif

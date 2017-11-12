@@ -27,5 +27,6 @@ typedef struct dc_analysis {
 int get_num_tokens(char *line);
 char **tokenizer(char *line, int *num_tokens);
 void init_options(options_t *options);
+void print_options(options_t *options);
 
 #endif
