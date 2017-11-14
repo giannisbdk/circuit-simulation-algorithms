@@ -4,7 +4,6 @@
 #include <assert.h>
 
 #include "mna_dc.h"
-#include "iter.h"
 
 /* Allocate memory for the MNA system */
 mna_system_t *init_mna_system(int num_nodes, int num_g2_elem) {
@@ -150,7 +149,7 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 		else {
 			iterations = bi_conj_grad(mna->A, *x, mna->b, dimension, options->itol, dimension);
 			printf("Bi-Conjugate gradient method did %d iterations.\n", iterations);
-			if (iterations == 0) {
+			if (iterations == FAILURE) {
 				free(*x);
 				/* The idea of assigning NULL to it afterwards is so that the callee sees the NULL value */
 				*x = NULL;

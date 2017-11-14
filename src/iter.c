@@ -73,6 +73,11 @@ void precond_solve(double *M_fin, double *M, double *x, int n) {
     }
 }
 
+/* Transposes the given matrix A to the destination matrix A_trans */
+void trans_matrix(double *A_trans, double **A, int n) {
+	//TODO This has to be done with an efficient way
+}
+
 /* Solve the SPD system with the iterative conjugate gradient method
  * stores the result in vector x and also returns the number of iterations
  */ 
@@ -140,15 +145,20 @@ int conj_grad(double **A, double *x, double *b, int dimension, double itol, int 
 
 /* Solve the system with bi-conjugate gradient method and return the number of iterations */
 int bi_conj_grad(double **A, double *x, double *b, int dimension, double itol, int maxiter) {
-	double *Ax = (double *)malloc(dimension * sizeof(double));
 	/* Preconditioner M */
-	double *M = (double *)malloc(dimension * sizeof(double));
+	double *M       = (double *)malloc(dimension * sizeof(double));
+	/* Transpose of Preconditioner M */
+	double *M_trans = (double *)malloc(dimension * sizeof(double));
+	/* Transpose of Matrix A */
+	double *A_trans = (double *)malloc(dimension * sizeof(double));
+	/* Vector to store A*x */
+	double *Ax = (double *)malloc(dimension * sizeof(double));
 	/* Residual vector r */
-	double *r = (double *)malloc(dimension * sizeof(double));
+	double *r  = (double *)malloc(dimension * sizeof(double));
 	/* Alocate z vector: solution of preconditioner */
-	double *z = (double *)malloc(dimension * sizeof(double));
-	double *p = (double *)malloc(dimension * sizeof(double));
-	double *q = (double *)malloc(dimension * sizeof(double));
+	double *z  = (double *)malloc(dimension * sizeof(double));
+	double *p  = (double *)malloc(dimension * sizeof(double));
+	double *q  = (double *)malloc(dimension * sizeof(double));
 	/* Residual vector r_tilde */
 	double *r_tilde = (double *)malloc(dimension * sizeof(double));
 	/* Alocate z_tilde vector: solution of preconditioner */
@@ -160,6 +170,8 @@ int bi_conj_grad(double **A, double *x, double *b, int dimension, double itol, i
 
 	/* Initialize M preconditioner */
 	jacobi_precond(M, A, dimension);
+	/* Copy M preconditioner to M_trans they are both equal */
+	memcpy(M_trans, M, dimension * sizeof(double));
 	/* Compute A*x and store it to Ax */
 	mat_vec_mul(Ax, A, x, dimension);
 	/* Compute r = b - Ax */
@@ -167,12 +179,15 @@ int bi_conj_grad(double **A, double *x, double *b, int dimension, double itol, i
 	/* Compute r_tilde = b - Ax = r,               *
 	 * sub_vector(r_tilde, b, Ax, dimension);      */
 	memcpy(r_tilde, r, dimension * sizeof(double));
+	/* Get the transpose matrix of A */
+	trans_matrix(A_trans, A, dimension);
 
 	/* Initialize norm2 of b and r vectors */
 	r_norm = norm2(r, dimension);
 	b_norm = norm2(b, dimension);
 	/* Set b_norm = 1 in case it's zero to avoid seg fault */
 	b_norm = b_norm == 0 ? 1 : b_norm;
+
 	while (iter < maxiter && (r_norm / b_norm) > itol) {
 		iter++;
 		/* Solution of the preconditioner Mz = r */
@@ -182,10 +197,9 @@ int bi_conj_grad(double **A, double *x, double *b, int dimension, double itol, i
 		precond_solve(z_tilde, M, r_tilde, dimension);
 		/* rho = r_tilde*z */
 		rho = dot_product(r_tilde, z, dimension);
-		
+		/* Check for Algorithm Failure */
 		if (fabs(rho) < EPSILON) {
-			/* Algorithm failure (EPSILON = 1e-16) */
-			return 0;
+			return -1;
 		}
 		if (iter == 1) {
 			/* Set p = z */
@@ -204,11 +218,13 @@ int bi_conj_grad(double **A, double *x, double *b, int dimension, double itol, i
 		/* q = A*p */
 		mat_vec_mul(q, A, p, dimension);
 		/* q_tilde = A'*p_tilde, A' = A */
+		//TODO Use A_Trans instead of A
 		mat_vec_mul(q_tilde, A, p_tilde, dimension);
+		/* omega = p_tilde * q */
 		omega = dot_product(p_tilde, q, dimension);
+		/* Check for Algorithm Failure */
 		if (fabs(omega) < EPSILON) {
-			/* Algorithm failure (EPSILON = 1e-16) */
-			return 0;
+			return -1;
 		}
 		alpha = rho / omega;
 		/* x = x + alpha*p */

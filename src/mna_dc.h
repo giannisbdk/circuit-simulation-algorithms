@@ -6,6 +6,7 @@
 
 #include "list.h"
 #include "parser.h"
+#include "iter.h"
 
 /* Keeps the indexing for the sources of group 2 */
 typedef struct g2_indx {

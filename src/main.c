@@ -43,6 +43,7 @@ int main(int argc, char *argv[]) {
 
     file_input = fopen(argv[1], "rb");
     if (file_input == NULL) {
+        fprintf(stderr, "Error: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
 

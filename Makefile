@@ -23,11 +23,11 @@ debug: DBGFLAGS = -DDEBUGL -DDEBUGH
 debug: main
 
 .PHONY: clean
-# Clean only the executable
+# Clean only the executable and the output files
 clean:
-	$(RM) main
+	$(RM) main dc_*.txt
 
-# Cleans the executable, the object files and the all the txt from analysis
+# Cleans the executable, the output files and the object files
 .PHONY: cleanall
 cleanall: clean
-	$(RM) $(OBJECTS) dc_*.txt
+	$(RM) $(OBJECTS)
