@@ -105,7 +105,7 @@ int bi_conj_grad(double **A, double *x, double *b, double **A_trans, double *M, 
 		precond_solve(z, M, r, dimension);
 		/* Solution of the preconditioner M'z_tilde = r_tilde, *
 		 * M' = M because is a diagonal matrix                 */
-		precond_solve(z_tilde, M, r_tilde, dimension);
+		precond_solve(z_tilde, M_trans, r_tilde, dimension);
 		/* rho = r_tilde*z */
 		rho = dot_product(r_tilde, z, dimension);
 		/* Check for Algorithm Failure */
@@ -129,8 +129,7 @@ int bi_conj_grad(double **A, double *x, double *b, double **A_trans, double *M, 
 		/* q = A*p */
 		mat_vec_mul(q, A, p, dimension);
 		/* q_tilde = A'*p_tilde, A' = A */
-		//TODO Use A_Trans instead of A
-		mat_vec_mul(q_tilde, A, p_tilde, dimension);
+		mat_vec_mul(q_tilde, A_trans, p_tilde, dimension);
 		/* omega = p_tilde * q */
 		omega = dot_product(p_tilde, q, dimension);
 		/* Check for Algorithm Failure */

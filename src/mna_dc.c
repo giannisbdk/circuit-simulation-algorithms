@@ -145,7 +145,7 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 		/* Compute the M preconditioner */
 		jacobi_precond(mna->matrix->M, mna->matrix->A, mna->dimension);
 		/* M transpose equals M */
-		memcpy(mna->matrix->M_trans, mna->matrix->M, mna->dimension);
+		memcpy(mna->matrix->M_trans, mna->matrix->M, mna->dimension * sizeof(double));
 	}
 }
 
