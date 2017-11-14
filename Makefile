@@ -9,6 +9,7 @@ GSLFLAGS = $(shell gsl-config --cflags --libs)
 # Directories
 SRC = src
 OBJ = obj
+NLS = netlists
 
 SOURCES = $(wildcard $(SRC)/*.c)
 OBJECTS = $(patsubst $(SRC)/%.c,$(OBJ)/%.o,$(SOURCES))
@@ -22,12 +23,25 @@ $(OBJ)/%.o: $(SRC)/%.c
 debug: DBGFLAGS = -DDEBUGL -DDEBUGH
 debug: main
 
+# Various targets with different input files
+run_lu: main
+	./main $(NLS)/lu_netlist.txt
+
+run_lu_iter: main
+	./main $(NLS)/lu_iter_netlist.txt
+
+run_chol: main
+	./main $(NLS)/cholesky_netlist.txt
+
+run_chol_iter: main
+	./main $(NLS)/cholesky_iter_netlist.txt
+
 .PHONY: clean
-# Clean only the executable and the output files
+# Clean the output files
 clean:
-	$(RM) main dc_*.txt
+	$(RM) dc_*.txt
 
 # Cleans the executable, the output files and the object files
 .PHONY: cleanall
 cleanall: clean
-	$(RM) $(OBJECTS)
+	$(RM) main $(OBJECTS)

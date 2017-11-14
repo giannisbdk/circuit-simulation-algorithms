@@ -8,7 +8,7 @@
 #include "list.h"
 #include "hash_table.h"
 #include "mna_dc.h"
-#include "parser.h"
+#include "routines.h"
 
 #define HASH_TABLE_SIZE 65536
 #define DC_ANALYSIS_NUM 25
@@ -124,18 +124,13 @@ int main(int argc, char *argv[]) {
     printf("\nsize: %d\nnum_nodes(w/o ground): %d\nnum_branches_g2: %d\n\n", size, num_nodes, num_g2_elem);
     
     /* Initialize the MNA_system */
-    mna = init_mna_system(num_nodes, num_g2_elem);
-    create_mna_system(mna, index, hash_table, num_nodes);
+    mna = init_mna_system(num_nodes, num_g2_elem, &options);
+    create_mna_system(mna, index, hash_table, &options, num_nodes);
     print_mna_system(mna);
     double *sol_x = (double *)calloc(size, sizeof(double));
     solve_mna_system(mna, &sol_x, &options);
-    if (sol_x == NULL) {
-        printf("Bi-Conjugate gradient failed\n");
-        exit(EXIT_FAILURE);
-    }
     printf("Solution of the MNA system:\n\n");
     print_vector(sol_x, size);
-    printf("\n");
 
     FILE *file_out;
     /* DC Operating Point to file */
@@ -208,26 +203,22 @@ int main(int argc, char *argv[]) {
                 //TODO Add a method in mna_dc.c to set the vector, so that we don't copy-pate the below
                 for (int step = 0; step <= n_steps; step++) {
                     if (dc_analysis[i].volt_source[0] == 'V' || dc_analysis[i].volt_source[0] == 'v') {
-                        mna->b[volt_indx] = val;
+                        mna->matrix->b[volt_indx] = val;
                     }
                     else if (dc_analysis[i].volt_source[0] == 'I' || dc_analysis[i].volt_source[0] == 'i') {
                         if (probe1_id == 0) {
-                            mna->b[probe2_id - 1] = val;
+                            mna->matrix->b[probe2_id - 1] = val;
                         }
                         else if (probe2_id == 0) {
-                            mna->b[probe1_id - 1] = -val;
+                            mna->matrix->b[probe1_id - 1] = -val;
                         }
                         else {
-                            mna->b[probe1_id - 1] = -val;
-                            mna->b[probe2_id - 1] =  val;
+                            mna->matrix->b[probe1_id - 1] = -val;
+                            mna->matrix->b[probe2_id - 1] =  val;
                         }
                     }
                     /* Solve the system */
                     solve_mna_system(mna, &sol_x, &options);
-                    if (sol_x == NULL) {
-                        printf("Biconjugate gradient failed\n");
-                        exit(EXIT_FAILURE);
-                    }
                     /* DC analysis output to every file */
                     int offset;
                     for (int j = 0; j < dc_analysis[i].num_nodes; j++) {
@@ -240,13 +231,16 @@ int main(int argc, char *argv[]) {
                 for (int j = 0; j < dc_analysis[i].num_nodes; j++) {
                     fclose(files[j]);
                 }
+                /* We found the voltage element and we did the DC sweep. That means we have to stop the iteration through the list */
                 break;
             }
         }
     }
+    //TODO Need to free the dc_analysis mallocs we did before
+
     /* Free all the dynamic allocated memory */
     free_index(&index);
-    free_mna_system(&mna);
+    free_mna_system(&mna, &options);
     ht_free(&hash_table);
 	return 0;
 }

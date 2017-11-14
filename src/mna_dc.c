@@ -4,15 +4,32 @@
 #include <assert.h>
 
 #include "mna_dc.h"
+#include "routines.h"
 
 /* Allocate memory for the MNA system */
-mna_system_t *init_mna_system(int num_nodes, int num_g2_elem) {
-	int dimension = num_nodes + num_g2_elem;
+mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options) {
+	/* Allocate for the whole struct */
 	mna_system_t *mna = (mna_system_t *)malloc(sizeof(mna_system_t));
 	assert(mna != NULL);
-	mna->A = init_array(dimension, dimension);
-	mna->b = init_vector(dimension);
-	mna->P = init_permutation(dimension);
+	/* Allocate for the matrices struct */
+	mna->matrix = (matrix_t *)malloc(sizeof(matrix_t));
+	assert(mna->matrix != NULL);
+	/* Allocate for every different matrix/vector */
+	mna->dimension = num_nodes + num_g2_elem;
+	mna->matrix->A = init_array(mna->dimension, mna->dimension);
+	mna->matrix->b = init_vector(mna->dimension);
+	mna->matrix->P = init_permutation(mna->dimension);
+	/* In case we will use iterative methods allocate memory for the prerequisites */
+	if (options->ITER) {
+		mna->matrix->M = init_vector(mna->dimension);
+		mna->matrix->A_trans = init_array(mna->dimension, mna->dimension);
+		mna->matrix->M_trans = init_vector(mna->dimension);
+	}
+	else {
+		mna->matrix->M = NULL;
+		mna->matrix->A_trans = NULL;
+		mna->matrix->M_trans = NULL;
+	}
 	mna->is_decomp = false;
 	mna->num_nodes = num_nodes;
 	mna->num_g2_elem = num_g2_elem;
@@ -35,7 +52,7 @@ double **init_array(int row, int col) {
 
 /* Allocate memory for the vector of the MNA system */
 double *init_vector(int row) {
-	double *vector = (double *) calloc(row, sizeof(double));;
+	double *vector = (double *)calloc(row, sizeof(double));;
 	assert(vector != NULL);
 	return vector;
 }
@@ -48,7 +65,7 @@ gsl_permutation *init_permutation(int dimension) {
 }
 
 /* Create the MNA system array and vector */
-void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, int offset) {
+void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset) {
 	list1_t *curr;
 	double value;
 	int volt_sources_cnt = 0;
@@ -63,29 +80,29 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 		else if (curr->type == 'R' || curr->type == 'r') {
 			value = 1 / curr->value;
 			if (probe1_id == 0) {
-				mna->A[j][j] += value; 
+				mna->matrix->A[j][j] += value; 
 			}
 			else if (probe2_id == 0) {
-				mna->A[i][i] += value; 
+				mna->matrix->A[i][i] += value; 
 			}
 			else {
-				mna->A[i][i] += value;
-				mna->A[j][j] += value;
-				mna->A[i][j] -= value;
-				mna->A[j][i] -= value;
+				mna->matrix->A[i][i] += value;
+				mna->matrix->A[j][j] += value;
+				mna->matrix->A[i][j] -= value;
+				mna->matrix->A[j][i] -= value;
 			}
 		}
 		else if (curr->type == 'I' || curr->type == 'i') {
 			value = curr->value;
 			if (probe1_id == 0) {
-				mna->b[j] += value;
+				mna->matrix->b[j] += value;
 			}
 			else if (probe2_id == 0) {
-				mna->b[i] -= value;
+				mna->matrix->b[i] -= value;
 			}
 			else {
-				mna->b[i] -= value;
-				mna->b[j] += value;
+				mna->matrix->b[i] -= value;
+				mna->matrix->b[j] += value;
 			}
 		}
 		else {
@@ -101,25 +118,34 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 			assert(mna->g2_indx[volt_sources_cnt].element != NULL);
 			strcpy(mna->g2_indx[volt_sources_cnt].element, curr->element);
 			if (probe1_id == 0) {
-				mna->A[j][offset + volt_sources_cnt] = -1.0;
-				mna->A[offset + volt_sources_cnt][j] = -1.0;
-				mna->b[offset + volt_sources_cnt] += value; 
+				mna->matrix->A[j][offset + volt_sources_cnt] = -1.0;
+				mna->matrix->A[offset + volt_sources_cnt][j] = -1.0;
+				mna->matrix->b[offset + volt_sources_cnt] += value; 
 			}
 			else if (probe2_id == 0) {
-				mna->A[i][offset + volt_sources_cnt] = 1.0;
-				mna->A[offset + volt_sources_cnt][i] = 1.0;
-				mna->b[offset + volt_sources_cnt] += value;
+				mna->matrix->A[i][offset + volt_sources_cnt] = 1.0;
+				mna->matrix->A[offset + volt_sources_cnt][i] = 1.0;
+				mna->matrix->b[offset + volt_sources_cnt] += value;
 			}
 			else {
-				mna->A[i][offset + volt_sources_cnt] =  1.0;
-				mna->A[j][offset + volt_sources_cnt] = -1.0;
-				mna->A[offset + volt_sources_cnt][i] =  1.0;
-				mna->A[offset + volt_sources_cnt][j] = -1.0;
-				mna->b[offset + volt_sources_cnt] += value;
+				mna->matrix->A[i][offset + volt_sources_cnt] =  1.0;
+				mna->matrix->A[j][offset + volt_sources_cnt] = -1.0;
+				mna->matrix->A[offset + volt_sources_cnt][i] =  1.0;
+				mna->matrix->A[offset + volt_sources_cnt][j] = -1.0;
+				mna->matrix->b[offset + volt_sources_cnt] += value;
 			}
 			/* Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found */
 			volt_sources_cnt++;
 		}
+	}
+	/* In case we want iterative methods compute the prerequisites matrices, vectors */
+	if (options->ITER) {
+		/* Compute the A transpose */
+		trans_matrix(mna->matrix->A_trans, mna->matrix->A, mna->dimension);
+		/* Compute the M preconditioner */
+		jacobi_precond(mna->matrix->M, mna->matrix->A, mna->dimension);
+		/* M transpose equals M */
+		memcpy(mna->matrix->M_trans, mna->matrix->M, mna->dimension);
 	}
 }
 
@@ -138,22 +164,25 @@ int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *eleme
  * (LU, Cholesky, Iterative Conj_Grad / Bi-Conj_Grad) and stores the solution on the supplied vector x
  */
 void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
-	int dimension = mna->num_nodes + mna->num_g2_elem;
-	gsl_vector_view view_x = gsl_vector_view_array(*x, dimension);
+	int maxiter, iterations;
+	gsl_vector_view view_x = gsl_vector_view_array(*x, mna->dimension);
 	if (options->ITER) {
-		int iterations = 0;
 		if (options->SPD) {
-		 	iterations = conj_grad(mna->A, *x, mna->b, dimension, options->itol, dimension);
+			/* Set the maximum number of iterations CG worst case is O(n) */
+			maxiter = mna->dimension;
+		 	iterations = conj_grad(mna->matrix->A, *x, mna->matrix->b, mna->matrix->M, mna->dimension, options->itol, maxiter);
 			printf("Conjugate gradient method did %d iterations.\n", iterations);
 		}
 		else {
-			iterations = bi_conj_grad(mna->A, *x, mna->b, dimension, options->itol, dimension);
-			printf("Bi-Conjugate gradient method did %d iterations.\n", iterations);
+			/* Set the maximum number of iterations Bi-CG worst case is O(2n) */
+			maxiter = 2 * mna->dimension;
+			iterations = bi_conj_grad(mna->matrix->A, *x, mna->matrix->b, mna->matrix->A_trans, mna->matrix->M,
+									  mna->matrix->M_trans, mna->dimension, options->itol, maxiter);
 			if (iterations == FAILURE) {
-				free(*x);
-				/* The idea of assigning NULL to it afterwards is so that the callee sees the NULL value */
-				*x = NULL;
+				fprintf(stderr, "Bi-Conjugate gradient method failed.\n");
+				exit(EXIT_FAILURE);
 			}
+			printf("Bi-Conjugate gradient method did %d iterations.\n", iterations);
 		}
 	}
 	else {
@@ -171,34 +200,32 @@ void solve_lu(mna_system_t *mna, gsl_vector_view x) {
 	/* The sign of the permutation matrix */
 	int signum;
 	/* Allocate memory for the solution vector */
-	int dimension = mna->num_nodes + mna->num_g2_elem;
-	gsl_matrix_view view_A = gsl_matrix_view_array(mna->A[0], dimension, dimension);
-	gsl_vector_view view_b = gsl_vector_view_array(mna->b, dimension);
+	gsl_matrix_view view_A = gsl_matrix_view_array(mna->matrix->A[0], mna->dimension, mna->dimension);
+	gsl_vector_view view_b = gsl_vector_view_array(mna->matrix->b, mna->dimension);
 	if (!mna->is_decomp) {
 		/* LU decomposition on A, PA = LU */
-		gsl_linalg_LU_decomp(&view_A.matrix, mna->P, &signum);
+		gsl_linalg_LU_decomp(&view_A.matrix, mna->matrix->P, &signum);
 		mna->is_decomp = true;
 		printf("LU Matrix:\n\n");
-		print_array(mna->A, dimension);
+		print_array(mna->matrix->A, mna->dimension);
 		printf("Permutation Vector:\n\n");
-		print_permutation(mna->P);
+		print_permutation(mna->matrix->P);
 	}
 	/* Solve the LU system */
-	gsl_linalg_LU_solve(&view_A.matrix, mna->P, &view_b.vector, &x.vector);
+	gsl_linalg_LU_solve(&view_A.matrix, mna->matrix->P, &view_b.vector, &x.vector);
 }
 
 /* Solve the MNA system using cholesky decomposition */
 void solve_cholesky(mna_system_t *mna, gsl_vector_view x) {
-	int dimension = mna->num_nodes + mna->num_g2_elem;
 	/* Allocate memory for the solution vector */
-	gsl_matrix_view view_A = gsl_matrix_view_array(mna->A[0], dimension, dimension);
-	gsl_vector_view view_b = gsl_vector_view_array(mna->b, dimension);
+	gsl_matrix_view view_A = gsl_matrix_view_array(mna->matrix->A[0], mna->dimension, mna->dimension);
+	gsl_vector_view view_b = gsl_vector_view_array(mna->matrix->b, mna->dimension);
 	if (!mna->is_decomp) {
 		/* Cholesky decomposition A = LL^T*/
 		gsl_linalg_cholesky_decomp(&view_A.matrix);
 		mna->is_decomp = true;
 		printf("Cholesky Matrix:\n\n");
-		print_array(mna->A, dimension);
+		print_array(mna->matrix->A, mna->dimension);
 		printf("\n\n");
 	}
 	/* Solve the cholesky system */
@@ -207,11 +234,10 @@ void solve_cholesky(mna_system_t *mna, gsl_vector_view x) {
 
 /* Print the MNA system */
 void print_mna_system(mna_system_t *mna) {
-	int dimension = mna->num_nodes + mna->num_g2_elem;
 	printf("MNA A array:\n\n");
-	print_array(mna->A, dimension);
+	print_array(mna->matrix->A, mna->dimension);
 	printf("MNA b vector:\n\n");
-	print_vector(mna->b, dimension);
+	print_vector(mna->matrix->b, mna->dimension);
 }
 
 /* Print the array */
@@ -245,26 +271,26 @@ void print_permutation(gsl_permutation *P) {
 }
 
 /* Free all the memory allocated for the MNA system */
-void free_mna_system(mna_system_t **mna) {
+void free_mna_system(mna_system_t **mna, options_t *options) {
 	/* Free everything we allocated for the MNA and GSL */
-	free((*mna)->A[0]);
-	free((*mna)->A);
-	free((*mna)->b);
-	gsl_permutation_free((*mna)->P);
+	free((*mna)->matrix->A[0]);
+	free((*mna)->matrix->A);
+	free((*mna)->matrix->b);
+	gsl_permutation_free((*mna)->matrix->P);
+	if (options->ITER) {
+		free((*mna)->matrix->A_trans);
+		free((*mna)->matrix->M_trans);
+		free((*mna)->matrix->M);
+	}
+	/* Free the matrix struct */
+	free((*mna)->matrix);
 	/* Free every string allocated for the group2 elements */
 	for (int i = 0; i < (*mna)->num_g2_elem; i++) {
 		free((*mna)->g2_indx[i].element);
 	}
-	/* Free the array */
+	/* Free the g2 array */
 	free((*mna)->g2_indx);
 	free(*mna);
 	/* Set mna to NULL to limit further acesses */
 	*mna = NULL;
-}
-
-/* Zero outs the supplied vector x */
-void zero_out_vec(double *x, int dimension) {
-	for (int i = 0; i < dimension; i++) {
-		x[i] = 0.0;
-	}
 }

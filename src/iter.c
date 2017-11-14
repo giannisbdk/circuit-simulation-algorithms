@@ -4,87 +4,13 @@
 #include <math.h>
 
 #include "iter.h"
-
-#define min(a, b) ((a) < (b) ? (a) : (b))
-#define max(a, b) ((a) > (b) ? (a) : (b))
-
-/* Computes the dest = a*x + y , x and y are vectors and a is a constant */
-void axpy(double *dest, double a, double *x, double *y, int n) {
-    for (int i = 0; i < n; i++)
-        dest[i] = a * x[i] + y[i];
-}
-
-/* Substracts two vectors and stores the result in dest */
-void sub_vector(double *dest, double *x, double *y, int n) {
-	for (int i = 0; i < n; i++) {
-		dest[i] = x[i] - y[i];
-	}
-}
-
-/* Adds two vectors and stores the result in dest */
-void add_vector(double *dest, double *x, double *y, int n) {
-	for (int i = 0; i < n; i++) {
-		dest[i] = x[i] + y[i];
-	}
-}
-
-/* Computes the dot product of vectors x and y */
-double dot_product(double *x, double *y, int n) {
-    double sum = 0;
-    for (int i = 0; i < n; i++) {
-        sum += x[i] * y[i];
-    }
-    return sum;
-}
-
-/* Computes the euclidean norm of vector x */
-double norm2(double *x, int n) {
-	return sqrt(dot_product(x, x, n));
-}
-
-/* Multiplies matrix A with vector x and stores the reuslt in supplied vector Ax */
-void mat_vec_mul(double *Ax, double **A, double *x, int n) {
-    for (int i = 0; i < n; i++) {
-        Ax[i] = 0;
-        for (int j = 0; j < n; j++) {
-            Ax[i] += A[i][j] * x[j];
-        }
-    }
-}
-
-/* Creation of a Jacobi preconditioner and stores it in supplied vector M, zeros are not stored */
-void jacobi_precond(double *M, double **A, int n) {
-    for (int i = 0; i < n; i++) {
-    	/* We don't want to add zeros, we replace them with 1 instead */
-    	//TODO perhaps instead of 0 we check with EPSILON? CAUSE DOUBLE??
-    	if(A[i][i] == 0) {
-    		M[i] = 1;
-    	}
-    	else {
-			M[i] = 1/A[i][i];
-		}
-    }
-}
-
-/* Apply Jacobi preconditioner and store it in vector M_fin */
-void precond_solve(double *M_fin, double *M, double *x, int n) {
-    for (int i = 0; i < n; i++) {
-		M_fin[i] = M[i] * x[i];
-    }
-}
-
-/* Transposes the given matrix A to the destination matrix A_trans */
-void trans_matrix(double *A_trans, double **A, int n) {
-	//TODO This has to be done with an efficient way
-}
+#include "routines.h"
 
 /* Solve the SPD system with the iterative conjugate gradient method
  * stores the result in vector x and also returns the number of iterations
  */ 
-int conj_grad(double **A, double *x, double *b, int dimension, double itol, int maxiter) {
+int conj_grad(double **A, double *x, double *b, double *M, int dimension, double itol, int maxiter) {
 	double *Ax = (double *)malloc(dimension * sizeof(double));
-	/* Preconditioner M */
-	double *M  = (double *)malloc(dimension * sizeof(double));
 	/* Residual vector r */
 	double *r  = (double *)malloc(dimension * sizeof(double));
 	/* Alocate z vector: solution of preconditioner */
@@ -94,8 +20,6 @@ int conj_grad(double **A, double *x, double *b, int dimension, double itol, int 
 	double r_norm, b_norm, rho, rho1, alpha, beta;
 	int iter = 0;
 
-	/* Initialize M preconditioner */
-	jacobi_precond(M, A, dimension);
 	/* Compute A*x and store it to Ax */
 	mat_vec_mul(Ax, A, x, dimension);
 	/* Compute r = b - Ax */
@@ -135,7 +59,6 @@ int conj_grad(double **A, double *x, double *b, int dimension, double itol, int 
 	}
 	/* Free all the memory we allocated */
 	free(Ax);
-	free(M);
 	free(r);
 	free(z);
 	free(p);
@@ -144,13 +67,7 @@ int conj_grad(double **A, double *x, double *b, int dimension, double itol, int 
 }
 
 /* Solve the system with bi-conjugate gradient method and return the number of iterations */
-int bi_conj_grad(double **A, double *x, double *b, int dimension, double itol, int maxiter) {
-	/* Preconditioner M */
-	double *M       = (double *)malloc(dimension * sizeof(double));
-	/* Transpose of Preconditioner M */
-	double *M_trans = (double *)malloc(dimension * sizeof(double));
-	/* Transpose of Matrix A */
-	double *A_trans = (double *)malloc(dimension * sizeof(double));
+int bi_conj_grad(double **A, double *x, double *b, double **A_trans, double *M, double *M_trans, int dimension, double itol, int maxiter) {
 	/* Vector to store A*x */
 	double *Ax = (double *)malloc(dimension * sizeof(double));
 	/* Residual vector r */
@@ -168,10 +85,6 @@ int bi_conj_grad(double **A, double *x, double *b, int dimension, double itol, i
 	double r_norm, b_norm, rho, rho1, alpha, beta, omega;
 	int iter = 0;
 
-	/* Initialize M preconditioner */
-	jacobi_precond(M, A, dimension);
-	/* Copy M preconditioner to M_trans they are both equal */
-	memcpy(M_trans, M, dimension * sizeof(double));
 	/* Compute A*x and store it to Ax */
 	mat_vec_mul(Ax, A, x, dimension);
 	/* Compute r = b - Ax */
@@ -179,8 +92,6 @@ int bi_conj_grad(double **A, double *x, double *b, int dimension, double itol, i
 	/* Compute r_tilde = b - Ax = r,               *
 	 * sub_vector(r_tilde, b, Ax, dimension);      */
 	memcpy(r_tilde, r, dimension * sizeof(double));
-	/* Get the transpose matrix of A */
-	trans_matrix(A_trans, A, dimension);
 
 	/* Initialize norm2 of b and r vectors */
 	r_norm = norm2(r, dimension);
@@ -237,7 +148,6 @@ int bi_conj_grad(double **A, double *x, double *b, int dimension, double itol, i
 	}
 	/* Free all the memory we allocated */
 	free(Ax);
-	free(M);
 	free(r);
 	free(z);
 	free(p);
