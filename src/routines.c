@@ -50,14 +50,14 @@ void mat_vec_mul(double *Ax, double **A, double *x, int n) {
 /* Creation of a Jacobi preconditioner and stores it in supplied vector M, zeros are not stored */
 void jacobi_precond(double *M, double **A, int n) {
     for (int i = 0; i < n; i++) {
-    	/* We don't want to add zeros, we replace them with 1 instead */
-    	//TODO perhaps instead of 0 we check with EPSILON? CAUSE DOUBLE??
-    	if(A[i][i] == 0) {
-    		M[i] = 1;
-    	}
-    	else {
-			M[i] = 1/A[i][i];
-		}
+        /* We don't want to add zeros, we replace them with 1 instead */
+        //TODO perhaps instead of 0 we check with EPSILON? CAUSE DOUBLE??
+        if (A[i][i] == 0) {
+            M[i] = 1;
+        }
+        else {
+            M[i] = 1/A[i][i];
+        }
     }
 }
 

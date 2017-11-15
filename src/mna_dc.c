@@ -22,13 +22,19 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	/* In case we will use iterative methods allocate memory for the prerequisites */
 	if (options->ITER) {
 		mna->matrix->M = init_vector(mna->dimension);
-		mna->matrix->A_trans = init_array(mna->dimension, mna->dimension);
 		mna->matrix->M_trans = init_vector(mna->dimension);
+		/* Only when we use bi-conjugate gradient method is need to initialize A_trans */
+		if (options->SPD == 0) {
+			mna->matrix->A_trans = init_array(mna->dimension, mna->dimension);
+		}
+		else {
+			mna->matrix->A_trans = NULL;
+		}
 	}
 	else {
 		mna->matrix->M = NULL;
-		mna->matrix->A_trans = NULL;
 		mna->matrix->M_trans = NULL;
+		mna->matrix->A_trans = NULL;
 	}
 	mna->is_decomp = false;
 	mna->num_nodes = num_nodes;
@@ -140,12 +146,15 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 	}
 	/* In case we want iterative methods compute the prerequisites matrices, vectors */
 	if (options->ITER) {
-		/* Compute the A transpose */
-		trans_matrix(mna->matrix->A_trans, mna->matrix->A, mna->dimension);
 		/* Compute the M preconditioner */
 		jacobi_precond(mna->matrix->M, mna->matrix->A, mna->dimension);
 		/* M transpose equals M */
 		memcpy(mna->matrix->M_trans, mna->matrix->M, mna->dimension * sizeof(double));
+		/* Only when we use bi-conjugate gradient method is need to compute A_trans */
+		if (options->SPD == 0) {
+			/* Compute the A transpose */
+			trans_matrix(mna->matrix->A_trans, mna->matrix->A, mna->dimension);
+		}
 	}
 }
 
