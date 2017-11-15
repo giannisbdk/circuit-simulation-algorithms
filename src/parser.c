@@ -105,14 +105,21 @@ void print_netlist_elem(netlist_elem_t *netlist_elem) {
     printf("Number of dc analysis:\t%d\n",  netlist_elem->dc_counter);
 }
 
-parser_t *parse_netlist(FILE *file_input, index_t *index, hash_table_t *hash_table) {
-	
-    size_t len = 0;
+parser_t *parse_netlist(char *file_name, index_t *index, hash_table_t *hash_table) {
+    FILE *file_input;
     ssize_t read;
+    size_t len = 0;
     int num_tokens = 0, dc_counter = 0;
     char **tokens = NULL, *line = NULL;
     parser_t *parser = NULL;
     parser = init_parser(parser);
+
+    printf("\nInput file is: %s\n", file_name);
+    file_input = fopen(file_name, "rb");
+    if (file_input == NULL) {
+        fprintf(stderr, "Error: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
 
     while ((read = getline(&line, &len, file_input)) != -1) {
     	tokens = tokenizer(line);
@@ -175,14 +182,15 @@ parser_t *parse_netlist(FILE *file_input, index_t *index, hash_table_t *hash_tab
     if (line) {
         free(line);
     }
-    
-    parser->netlist_elem->dc_counter++;
-    parser->netlist_elem->num_nodes = hash_table->seq - 1;
+    fclose(file_input);
+
+    parser->netlist_elem->dc_counter = dc_counter;
+    parser->netlist_elem->num_nodes  = hash_table->seq - 1;
 
     #ifdef DEBUGL
     printf("Printing the lists\n");
     print_lists(index, hash_table);
-#endif
+    #endif
     printf("Finished parsing %d circuit elements.\n", index->size1 + index->size2);
 
     int size = parser->netlist_elem->num_nodes + parser->netlist_elem->num_g2_elem;

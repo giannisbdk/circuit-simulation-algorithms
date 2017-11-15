@@ -5,7 +5,7 @@
 #include "dc_analysis.h"
 
 void dc_operating_point(hash_table_t *hash_table, double *sol_x) {
-	FILE *file_out;
+    FILE *file_out;
     /* DC Operating Point to file */
     file_out = fopen("dc_opearting_point.txt", "w");
     if (file_out == NULL) {
@@ -37,7 +37,6 @@ void dc_operating_point(hash_table_t *hash_table, double *sol_x) {
 
 void dc_sweep(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, dc_analysis_t *dc_analysis,
         options_t *options, netlist_elem_t *netlist_elem, double *sol_x) {
-
     char prefix[] = "dc_analysis_";
     char file_name[MAX_FILE_NAME];
     /* Cycle through dc analyisis targets */

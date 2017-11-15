@@ -9,6 +9,8 @@
 #define DEFAULT_ITOL 0.001
 #define DC_ANALYSIS_NUM 25
 
+int errno;
+
 /* Struct to hold the different options for analysis */
 typedef struct options {
 	bool SPD;
@@ -46,7 +48,7 @@ typedef struct parser {
 } parser_t;
 
 parser_t *init_parser(parser_t *parser);
-parser_t *parse_netlist(FILE *file_input, index_t *index, hash_table_t *hash_table);
+parser_t *parse_netlist(char *file_name, index_t *index, hash_table_t *hash_table);
 void print_options(options_t *options);
 int get_num_tokens(char *line);
 char **tokenizer(char *line);
