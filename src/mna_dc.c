@@ -23,8 +23,8 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	if (options->ITER) {
 		mna->matrix->M = init_vector(mna->dimension);
 		mna->matrix->M_trans = init_vector(mna->dimension);
-		/* Only when we use bi-conjugate gradient method is need to initialize A_trans */
-		if (options->SPD == 0) {
+		/* Only when we use bi-conjugate gradient method is necessary to initialize A_trans */
+		if (!options->SPD) {
 			mna->matrix->A_trans = init_array(mna->dimension, mna->dimension);
 		}
 		else {
@@ -150,8 +150,8 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 		jacobi_precond(mna->matrix->M, mna->matrix->A, mna->dimension);
 		/* M transpose equals M */
 		memcpy(mna->matrix->M_trans, mna->matrix->M, mna->dimension * sizeof(double));
-		/* Only when we use bi-conjugate gradient method is need to compute A_trans */
-		if (options->SPD == 0) {
+		/* Only when we use bi-conjugate gradient method is necessary to compute A_trans */
+		if (!options->SPD) {
 			/* Compute the A transpose */
 			trans_matrix(mna->matrix->A_trans, mna->matrix->A, mna->dimension);
 		}
@@ -287,9 +287,12 @@ void free_mna_system(mna_system_t **mna, options_t *options) {
 	free((*mna)->matrix->b);
 	gsl_permutation_free((*mna)->matrix->P);
 	if (options->ITER) {
-		free((*mna)->matrix->A_trans);
 		free((*mna)->matrix->M_trans);
 		free((*mna)->matrix->M);
+		/* Only when we use bi-conjugate gradient method is necessary to free A_trans */
+		if (!options->SPD) {
+			free((*mna)->matrix->A_trans);
+		}
 	}
 	/* Free the matrix struct */
 	free((*mna)->matrix);
