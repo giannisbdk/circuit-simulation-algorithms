@@ -4,7 +4,6 @@
 #include <assert.h>
 
 #include "list.h"
-#include "hash_table.h"
 
 index_t *init_lists() {
 	/* Allocate memory for the index that stores the lists */

@@ -2,9 +2,38 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
 
 #include "parser.h"
 
+/* Initializes the parser */
+parser_t *init_parser() {
+    /* Allocate memory for the parser struct */
+    parser_t *parser = (parser_t *)malloc(sizeof(parser_t));
+    assert(parser != NULL);
+
+    /* Initializes all options to the default values */
+    parser->options = (options_t *)malloc(sizeof(options_t));
+    assert(parser->options != NULL);
+    parser->options->SPD    = false;
+    parser->options->ITER   = false;
+    parser->options->SPARSE = false;
+    parser->options->itol   = DEFAULT_ITOL;
+
+    /* Initializes all netlist elements */
+    parser->netlist_elem = (netlist_elem_t *)malloc(sizeof(netlist_elem_t));
+    assert(parser->netlist_elem != NULL);
+    parser->netlist_elem->dc_counter  = 0;
+    parser->netlist_elem->num_nodes   = 0;
+    parser->netlist_elem->num_g2_elem = 0;
+
+    /* Initializes the dc_analysis array with a DC_ANALYSIS_NUM value that holds .DC options */
+    parser->dc_analysis = (dc_analysis_t *)malloc(DC_ANALYSIS_NUM * sizeof(dc_analysis_t));
+    assert(parser->dc_analysis != NULL);
+    return parser;
+}
+
+/* Returns the number of tokens that exist in the current line */
 int get_num_tokens(char *line) {
 	int tokens = 0;
 	int len = strlen(line);
@@ -14,7 +43,7 @@ int get_num_tokens(char *line) {
 	if (found_char == 1) {
 		tokens++;
 	}
-	for (int i = 1; i < len; ++i) {
+	for (int i = 1; i < len; i++) {
 		if (line[i] == ' ' || line[i] == '\t') {
 			found_char = 0;
 		}
@@ -31,7 +60,7 @@ int get_num_tokens(char *line) {
 /* Tokenizes the current line and returns the number of tokens and the tokens */
 char **tokenizer(char *line) {
 	const char delim[] = " \t";
-	const char CRLF[] = "\r\n";
+	const char CRLF[]  = "\r\n";
 	char **tokens, *token;
 	short int i = 1;
 
@@ -67,52 +96,13 @@ char **tokenizer(char *line) {
 	return tokens;
 }
 
-parser_t *init_parser(parser_t *parser) {
-    parser = (parser_t *)malloc(sizeof(parser_t));
-
-    /* Initializes all options to the default values */
-    parser->options = (options_t *)malloc(sizeof(options_t));
-    parser->options->SPD    = false;
-    parser->options->ITER   = false;
-    parser->options->SPARSE = false;
-    parser->options->itol   = DEFAULT_ITOL;
-
-    /* Initializes all netlist elements */
-    parser->netlist_elem = (netlist_elem_t *)malloc(sizeof(netlist_elem_t));
-    parser->netlist_elem->dc_counter  = 0;
-    parser->netlist_elem->num_nodes   = 0;
-    parser->netlist_elem->num_g2_elem = 0;
-
-    /* Initializes the dc_analysis array with a DC_ANALYSIS_NUM value that holds .DC options */
-    parser->dc_analysis = (dc_analysis_t *)malloc(DC_ANALYSIS_NUM * sizeof(dc_analysis_t));
-    return parser;
-}
-
-/* Print all the specified options from the netlist */
-void print_options(options_t *options) {
-	printf("\nNetlist Specified Options:\n");
-	printf("SPD:\t%s\n",    options->SPD    ? "true" : "false");
-	printf("ITER:\t%s\n",   options->ITER   ? "true" : "false");
-	printf("SPARSE:\t%s\n", options->SPARSE ? "true" : "false");
-	printf("ITOL:\t%lf\n",  options->itol);
-}
-
-/* Print the number of the corresponding element from the netlist */
-void print_netlist_elem(netlist_elem_t *netlist_elem) {
-    printf("\nNetlist Elements:\n");
-    printf("Number of nodes:\t%d\n",        netlist_elem->num_nodes);
-    printf("Number of g2 elements:\t%d\n",  netlist_elem->num_g2_elem);
-    printf("Number of dc analysis:\t%d\n",  netlist_elem->dc_counter);
-}
-
-parser_t *parse_netlist(char *file_name, index_t *index, hash_table_t *hash_table) {
+/* Parses the given netlist with <file_name> and returns the parser struct that holds all the required information */
+void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table_t *hash_table) {
     FILE *file_input;
     ssize_t read;
     size_t len = 0;
     int num_tokens = 0, dc_counter = 0;
     char **tokens = NULL, *line = NULL;
-    parser_t *parser = NULL;
-    parser = init_parser(parser);
 
     printf("\nInput file is: %s\n", file_name);
     file_input = fopen(file_name, "rb");
@@ -120,13 +110,13 @@ parser_t *parse_netlist(char *file_name, index_t *index, hash_table_t *hash_tabl
         fprintf(stderr, "Error: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-
+    /* Read line by line the netlist */
     while ((read = getline(&line, &len, file_input)) != -1) {
-    	tokens = tokenizer(line);
-    	if (tokens == NULL) {
-    		continue;
-    	}
-    	sscanf(tokens[0], "%d", &num_tokens);
+        tokens = tokenizer(line);
+        if (tokens == NULL) {
+            continue;
+        }
+        sscanf(tokens[0], "%d", &num_tokens);
         if (tokens[1][0] == '.') {
             if (strcmp(".OPTIONS", &tokens[1][0]) == 0) {
                 for (int i = 2; i <= num_tokens; i++) {
@@ -172,7 +162,6 @@ parser_t *parse_netlist(char *file_name, index_t *index, hash_table_t *hash_tabl
                 parser->netlist_elem->num_g2_elem++;
             }
         }
-       
         /* Free all the memory we allocated */
         for (int i = 0; i < num_tokens; i++) {
             free(tokens[i]);
@@ -184,17 +173,38 @@ parser_t *parse_netlist(char *file_name, index_t *index, hash_table_t *hash_tabl
     }
     fclose(file_input);
 
+    /* DC counter holds the number of .DC we found in the netlist */
     parser->netlist_elem->dc_counter = dc_counter;
     parser->netlist_elem->num_nodes  = hash_table->seq - 1;
 
-    #ifdef DEBUGL
+#ifdef DEBUGL
     printf("Printing the lists\n");
     print_lists(index, hash_table);
-    #endif
-    printf("Finished parsing %d circuit elements.\n", index->size1 + index->size2);
+#endif
 
-    int size = parser->netlist_elem->num_nodes + parser->netlist_elem->num_g2_elem;
+    printf("Finished parsing %d circuit elements.\n", index->size1 + index->size2);
     print_options(parser->options);
-    printf("\nsize: %d\nnum_nodes(w/o ground): %d\nnum_branches_g2: %d\n\n", size, parser->netlist_elem->num_nodes, parser->netlist_elem->num_g2_elem);
-    return parser;
+    print_netlist_elem(parser->netlist_elem);
+}
+
+/* Print all the specified options from the netlist */
+void print_options(options_t *options) {
+	printf("\nNetlist Specified Options:\n");
+	printf("SPD:\t%s\n",    options->SPD    ? "true" : "false");
+	printf("ITER:\t%s\n",   options->ITER   ? "true" : "false");
+	printf("SPARSE:\t%s\n", options->SPARSE ? "true" : "false");
+	printf("ITOL:\t%lf\n",  options->itol);
+}
+
+/* Print the number of the different netlist elements */
+void print_netlist_elem(netlist_elem_t *netlist_elem) {
+    printf("\nNetlist Elements:\n");
+    printf("Number of nodes without ground:\t%d\n", netlist_elem->num_nodes);
+    printf("Number of group 2 elements:\t%d\n",  netlist_elem->num_g2_elem);
+    printf("Number of dc analysis targets:\t%d\n",  netlist_elem->dc_counter);
+}
+
+/* Free all the memory we allocated for the parser */
+void free_parser(parser_t **parser) {
+
 }

@@ -4,10 +4,9 @@
 #include <math.h>
 
 #include "iter.h"
-#include "routines.h"
 
 /* Solve the SPD system with the iterative conjugate gradient method
- * stores the result in vector x and also returns the number of iterations
+ * store the result in vector x and also return the number of iterations
  */ 
 int conj_grad(double **A, double *x, double *b, double *M, int dimension, double itol, int maxiter) {
 	double *Ax = (double *)malloc(dimension * sizeof(double));
@@ -66,7 +65,10 @@ int conj_grad(double **A, double *x, double *b, double *M, int dimension, double
 	return iter;
 }
 
-/* Solve the system with bi-conjugate gradient method and return the number of iterations */
+/* Solve the system with the iterative bi-conjugate gradient method
+ * store the result in vector x and also return the number of iterations
+ * or FAILURE in case it fails
+ */ 
 int bi_conj_grad(double **A, double *x, double *b, double **A_trans, double *M, double *M_trans, int dimension, double itol, int maxiter) {
 	/* Vector to store A*x */
 	double *Ax = (double *)malloc(dimension * sizeof(double));

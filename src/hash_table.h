@@ -1,8 +1,6 @@
 #ifndef HASH_TABLE_H
 #define HASH_TABLE_H
 
-#define HASH_TABLE_SIZE 65536
-
 typedef struct entry {
 	char *key;
 	unsigned int id;

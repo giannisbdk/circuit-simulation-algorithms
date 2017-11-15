@@ -7,6 +7,7 @@
 #include "list.h"
 #include "parser.h"
 #include "iter.h"
+#include "routines.h"
 
 /* The Matrices,Vectors below should keep their values among different invocations of iter solvers */
 typedef struct matrix {

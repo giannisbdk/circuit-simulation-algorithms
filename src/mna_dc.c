@@ -4,7 +4,6 @@
 #include <assert.h>
 
 #include "mna_dc.h"
-#include "routines.h"
 
 /* Allocate memory for the MNA system */
 mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options) {
@@ -243,7 +242,7 @@ void solve_cholesky(mna_system_t *mna, gsl_vector_view x) {
 
 /* Print the MNA system */
 void print_mna_system(mna_system_t *mna) {
-	printf("MNA A array:\n\n");
+	printf("\nMNA A array:\n\n");
 	print_array(mna->matrix->A, mna->dimension);
 	printf("MNA b vector:\n\n");
 	print_vector(mna->matrix->b, mna->dimension);

@@ -2,14 +2,14 @@
 #define PARSER_H
 
 #include <stdbool.h>
-#include <stdio.h>
+
 #include "list.h"
 #include "hash_table.h"
 
-#define DEFAULT_ITOL 0.001
+#define DEFAULT_ITOL    0.001
 #define DC_ANALYSIS_NUM 25
 
-int errno;
+extern int errno;
 
 /* Struct to hold the different options for analysis */
 typedef struct options {
@@ -47,10 +47,12 @@ typedef struct parser {
 	netlist_elem_t *netlist_elem;
 } parser_t;
 
-parser_t *init_parser(parser_t *parser);
-parser_t *parse_netlist(char *file_name, index_t *index, hash_table_t *hash_table);
+parser_t *init_parser();
+void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table_t *hash_table);
 void print_options(options_t *options);
+void print_netlist_elem(netlist_elem_t *netlist_elem);
 int get_num_tokens(char *line);
 char **tokenizer(char *line);
+void free_parser(parser_t **parser);
 
 #endif

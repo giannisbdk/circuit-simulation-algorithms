@@ -1,6 +1,8 @@
 #ifndef ITER_H
 #define ITER_H
 
+#include "routines.h"
+
 #define EPSILON 1e-16
 
 int conj_grad(double **A, double *x, double *b, double *M, int dimension, double itol, int maxiter);

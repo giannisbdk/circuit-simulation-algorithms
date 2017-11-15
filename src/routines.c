@@ -1,8 +1,5 @@
 #include <math.h>
 
-#define min(a, b) ((a) < (b) ? (a) : (b))
-#define max(a, b) ((a) > (b) ? (a) : (b))
-
 /* Computes the dest = a*x + y , x and y are vectors and a is a constant */
 void axpy(double *dest, double a, double *x, double *y, int n) {
     for (int i = 0; i < n; i++)
