@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     dc_operating_point(hash_table, sol_x);
 
     /* DC Sweep to file */
-    dc_sweep(index->head1, hash_table, mna, parser->dc_analysis, parser->options, parser->netlist, sol_x);
+    dc_sweep(index->head1, hash_table, mna, parser, sol_x);
 
     /* Free all the dynamic allocated memory */
     free_index(&index);
