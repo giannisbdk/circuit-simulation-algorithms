@@ -15,9 +15,9 @@ typedef struct hash_table {
 
 hash_table_t *ht_create(int size);
 entry_t *ht_new_node(hash_table_t *hash_table, char *key);
-int ht_hash(hash_table_t *hash_table, char *key );
+int  ht_hash(hash_table_t *hash_table, char *key );
 void ht_set(hash_table_t *hash_table, char *key);
-int ht_get_id(hash_table_t *hash_table, char *key);
+int  ht_get_id(hash_table_t *hash_table, char *key);
 void ht_free(hash_table_t **hash_table);
 
 #endif

@@ -178,14 +178,14 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 		if (options->SPD) {
 			/* Set the maximum number of iterations CG worst case is O(n) */
 			maxiter = mna->dimension;
-		 	iterations = conj_grad(mna->matrix->A, *x, mna->matrix->b, mna->matrix->M, mna->dimension, options->itol, maxiter);
+		 	iterations = conj_grad(mna->matrix->A, *x, mna->matrix->b, mna->matrix->M, mna->dimension, options->ITOL, maxiter);
 			printf("Conjugate gradient method did %d iterations.\n", iterations);
 		}
 		else {
 			/* Set the maximum number of iterations Bi-CG worst case is O(2n) */
 			maxiter = 2 * mna->dimension;
 			iterations = bi_conj_grad(mna->matrix->A, *x, mna->matrix->b, mna->matrix->A_trans, mna->matrix->M,
-									  mna->matrix->M_trans, mna->dimension, options->itol, maxiter);
+									  mna->matrix->M_trans, mna->dimension, options->ITOL, maxiter);
 			if (iterations == FAILURE) {
 				fprintf(stderr, "Bi-Conjugate gradient method failed.\n");
 				exit(EXIT_FAILURE);

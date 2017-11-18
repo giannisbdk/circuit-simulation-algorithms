@@ -28,36 +28,36 @@ int main(int argc, char *argv[]) {
     parse_netlist(parser, argv[1], index, hash_table);
 
     /* Initialize the MNA_system */
-    mna_system_t *mna = init_mna_system(parser->netlist_elem->num_nodes, parser->netlist_elem->num_g2_elem, parser->options);
+    mna_system_t *mna = init_mna_system(parser->netlist->num_nodes, parser->netlist->num_g2_elem, parser->options);
 
     /* Create the MNA system */
-    create_mna_system(mna, index, hash_table, parser->options, parser->netlist_elem->num_nodes);
+    create_mna_system(mna, index, hash_table, parser->options, parser->netlist->num_nodes);
 
     /* Print the MNA system */
     print_mna_system(mna);
 
     /* Dimension of MNA system */
-    int dimension = parser->netlist_elem->num_nodes + parser->netlist_elem->num_g2_elem;
+    int dimension = parser->netlist->num_nodes + parser->netlist->num_g2_elem;
 
     /* Sol_x will hold the solution of the MNA system */
     double *sol_x = (double *)calloc(dimension, sizeof(double));
     
     /* Solve the MNA system */
     solve_mna_system(mna, &sol_x, parser->options);
-
     printf("Solution of the MNA system:\n\n");
     print_vector(sol_x, dimension);
 
     /* DC Operating Point to file */
     dc_operating_point(hash_table, sol_x);
-    /* DC Sweep to file */
-    dc_sweep(index->head1, hash_table, mna, parser->dc_analysis, parser->options, parser->netlist_elem, sol_x);
 
-    //TODO Need to free the dc_analysis mallocs we did before
-    // TODO Need to free the parser 
+    /* DC Sweep to file */
+    dc_sweep(index->head1, hash_table, mna, parser->dc_analysis, parser->options, parser->netlist, sol_x);
+
     /* Free all the dynamic allocated memory */
     free_index(&index);
     free_mna_system(&mna, parser->options);
+    free_parser(&parser);
     ht_free(&hash_table);
+    
 	return 0;
 }

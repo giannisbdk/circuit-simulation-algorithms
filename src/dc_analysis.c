@@ -7,9 +7,8 @@
 
 /* DC Operating Point Analysis and prints the output to a file */
 void dc_operating_point(hash_table_t *hash_table, double *sol_x) {
-	FILE *file_out;
-    /* DC Operating Point to file */
-    file_out = fopen("dc_opearting_point.txt", "w");
+    /* DC Operating Point file */
+    FILE *file_out = fopen("dc_opearting_point.txt", "w");
     if (file_out == NULL) {
         fprintf(stderr, "Error opening file: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
@@ -39,11 +38,12 @@ void dc_operating_point(hash_table_t *hash_table, double *sol_x) {
 
 /* DC Sweep analysis and outputs the results to a file */
 void dc_sweep(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, dc_analysis_t *dc_analysis,
-        options_t *options, netlist_elem_t *netlist_elem, double *sol_x) {
+        options_t *options, netlist_t *netlist, double *sol_x) {
+    /* Set the prefix name for the files */
     char prefix[] = "dc_analysis_";
     char file_name[MAX_FILE_NAME];
     /* Cycle through dc analyisis targets */
-    for (int i = 0; i < netlist_elem->dc_counter; i++) {
+    for (int i = 0; i < netlist->dc_counter; i++) {
         list1_t *curr;
         for (curr = head; curr != NULL; curr = curr->next) {
             /* Find the voltage source for the analysis */
@@ -67,14 +67,14 @@ void dc_sweep(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, dc_ana
                     fprintf(files[j], "%-15s%-15s\n", "Step", "Value");
                 }
                 /* Run the DC analysis with the step */
-                int n_steps = (dc_analysis[i].end - dc_analysis[i].start) / dc_analysis[i].increment;
-                double val  = dc_analysis[i].start;
+                double val    = dc_analysis[i].start;
+                int n_steps   = (dc_analysis[i].end - dc_analysis[i].start) / dc_analysis[i].increment;
                 int volt_indx = g2_elem_indx(mna->g2_indx, mna->num_nodes, mna->num_g2_elem, dc_analysis[i].volt_source);
                 int probe1_id = ht_get_id(hash_table, curr->probe1);
                 int probe2_id = ht_get_id(hash_table, curr->probe2);
                 /* We need to zero out the sol_x vector from the previous operating point analysis value */
                 /* Important notice that we don't use memset because we are dealing with double */
-                int size = netlist_elem->num_nodes + netlist_elem->num_g2_elem;
+                int size = netlist->num_nodes + netlist->num_g2_elem;
                 zero_out_vec(sol_x, size);
                 //TODO Add a method in mna_dc.c to set the vector, so that we don't copy-pate the below
                 for (int step = 0; step <= n_steps; step++) {
