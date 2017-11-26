@@ -47,6 +47,8 @@ index_t *init_lists();
 int add_to_list(index_t *index, char **tokens, hash_table_t *hash_table);
 int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table);
 int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table);
+int get_nz();
+void set_nz(char element, char probe1, char probe2);
 void free_index(index_t **index);
 void free_list1(list1_t **head, list1_t **tail);
 void free_list2(list2_t **head, list2_t **tail);

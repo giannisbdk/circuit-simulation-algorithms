@@ -26,6 +26,7 @@ typedef struct netlist {
 	int num_nodes;
 	int num_g2_elem;
 	int dc_counter;
+	int nz;
 } netlist_t;
 
 /* Struct to hold the different DC analysis options */

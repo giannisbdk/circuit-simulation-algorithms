@@ -5,6 +5,8 @@
 
 #include "list.h"
 
+static int nz = 0;
+
 index_t *init_lists() {
 	/* Allocate memory for the index that stores the lists */
 	index_t *index = (index_t *)malloc(sizeof(index_t));
@@ -47,6 +49,25 @@ int add_to_list(index_t *index, char **tokens, hash_table_t *hash_table) {
 	return SUCCESS;
 }
 
+void set_nz(char type, char probe1, char probe2) {
+	int mul = 1;
+
+	if (probe1 == '0' || probe2 == '0') {
+		mul = 0;		
+	}
+
+	if (type == 'r' || type == 'R') {
+		nz += 3*mul + 1;
+	}
+	else if (type == 'v' || type == 'V' || type == 'l' || type == 'L') {
+		nz += 2*mul + 2;
+	}
+}
+
+int get_nz() {
+	return nz;
+}
+
 /* Add new node to the end of the list */
 int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 	list1_t *new_node = (list1_t *)malloc(sizeof(list1_t));
@@ -85,6 +106,8 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 	strcpy(new_node->element, &tokens[1][0]);
 	strcpy(new_node->probe1,  &tokens[2][0]);
 	strcpy(new_node->probe2,  &tokens[3][0]);
+
+	set_nz(new_node->type, new_node->probe1[0], new_node->probe2[0]);
 	/* Add probes to the hashtable */
 	// TODO perhaps replace &tokens with new_node probes
 	ht_set(hash_table, &tokens[2][0]);

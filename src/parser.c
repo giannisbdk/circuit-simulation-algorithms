@@ -126,6 +126,9 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
                     if (strcmp("ITER", &tokens[i][0]) == 0) {
                         parser->options->ITER = true;
                     }
+                    if (strncmp("SPARSE", &tokens[i][0], 4) == 0) {
+                        parser->options->SPARSE = true;
+                    }
                     if (strncmp("ITOL", &tokens[i][0], 4) == 0) {
                         sscanf((&tokens[i][0]) + 5, "%lf", &parser->options->ITOL);
                     }
@@ -175,6 +178,7 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
     fclose(file_input);
 
     /* DC counter holds the number of .DC we found in the netlist */
+    parser->netlist->nz = get_nz();
     parser->netlist->dc_counter = dc_counter;
     parser->netlist->num_nodes  = hash_table->seq - 1;
 

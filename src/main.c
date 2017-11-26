@@ -28,14 +28,14 @@ int main(int argc, char *argv[]) {
     parse_netlist(parser, argv[1], index, hash_table);
 
     /* Initialize the MNA_system */
-    mna_system_t *mna = init_mna_system(parser->netlist->num_nodes, parser->netlist->num_g2_elem, parser->options);
+    mna_system_t *mna = init_mna_system(parser->netlist->num_nodes, parser->netlist->num_g2_elem, parser->options, parser->netlist->nz);
 
     /* Create the MNA system */
     create_mna_system(mna, index, hash_table, parser->options, parser->netlist->num_nodes);
 
     /* Print the MNA system */
-    print_mna_system(mna);
-
+    print_mna_system(mna, parser->options->SPARSE);
+    
     /* Dimension of MNA system */
     int dimension = parser->netlist->num_nodes + parser->netlist->num_g2_elem;
 

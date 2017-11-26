@@ -41,6 +41,13 @@ void dc_sweep(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, parser
     /* Set the prefix name for the files */
     char prefix[] = "dc_analysis_";
     char file_name[MAX_FILE_NAME];
+    double *b;
+    if (parser->options->SPARSE) {
+        b = mna->sp_matrix->b;
+    }
+    else {
+        b = mna->matrix->b;
+    }
     /* Cycle through dc analyisis targets */
     for (int i = 0; i < parser->netlist->dc_counter; i++) {
         list1_t *curr;
@@ -78,18 +85,18 @@ void dc_sweep(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, parser
                 //TODO Add a method in mna_dc.c to set the vector, so that we don't copy-pate the below
                 for (int step = 0; step <= n_steps; step++) {
                     if (parser->dc_analysis[i].volt_source[0] == 'V' || parser->dc_analysis[i].volt_source[0] == 'v') {
-                        mna->matrix->b[volt_indx] = val;
+                        b[volt_indx] = val;
                     }
                     else if (parser->dc_analysis[i].volt_source[0] == 'I' || parser->dc_analysis[i].volt_source[0] == 'i') {
                         if (probe1_id == 0) {
-                            mna->matrix->b[probe2_id - 1] = val;
+                            b[probe2_id - 1] = val;
                         }
                         else if (probe2_id == 0) {
-                            mna->matrix->b[probe1_id - 1] = -val;
+                            b[probe1_id - 1] = -val;
                         }
                         else {
-                            mna->matrix->b[probe1_id - 1] = -val;
-                            mna->matrix->b[probe2_id - 1] =  val;
+                            b[probe1_id - 1] = -val;
+                            b[probe2_id - 1] =  val;
                         }
                     }
                     /* Solve the system */
