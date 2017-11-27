@@ -30,11 +30,17 @@ run_lu: main
 run_lu_iter: main
 	./main $(NLS)/lu_iter_netlist.txt
 
+run_lu_sparce: main
+	./main $(NLS)/lu_sparse_netlist.txt
+
 run_chol: main
 	./main $(NLS)/cholesky_netlist.txt
 
 run_chol_iter: main
 	./main $(NLS)/cholesky_iter_netlist.txt
+
+run_chol_sparce: main
+	./main $(NLS)/cholesky_sparce_netlist.txt
 
 .PHONY: clean
 # Clean the output files

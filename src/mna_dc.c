@@ -351,6 +351,23 @@ void solve_sparse_lu(mna_system_t *mna, double **x) {
 	free(temp_b);
 }
 
+void solve_sparse_cholesky(mna_system_t *mna, double **x) {
+	double *temp_b = (double *)malloc(mna->dimension * sizeof(double));
+	memcpy(temp_b, mna->sp_matrix->b, mna->dimension * sizeof(double));
+	if (!mna->is_decomp) {
+		mna->sp_matrix->A_symbolic = cs_schol(1, mna->sp_matrix->A);
+		mna->sp_matrix->A_numeric = cs_chol(mna->sp_matrix->A, mna->sp_matrix->A_symbolic);
+		cs_spfree(mna->sp_matrix->A);
+		mna->is_decomp = true;
+	}
+	cs_ipvec(mna->sp_matrix->A_symbolic->pinv, temp_b, *x, mna->dimension);
+	cs_lsolve(mna->sp_matrix->A_numeric->L, *x);
+	cs_ltsolve(mna->sp_matrix->A_numeric->L, *x);
+	cs_pvec(mna->sp_matrix->A_symbolic->pinv, *x, temp_b, mna->dimension);
+	memcpy(*x, temp_b, mna->dimension * sizeof(double));
+	free(temp_b);
+}
+
 /* Solve the MNA system using LU decomposition */
 void solve_lu(mna_system_t *mna, gsl_vector_view x) {
 	/* The sign of the permutation matrix */
@@ -397,7 +414,7 @@ void print_mna_system(mna_system_t *mna, bool SPARSE) {
 		print_vector(mna->matrix->b, mna->dimension);
 	}
 	else {
-		cs_print(mna->sp_matrix->A, "sparse.txt", 0);
+		// cs_print(mna->sp_matrix->A, "sparse.txt", 0);
 		printf("\nMNA b vector:\n\n");
 		print_vector(mna->sp_matrix->b, mna->dimension);
 	}
