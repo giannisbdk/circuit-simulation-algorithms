@@ -18,7 +18,14 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	else {
 		init_dense_matrix(mna, options);
 	}
-
+	/* In case we will use iterative methods allocate memory for the prerequisites */
+	if (options->ITER) {
+		mna->M = init_vector(mna->dimension);
+	}
+	else {
+		mna->M = NULL;
+	}
+	mna->b = init_vector(mna->dimension);
 	mna->is_decomp = false;
 	mna->num_nodes = num_nodes;
 	mna->num_g2_elem = num_g2_elem;
@@ -33,7 +40,6 @@ void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz) {
 	mna->sp_matrix->A = cs_spalloc(mna->dimension, mna->dimension, nz, 1 , 1);
 	assert(mna->sp_matrix->A != NULL);
 	mna->sp_matrix->A->nz = 0;
-	mna->sp_matrix->b = init_vector(mna->dimension);
 	mna->matrix = NULL;
 }
 
@@ -41,28 +47,10 @@ void init_dense_matrix(mna_system_t *mna, options_t *options) {
 	/* Allocate for the matrices struct */
 	mna->matrix = (matrix_t *)malloc(sizeof(matrix_t));
 	assert(mna->matrix != NULL);
-	mna->sp_matrix = NULL;
 	/* Allocate for every different matrix/vector */
 	mna->matrix->A = init_array(mna->dimension, mna->dimension);
-	mna->matrix->b = init_vector(mna->dimension);
 	mna->matrix->P = init_permutation(mna->dimension);
-	/* In case we will use iterative methods allocate memory for the prerequisites */
-	if (options->ITER) {
-		mna->matrix->M = init_vector(mna->dimension);
-		mna->matrix->M_trans = init_vector(mna->dimension);
-		/* Only when we use bi-conjugate gradient method is necessary to initialize A_trans */
-		if (!options->SPD) {
-			mna->matrix->A_trans = init_array(mna->dimension, mna->dimension);
-		}
-		else {
-			mna->matrix->A_trans = NULL;
-		}
-	}
-	else {
-		mna->matrix->M = NULL;
-		mna->matrix->M_trans = NULL;
-		mna->matrix->A_trans = NULL;
-	}
+	mna->sp_matrix = NULL;
 }
 
 /* Allocate memory for the matrix of the MNA system */
@@ -92,7 +80,6 @@ gsl_permutation *init_permutation(int dimension) {
 }
 
 void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset) {
-
 	if (options->SPARSE) {
 		create_sparse_mna(mna, index, hash_table, options, offset);
 	}
@@ -131,14 +118,14 @@ void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 		else if (curr->type == 'I' || curr->type == 'i') {
 			value = curr->value;
 			if (probe1_id == 0) {
-				mna->sp_matrix->b[j] += value;
+				mna->b[j] += value;
 			}
 			else if (probe2_id == 0) {
-				mna->sp_matrix->b[i] -= value;
+				mna->b[i] -= value;
 			}
 			else {
-				mna->sp_matrix->b[i] -= value;
-				mna->sp_matrix->b[j] += value;
+				mna->b[i] -= value;
+				mna->b[j] += value;
 			}
 		}
 		else {
@@ -156,19 +143,19 @@ void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 			if (probe1_id == 0) {
 				cs_entry(mna->sp_matrix->A, j, offset + volt_sources_cnt, -1.0);
 				cs_entry(mna->sp_matrix->A, offset + volt_sources_cnt, j, -1.0);
-				mna->sp_matrix->b[offset + volt_sources_cnt] += value; 
+				mna->b[offset + volt_sources_cnt] += value; 
 			}
 			else if (probe2_id == 0) {
-				cs_entry(mna->sp_matrix->A, i, offset + volt_sources_cnt, 1.0);
-				cs_entry(mna->sp_matrix->A, offset + volt_sources_cnt, i, 1.0);
-				mna->sp_matrix->b[offset + volt_sources_cnt] += value;
+				cs_entry(mna->sp_matrix->A, i, offset + volt_sources_cnt,  1.0);
+				cs_entry(mna->sp_matrix->A, offset + volt_sources_cnt, i,  1.0);
+				mna->b[offset + volt_sources_cnt] += value;
 			}
 			else {
 				cs_entry(mna->sp_matrix->A, i, offset + volt_sources_cnt,  1.0);
 				cs_entry(mna->sp_matrix->A, j, offset + volt_sources_cnt, -1.0);
 				cs_entry(mna->sp_matrix->A, offset + volt_sources_cnt, i,  1.0);
 				cs_entry(mna->sp_matrix->A, offset + volt_sources_cnt, j, -1.0);
-				mna->sp_matrix->b[offset + volt_sources_cnt] += value;
+				mna->b[offset + volt_sources_cnt] += value;
 			}
 			/* Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found */
 			volt_sources_cnt++;
@@ -178,6 +165,10 @@ void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 	cs_spfree(mna->sp_matrix->A);
 	mna->sp_matrix->A = C;
 	cs_dupl(mna->sp_matrix->A);
+	if (options->ITER) {
+		/* Compute the M Jacobi Preconditioner */
+		jacobi_precond(mna->M, NULL, C, mna->dimension, options->SPARSE);
+	}
 }
 
 /* Create the MNA system array and vector */
@@ -211,14 +202,14 @@ void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tabl
 		else if (curr->type == 'I' || curr->type == 'i') {
 			value = curr->value;
 			if (probe1_id == 0) {
-				mna->matrix->b[j] += value;
+				mna->b[j] += value;
 			}
 			else if (probe2_id == 0) {
-				mna->matrix->b[i] -= value;
+				mna->b[i] -= value;
 			}
 			else {
-				mna->matrix->b[i] -= value;
-				mna->matrix->b[j] += value;
+				mna->b[i] -= value;
+				mna->b[j] += value;
 			}
 		}
 		else {
@@ -236,35 +227,27 @@ void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tabl
 			if (probe1_id == 0) {
 				mna->matrix->A[j][offset + volt_sources_cnt] = -1.0;
 				mna->matrix->A[offset + volt_sources_cnt][j] = -1.0;
-				mna->matrix->b[offset + volt_sources_cnt] += value; 
+				mna->b[offset + volt_sources_cnt] += value; 
 			}
 			else if (probe2_id == 0) {
 				mna->matrix->A[i][offset + volt_sources_cnt] = 1.0;
 				mna->matrix->A[offset + volt_sources_cnt][i] = 1.0;
-				mna->matrix->b[offset + volt_sources_cnt] += value;
+				mna->b[offset + volt_sources_cnt] += value;
 			}
 			else {
 				mna->matrix->A[i][offset + volt_sources_cnt] =  1.0;
 				mna->matrix->A[j][offset + volt_sources_cnt] = -1.0;
 				mna->matrix->A[offset + volt_sources_cnt][i] =  1.0;
 				mna->matrix->A[offset + volt_sources_cnt][j] = -1.0;
-				mna->matrix->b[offset + volt_sources_cnt] += value;
+				mna->b[offset + volt_sources_cnt] += value;
 			}
 			/* Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found */
 			volt_sources_cnt++;
 		}
 	}
-	/* In case we want iterative methods compute the prerequisites matrices, vectors */
 	if (options->ITER) {
 		/* Compute the M preconditioner */
-		jacobi_precond(mna->matrix->M, mna->matrix->A, mna->dimension);
-		/* M transpose equals M */
-		memcpy(mna->matrix->M_trans, mna->matrix->M, mna->dimension * sizeof(double));
-		/* Only when we use bi-conjugate gradient method is necessary to compute A_trans */
-		if (!options->SPD) {
-			/* Compute the A transpose */
-			trans_matrix(mna->matrix->A_trans, mna->matrix->A, mna->dimension);
-		}
+		jacobi_precond(mna->M, mna->matrix->A, NULL, mna->dimension, options->SPARSE);
 	}
 }
 
@@ -287,15 +270,27 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 	if (options->SPARSE) {
 		if (options->ITER) {
 			if (options->SPD) {
-				//TODO
+				/* Set the maximum number of iterations CG worst case is O(n) */
+				maxiter = mna->dimension;
+			 	iterations = conj_grad(NULL, mna->sp_matrix->A, *x, mna->b, mna->M, mna->dimension,
+			 						   options->ITOL, maxiter, options->SPARSE);
+				printf("Conjugate gradient method did %d iterations.\n", iterations);
 			}
 			else {
-				//TODO
+				/* Set the maximum number of iterations Bi-CG worst case is O(2n) */
+				maxiter = 2 * mna->dimension;
+				iterations = bi_conj_grad(NULL, mna->sp_matrix->A, *x, mna->b, mna->M, mna->dimension, 
+										  options->ITOL, maxiter, options->SPARSE);
+				if (iterations == FAILURE) {
+					fprintf(stderr, "Bi-Conjugate gradient method failed.\n");
+					exit(EXIT_FAILURE);
+				}
+				printf("Bi-Conjugate gradient method did %d iterations.\n", iterations);
 			}
 		}
 		else {
 			if (options->SPD) {
-				//TODO
+				solve_sparse_cholesky(mna, x);
 			}
 			else {
 				solve_sparse_lu(mna, x);
@@ -308,14 +303,15 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 			if (options->SPD) {
 				/* Set the maximum number of iterations CG worst case is O(n) */
 				maxiter = mna->dimension;
-			 	iterations = conj_grad(mna->matrix->A, *x, mna->matrix->b, mna->matrix->M, mna->dimension, options->ITOL, maxiter);
+			 	iterations = conj_grad(mna->matrix->A, NULL, *x, mna->b, mna->M, mna->dimension,
+			 						   options->ITOL, maxiter, options->SPARSE);
 				printf("Conjugate gradient method did %d iterations.\n", iterations);
 			}
 			else {
 				/* Set the maximum number of iterations Bi-CG worst case is O(2n) */
 				maxiter = 2 * mna->dimension;
-				iterations = bi_conj_grad(mna->matrix->A, *x, mna->matrix->b, mna->matrix->A_trans, mna->matrix->M,
-										  mna->matrix->M_trans, mna->dimension, options->ITOL, maxiter);
+				iterations = bi_conj_grad(mna->matrix->A, NULL, *x, mna->b, mna->M, mna->dimension, 
+										  options->ITOL, maxiter, options->SPARSE);
 				if (iterations == FAILURE) {
 					fprintf(stderr, "Bi-Conjugate gradient method failed.\n");
 					exit(EXIT_FAILURE);
@@ -334,9 +330,10 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 	}
 }
 
+/* Solves the sparse mna system with LU factorization */
 void solve_sparse_lu(mna_system_t *mna, double **x) {
 	double *temp_b = (double *)malloc(mna->dimension * sizeof(double));
-	memcpy(temp_b, mna->sp_matrix->b, mna->dimension * sizeof(double));
+	memcpy(temp_b, mna->b, mna->dimension * sizeof(double));
 	if (!mna->is_decomp) {
 		mna->sp_matrix->A_symbolic = cs_sqr(2, mna->sp_matrix->A, 0);
 		mna->sp_matrix->A_numeric = cs_lu(mna->sp_matrix->A, mna->sp_matrix->A_symbolic, 1);
@@ -351,9 +348,10 @@ void solve_sparse_lu(mna_system_t *mna, double **x) {
 	free(temp_b);
 }
 
+/* Solves the sparse mna system with Cholesky factorization */
 void solve_sparse_cholesky(mna_system_t *mna, double **x) {
 	double *temp_b = (double *)malloc(mna->dimension * sizeof(double));
-	memcpy(temp_b, mna->sp_matrix->b, mna->dimension * sizeof(double));
+	memcpy(temp_b, mna->b, mna->dimension * sizeof(double));
 	if (!mna->is_decomp) {
 		mna->sp_matrix->A_symbolic = cs_schol(1, mna->sp_matrix->A);
 		mna->sp_matrix->A_numeric = cs_chol(mna->sp_matrix->A, mna->sp_matrix->A_symbolic);
@@ -374,7 +372,7 @@ void solve_lu(mna_system_t *mna, gsl_vector_view x) {
 	int signum;
 	/* Allocate memory for the solution vector */
 	gsl_matrix_view view_A = gsl_matrix_view_array(mna->matrix->A[0], mna->dimension, mna->dimension);
-	gsl_vector_view view_b = gsl_vector_view_array(mna->matrix->b, mna->dimension);
+	gsl_vector_view view_b = gsl_vector_view_array(mna->b, mna->dimension);
 	if (!mna->is_decomp) {
 		/* LU decomposition on A, PA = LU */
 		gsl_linalg_LU_decomp(&view_A.matrix, mna->matrix->P, &signum);
@@ -392,7 +390,7 @@ void solve_lu(mna_system_t *mna, gsl_vector_view x) {
 void solve_cholesky(mna_system_t *mna, gsl_vector_view x) {
 	/* Allocate memory for the solution vector */
 	gsl_matrix_view view_A = gsl_matrix_view_array(mna->matrix->A[0], mna->dimension, mna->dimension);
-	gsl_vector_view view_b = gsl_vector_view_array(mna->matrix->b, mna->dimension);
+	gsl_vector_view view_b = gsl_vector_view_array(mna->b, mna->dimension);
 	if (!mna->is_decomp) {
 		/* Cholesky decomposition A = LL^T*/
 		gsl_linalg_cholesky_decomp(&view_A.matrix);
@@ -411,12 +409,12 @@ void print_mna_system(mna_system_t *mna, bool SPARSE) {
 		printf("\nMNA A array:\n\n");
 		print_array(mna->matrix->A, mna->dimension);
 		printf("MNA b vector:\n\n");
-		print_vector(mna->matrix->b, mna->dimension);
+		print_vector(mna->b, mna->dimension);
 	}
 	else {
 		// cs_print(mna->sp_matrix->A, "sparse.txt", 0);
 		printf("\nMNA b vector:\n\n");
-		print_vector(mna->sp_matrix->b, mna->dimension);
+		print_vector(mna->b, mna->dimension);
 	}
 }
 
@@ -456,25 +454,24 @@ void free_mna_system(mna_system_t **mna, options_t *options) {
 	if (!options->SPARSE) {
 		free((*mna)->matrix->A[0]);
 		free((*mna)->matrix->A);
-		free((*mna)->matrix->b);
 		gsl_permutation_free((*mna)->matrix->P);
-		if (options->ITER) {
-			free((*mna)->matrix->M_trans);
-			free((*mna)->matrix->M);
-			/* Only when we use bi-conjugate gradient method is necessary to free A_trans */
-			if (!options->SPD) {
-				free((*mna)->matrix->A_trans);
-			}
-		}
 		/* Free the matrix struct */
 		free((*mna)->matrix);
 	}
 	else {
-		cs_sfree((*mna)->sp_matrix->A_symbolic);
-		cs_nfree((*mna)->sp_matrix->A_numeric);
-		free((*mna)->sp_matrix->b);
+		if (!options->ITER) {
+			cs_sfree((*mna)->sp_matrix->A_symbolic);
+			cs_nfree((*mna)->sp_matrix->A_numeric);
+		}
+		else {
+			cs_spfree((*mna)->sp_matrix->A);
+		}
 		free((*mna)->sp_matrix);
 	}
+	if (options->ITER) {
+		free((*mna)->M);
+	}
+	free((*mna)->b);
 	/* Free every string allocated for the group2 elements */
 	for (int i = 0; i < (*mna)->num_g2_elem; i++) {
 		free((*mna)->g2_indx[i].element);

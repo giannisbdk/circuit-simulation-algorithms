@@ -29,10 +29,10 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the MNA_system */
     mna_system_t *mna = init_mna_system(parser->netlist->num_nodes, parser->netlist->num_g2_elem, parser->options, parser->netlist->nz);
-
+    
     /* Create the MNA system */
     create_mna_system(mna, index, hash_table, parser->options, parser->netlist->num_nodes);
-
+    
     /* Print the MNA system */
     print_mna_system(mna, parser->options->SPARSE);
     
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 
     /* DC Operating Point to file */
     dc_operating_point(hash_table, sol_x);
-
+    
     /* DC Sweep to file */
     dc_sweep(index->head1, hash_table, mna, parser, sol_x);
 

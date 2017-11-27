@@ -12,14 +12,8 @@
 
 /* The Matrices,Vectors below should keep their values among different invocations of iter solvers */
 typedef struct matrix {
-	/* Jacobi Preconditioner M and M transpose (vectors), we only store the diagonal of A not zeros */
-	double *M;
-	double *M_trans;
-	/* MNA A and A transpose matrices */
+	/* MNA A matrix */
 	double **A;
-	double **A_trans;
-	/* Right hand side vector b for the Ax=b and Permutation vector */
-	double *b;
 	gsl_permutation *P;
 } matrix_t;
 
@@ -27,7 +21,6 @@ typedef struct sp_matrix {
 	cs 	*A;
 	css *A_symbolic;
 	csn *A_numeric;
-	double *b;
 } sp_matrix_t;
 
 /* Keeps the indexing for the sources of group 2 */
@@ -39,6 +32,10 @@ typedef struct mna_system {
 	sp_matrix_t *sp_matrix;
 	/* Mat is a pointer to a struct that contains all the matrices of the MNA system */
 	matrix_t *matrix;
+	/* Jacobi Preconditioner M, we only store the diagonal of A not zeros */
+	double *M;
+	/* Right hand side vector b for the Ax=b */
+	double *b;
 	bool is_decomp;
 	int dimension;
 	int num_nodes;

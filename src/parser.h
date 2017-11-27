@@ -54,6 +54,7 @@ char **tokenizer(char *line);
 void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table_t *hash_table);
 void print_options(options_t *options);
 void print_netlist_info(netlist_t *netlist);
+void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter);
 void free_parser(parser_t **parser);
 
 #endif

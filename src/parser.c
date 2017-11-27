@@ -126,7 +126,7 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
                     if (strcmp("ITER", &tokens[i][0]) == 0) {
                         parser->options->ITER = true;
                     }
-                    if (strncmp("SPARSE", &tokens[i][0], 4) == 0) {
+                    if (strcmp("SPARSE", &tokens[i][0]) == 0) {
                         parser->options->SPARSE = true;
                     }
                     if (strncmp("ITOL", &tokens[i][0], 4) == 0) {
@@ -190,6 +190,7 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
     printf("Finished parsing %d circuit elements.\n", index->size1 + index->size2);
     print_options(parser->options);
     print_netlist_info(parser->netlist);
+    print_dc_analysis_options(parser->dc_analysis, dc_counter);
 }
 
 /* Print all the specified options from the netlist */
@@ -207,6 +208,21 @@ void print_netlist_info(netlist_t *netlist) {
     printf("Number of nodes without ground:\t%d\n", netlist->num_nodes);
     printf("Number of group 2 elements:\t%d\n",     netlist->num_g2_elem);
     printf("Number of dc analysis targets:\t%d\n",  netlist->dc_counter);
+}
+
+void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter) {
+    printf("\nDC_Analysis_Summary:\n");
+    for (int i = 0; i < dc_counter; i++) {
+        printf("Volt_source: %s\n", dc_analysis[i].volt_source);
+        printf("Start: %lf\n", dc_analysis[i].start);
+        printf("End: %lf\n", dc_analysis[i].end);
+        printf("Increment: %lf\n", dc_analysis[i].increment);
+        printf("Node: ");
+        for (int j = 0; j < dc_analysis[i].num_nodes; j++) {
+            printf("%s ", dc_analysis[i].nodes[j]);
+        }
+        printf("\n");
+    }
 }
 
 /* Free all the memory we allocated for the parser */
