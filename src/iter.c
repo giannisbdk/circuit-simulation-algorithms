@@ -27,6 +27,9 @@ int conj_grad(double **A, cs *C, double *x, double *b, double *M, int dimension,
 		/* Compute A*x and store it ot Ax , C is CCF of A */
 		cs_mat_vec_mul(Ax, C, x);
 	}
+	
+	/* Compute r = b - Ax */
+	sub_vector(r, b, Ax, dimension);
 
 	/* Initialize norm2 of b and r vectors */
 	r_norm = norm2(r, dimension);
