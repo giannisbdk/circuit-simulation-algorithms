@@ -1,14 +1,13 @@
 #include <stdio.h>
-
 #include "parser.h"
 #include "list.h"
 #include "hash_table.h"
 #include "mna_dc.h"
 #include "routines.h"
 #include "dc_analysis.h"
-
+#include "time_tools.h"
 /* This is defined here because we specify the length from main */
-#define HASH_TABLE_SIZE 65536
+#define HASH_TABLE_SIZE 60000
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
