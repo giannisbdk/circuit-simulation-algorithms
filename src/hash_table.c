@@ -17,6 +17,7 @@ hash_table_t *ht_create(int size) {
 	hash_table = (hash_table_t *)malloc(sizeof(hash_table_t));
 	if (hash_table == NULL) {
 		fprintf(stderr, "Couldn't allocate memory!\n");
+		return NULL;
 	}
 	/* Allocate pointers to the head nodes */
 	hash_table->table = (entry_t **)malloc(size * sizeof(entry_t *));
@@ -58,17 +59,13 @@ int ht_hash( hash_table_t *hash_table, char *key ) {
 
 /* Create a new node */
 entry_t *ht_new_node(hash_table_t *hash_table, char *key) {
-	entry_t *new_node;
-	if ((new_node = (entry_t *)malloc(sizeof(entry_t))) == NULL) {
+	entry_t *new_node = (entry_t *)malloc(sizeof(entry_t));
+	if (new_node == NULL) {
+		fprintf(stderr, "Couldn't allocate memory!\n");
 		return NULL;
 	}
-	// int len = strlen(key) + 1;
-	// new_node->key = (char *)malloc(len * sizeof(char));
-	// if (new_node->key == NULL) {
-	// 	fprintf(stderr, "Couldn't allocate memory\n");
-	// }
-	// strcpy(new_node->key, key);
 	if ((new_node->key = strdup(key)) == NULL) {
+		fprintf(stderr, "Couldn't allocate memory!\n");
 		return NULL;
 	}
 	/* Give to ground the id 0 */
