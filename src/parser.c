@@ -175,7 +175,7 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
             }
         }
         /* Free all the memory we allocated */
-        for (int i = 0; i < num_tokens; i++) {
+        for (int i = 0; i <= num_tokens; i++) {
             free(tokens[i]);
         }
         free(tokens);
@@ -220,9 +220,9 @@ void print_netlist_info(netlist_t *netlist) {
 
 void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter) {
     if (dc_counter <= 0) return;
-    printf("\nDC Analysis Summary:\n");
+    printf("\nDC Analysis Summary:");
     for (int i = 0; i < dc_counter; i++) {
-        printf("Volt_source: %s\n", dc_analysis[i].volt_source);
+        printf("\nVolt_source: %s\n", dc_analysis[i].volt_source);
         printf("Start: %lf\n", dc_analysis[i].start);
         printf("End: %lf\n", dc_analysis[i].end);
         printf("Increment: %lf\n", dc_analysis[i].increment);
@@ -232,6 +232,7 @@ void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter) {
         }
         printf("\n");
     }
+    printf("\n");
 }
 
 /* Free all the memory we allocated for the parser */

@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
     
     /* Solve the MNA system */
     solve_mna_system(mna, &sol_x, parser->options);
-    
+
     // printf("Solution of the MNA system:\n\n");
     // print_vector(sol_x, dimension);
 
@@ -59,6 +59,7 @@ int main(int argc, char *argv[]) {
     free_mna_system(&mna, parser->options);
     free_parser(&parser);
     ht_free(&hash_table);
+    free(sol_x);
 
 	return 0;
 }

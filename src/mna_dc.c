@@ -88,6 +88,7 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 	else {
 		create_dense_mna(mna, index, hash_table, options, offset);
 	}
+	printf("Creation of MNA system... OK\n");
 }
 
 /* Constructs the dense MNA system */
@@ -308,7 +309,7 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 				maxiter = mna->dimension;
 			 	iterations = conj_grad(mna->matrix->A, NULL, *x, mna->b, mna->M, mna->dimension,
 			 						   options->ITOL, maxiter, options->SPARSE);
-				printf("Conjugate gradient method did %d iterations.\n", iterations);
+				//printf("Conjugate gradient method did %d iterations.\n", iterations);
 			}
 			else {
 				/* Set the maximum number of iterations Bi-CG worst case is O(2n) */
@@ -319,7 +320,7 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 					fprintf(stderr, "Bi-Conjugate gradient method failed.\n");
 					exit(EXIT_FAILURE);
 				}
-				printf("Bi-Conjugate gradient method did %d iterations.\n", iterations);
+				//printf("Bi-Conjugate gradient method did %d iterations.\n", iterations);
 			}
 		}
 		else {
@@ -331,6 +332,10 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 			}
 		}
 	}
+	if (!mna->is_decomp) {
+		mna->is_decomp = true;
+    	printf("Solution of MNA system... OK\n");
+	}
 }
 
 /* Solves the sparse mna system with LU factorization */
@@ -341,7 +346,6 @@ void solve_sparse_lu(mna_system_t *mna, double **x) {
 		mna->sp_matrix->A_symbolic = cs_sqr(2, mna->sp_matrix->A, 0);
 		mna->sp_matrix->A_numeric = cs_lu(mna->sp_matrix->A, mna->sp_matrix->A_symbolic, 1);
 		cs_spfree(mna->sp_matrix->A);
-		mna->is_decomp = true;
 	}
 	cs_ipvec(mna->sp_matrix->A_numeric->pinv, temp_b, *x, mna->dimension);
 	cs_lsolve(mna->sp_matrix->A_numeric->L, *x);
@@ -359,7 +363,6 @@ void solve_sparse_cholesky(mna_system_t *mna, double **x) {
 		mna->sp_matrix->A_symbolic = cs_schol(1, mna->sp_matrix->A);
 		mna->sp_matrix->A_numeric = cs_chol(mna->sp_matrix->A, mna->sp_matrix->A_symbolic);
 		cs_spfree(mna->sp_matrix->A);
-		mna->is_decomp = true;
 	}
 	cs_ipvec(mna->sp_matrix->A_symbolic->pinv, temp_b, *x, mna->dimension);
 	cs_lsolve(mna->sp_matrix->A_numeric->L, *x);
@@ -379,7 +382,6 @@ void solve_lu(mna_system_t *mna, gsl_vector_view x) {
 	if (!mna->is_decomp) {
 		/* LU decomposition on A, PA = LU */
 		gsl_linalg_LU_decomp(&view_A.matrix, mna->matrix->P, &signum);
-		mna->is_decomp = true;
 		// printf("LU Matrix:\n\n");
 		// print_array(mna->matrix->A, mna->dimension);
 		// printf("Permutation Vector:\n\n");
@@ -397,7 +399,6 @@ void solve_cholesky(mna_system_t *mna, gsl_vector_view x) {
 	if (!mna->is_decomp) {
 		/* Cholesky decomposition A = LL^T*/
 		gsl_linalg_cholesky_decomp(&view_A.matrix);
-		mna->is_decomp = true;
 		// printf("Cholesky Matrix:\n\n");
 		// print_array(mna->matrix->A, mna->dimension);
 		// printf("\n\n");

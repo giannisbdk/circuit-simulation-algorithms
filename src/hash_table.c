@@ -13,12 +13,14 @@ hash_table_t *ht_create(int size) {
 	if (size < 1) {
 		return NULL;
 	}
-	/* Allocate the table itself. */
-	if ((hash_table = (hash_table_t *)malloc(sizeof(hash_table_t))) == NULL) {
-		return NULL;
+	/* Allocate the table itself */
+	hash_table = (hash_table_t *)malloc(sizeof(hash_table_t));
+	if (hash_table == NULL) {
+		fprintf(stderr, "Couldn't allocate memory!\n");
 	}
-	/* Allocate pointers to the head nodes. */
-	if ((hash_table->table = (entry_t **)malloc(sizeof(entry_t *) * size)) == NULL) {
+	/* Allocate pointers to the head nodes */
+	hash_table->table = (entry_t **)malloc(size * sizeof(entry_t *));
+	if (hash_table->table == NULL) {
 		free(hash_table);
 		return NULL;
 	}
@@ -26,7 +28,7 @@ hash_table_t *ht_create(int size) {
 		hash_table->table[i] = NULL;
 	}
 	hash_table->size = size;
-	hash_table->seq = 1;
+	hash_table->seq  = 1;
 	return hash_table;	
 }
 
@@ -60,6 +62,12 @@ entry_t *ht_new_node(hash_table_t *hash_table, char *key) {
 	if ((new_node = (entry_t *)malloc(sizeof(entry_t))) == NULL) {
 		return NULL;
 	}
+	// int len = strlen(key) + 1;
+	// new_node->key = (char *)malloc(len * sizeof(char));
+	// if (new_node->key == NULL) {
+	// 	fprintf(stderr, "Couldn't allocate memory\n");
+	// }
+	// strcpy(new_node->key, key);
 	if ((new_node->key = strdup(key)) == NULL) {
 		return NULL;
 	}
@@ -144,9 +152,11 @@ void ht_free(hash_table_t **hash_table) {
 		while (curr != NULL) {
 			prev = curr;
 			curr = curr->next;
+			free(prev->key);
 			free(prev);
 		}
 	}
+	free((*hash_table)->table);
 	free(*hash_table);
 	*hash_table = NULL;
 }
