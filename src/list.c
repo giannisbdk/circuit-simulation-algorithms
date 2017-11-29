@@ -5,8 +5,10 @@
 
 #include "list.h"
 
+/* Holds the value of the non-zero elements */
 static int nz = 0;
 
+/* Initializes the lists */
 index_t *init_lists() {
 	/* Allocate memory for the index that stores the lists */
 	index_t *index = (index_t *)malloc(sizeof(index_t));
@@ -18,6 +20,7 @@ index_t *init_lists() {
 	return index;
 }
 
+/* Adds an element to the lists */
 int add_to_list(index_t *index, char **tokens, hash_table_t *hash_table) {
 	int res;
 	/* Get the type of the circuit element */
@@ -33,7 +36,7 @@ int add_to_list(index_t *index, char **tokens, hash_table_t *hash_table) {
 		}
 	}
 	else if (type == 'M' || type == 'Q' || type == 'D' ||
-		type == 'm' || type == 'q' || type == 'd') {
+			 type == 'm' || type == 'q' || type == 'd') {
 		res = add_to_list2(index, tokens, hash_table);
 		if (res == SUCCESS) {
 			index->size2++;
@@ -43,19 +46,18 @@ int add_to_list(index_t *index, char **tokens, hash_table_t *hash_table) {
 		}
 	}
 	else {
-		printf("Circuit element has wrong type %c\n", type);
+		fprintf(stderr, "Circuit element has wrong type %c\n", type);
 		return FAILURE;
 	}
 	return SUCCESS;
 }
 
+/* Computes the number of contributions (e.g nonzeros) to the MNA for the current element */
 void set_nz(char type, char probe1, char probe2) {
 	int mul = 1;
-
 	if (probe1 == '0' || probe2 == '0') {
 		mul = 0;		
 	}
-
 	if (type == 'r' || type == 'R') {
 		nz += 3*mul + 1;
 	}
@@ -64,6 +66,7 @@ void set_nz(char type, char probe1, char probe2) {
 	}
 }
 
+/* Simple getter for the nonzeros */
 int get_nz() {
 	return nz;
 }
@@ -72,7 +75,7 @@ int get_nz() {
 int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 	list1_t *new_node = (list1_t *)malloc(sizeof(list1_t));
 	if (new_node == NULL) {
-		printf("Could not allocate memory for new node!\n");
+		fprintf(stderr, "Could not allocate memory for new node!\n");
 		return FAILURE;
 	}
 	/* In case list is empty */
@@ -121,7 +124,7 @@ int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table) {
 	int num_tokens = atoi(tokens[0]);
 	list2_t *new_node = (list2_t *)malloc(sizeof(list2_t));
 	if (new_node == NULL) {
-		printf("Could not allocate memory for new node!\n");
+		fprintf(stderr, "Could not allocate memory for new node!\n");
 		return FAILURE;
 	}
 	/* In case list is empty */

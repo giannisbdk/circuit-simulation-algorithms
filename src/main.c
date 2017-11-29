@@ -6,8 +6,9 @@
 #include "routines.h"
 #include "dc_analysis.h"
 #include "time_tools.h"
+
 /* This is defined here because we specify the length from main */
-#define HASH_TABLE_SIZE 60000
+#define HASH_TABLE_SIZE 59999
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -57,6 +58,6 @@ int main(int argc, char *argv[]) {
     free_mna_system(&mna, parser->options);
     free_parser(&parser);
     ht_free(&hash_table);
-    
+
 	return 0;
 }

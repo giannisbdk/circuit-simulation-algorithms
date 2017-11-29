@@ -10,13 +10,13 @@
 #include "routines.h"
 #include "csparse.h"
 
-/* The Matrices,Vectors below should keep their values among different invocations of iter solvers */
+/* Holds the dense representation of the MNA */
 typedef struct matrix {
-	/* MNA A matrix */
 	double **A;
 	gsl_permutation *P;
 } matrix_t;
 
+/* Holds the sparse representation of the MNA */
 typedef struct sp_matrix {
 	cs 	*A;
 	css *A_symbolic;
@@ -29,9 +29,9 @@ typedef struct g2_indx {
 } g2_indx_t;
 
 typedef struct mna_system {
+	/* Pointers to the dense and sparse matrix of the MNA */
+	matrix_t 	*matrix;
 	sp_matrix_t *sp_matrix;
-	/* Mat is a pointer to a struct that contains all the matrices of the MNA system */
-	matrix_t *matrix;
 	/* Jacobi Preconditioner M, we only store the diagonal of A not zeros */
 	double *M;
 	/* Right hand side vector b for the Ax=b */

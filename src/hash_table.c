@@ -6,7 +6,7 @@
 
 #include "hash_table.h"
 
-/* Create a new hash_table. */
+/* Create a new hash_table */
 hash_table_t *ht_create(int size) {
 	hash_table_t *hash_table = NULL;
 	int i;
@@ -30,7 +30,7 @@ hash_table_t *ht_create(int size) {
 	return hash_table;	
 }
 
-/* Hash a string for a particular hash table. */
+/* Hash a string for a particular hash table */
 int ht_hash( hash_table_t *hash_table, char *key ) {
 	unsigned long int hashval = 0;
 	int i = 0;
@@ -75,7 +75,7 @@ entry_t *ht_new_node(hash_table_t *hash_table, char *key) {
 	return new_node;
 }
 
-/* Insert a key-value pair into a hash table. */
+/* Insert a key-value pair into a hash table */
 void ht_set(hash_table_t *hash_table, char *key) {
 	int bin = 0;
 	bin = ht_hash(hash_table, key);

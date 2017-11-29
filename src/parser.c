@@ -211,7 +211,7 @@ void print_netlist_info(netlist_t *netlist) {
 }
 
 void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter) {
-    printf("\nDC_Analysis_Summary:\n");
+    printf("\nDC Analysis Summary:\n");
     for (int i = 0; i < dc_counter; i++) {
         printf("Volt_source: %s\n", dc_analysis[i].volt_source);
         printf("Start: %lf\n", dc_analysis[i].start);

@@ -11,7 +11,6 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	mna_system_t *mna = (mna_system_t *)malloc(sizeof(mna_system_t));
 	assert(mna != NULL);
 	mna->dimension = num_nodes + num_g2_elem;
-
 	if (options->SPARSE) {
 		init_sparse_matrix(mna, options, nz);
 	}
@@ -34,15 +33,7 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	return mna;
 }
 
-void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz) {
-	mna->sp_matrix = (sp_matrix_t *)malloc(sizeof(sp_matrix_t));
-	assert(mna->sp_matrix != NULL);
-	mna->sp_matrix->A = cs_spalloc(mna->dimension, mna->dimension, nz, 1 , 1);
-	assert(mna->sp_matrix->A != NULL);
-	mna->sp_matrix->A->nz = 0;
-	mna->matrix = NULL;
-}
-
+/* Allocate memory for a dense representation of MNA */
 void init_dense_matrix(mna_system_t *mna, options_t *options) {
 	/* Allocate for the matrices struct */
 	mna->matrix = (matrix_t *)malloc(sizeof(matrix_t));
@@ -51,6 +42,16 @@ void init_dense_matrix(mna_system_t *mna, options_t *options) {
 	mna->matrix->A = init_array(mna->dimension, mna->dimension);
 	mna->matrix->P = init_permutation(mna->dimension);
 	mna->sp_matrix = NULL;
+}
+
+/* Allocate memory for a sparse representation of MNA */
+void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz) {
+	mna->sp_matrix = (sp_matrix_t *)malloc(sizeof(sp_matrix_t));
+	assert(mna->sp_matrix != NULL);
+	mna->sp_matrix->A = cs_spalloc(mna->dimension, mna->dimension, nz, 1 , 1);
+	assert(mna->sp_matrix->A != NULL);
+	mna->sp_matrix->A->nz = 0;
+	mna->matrix = NULL;
 }
 
 /* Allocate memory for the matrix of the MNA system */
@@ -79,6 +80,7 @@ gsl_permutation *init_permutation(int dimension) {
 	return P;
 }
 
+/* Constructs the MNA system either sparse or dense */
 void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset) {
 	if (options->SPARSE) {
 		create_sparse_mna(mna, index, hash_table, options, offset);
@@ -88,6 +90,87 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 	}
 }
 
+/* Constructs the dense MNA system */
+void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset) {
+	list1_t *curr;
+	double value;
+	int volt_sources_cnt = 0;
+	for (curr = index->head1; curr != NULL; curr = curr->next) {
+		int probe1_id = ht_get_id(hash_table, curr->probe1);
+		int probe2_id = ht_get_id(hash_table, curr->probe2);
+		int i = probe1_id - 1;
+		int j = probe2_id - 1;
+		if (curr->type == 'C' || curr->type == 'c') {
+			continue;
+		}
+		else if (curr->type == 'R' || curr->type == 'r') {
+			value = 1 / curr->value;
+			if (probe1_id == 0) {
+				mna->matrix->A[j][j] += value; 
+			}
+			else if (probe2_id == 0) {
+				mna->matrix->A[i][i] += value; 
+			}
+			else {
+				mna->matrix->A[i][i] += value;
+				mna->matrix->A[j][j] += value;
+				mna->matrix->A[i][j] -= value;
+				mna->matrix->A[j][i] -= value;
+			}
+		}
+		else if (curr->type == 'I' || curr->type == 'i') {
+			value = curr->value;
+			if (probe1_id == 0) {
+				mna->b[j] += value;
+			}
+			else if (probe2_id == 0) {
+				mna->b[i] -= value;
+			}
+			else {
+				mna->b[i] -= value;
+				mna->b[j] += value;
+			}
+		}
+		else {
+			if (curr->type == 'L' || curr->type == 'l') {
+				/* We treat the Inductor like a voltage source with value 0 */
+				value = 0.0;
+			}
+			else if (curr->type == 'V' || curr->type == 'v') {
+				value = curr->value;
+			}
+			/* Save the g2 element source you find, keep indexing */
+			mna->g2_indx[volt_sources_cnt].element = (char *)malloc(strlen(curr->element) * sizeof(char));
+			assert(mna->g2_indx[volt_sources_cnt].element != NULL);
+			strcpy(mna->g2_indx[volt_sources_cnt].element, curr->element);
+			if (probe1_id == 0) {
+				mna->matrix->A[j][offset + volt_sources_cnt] = -1.0;
+				mna->matrix->A[offset + volt_sources_cnt][j] = -1.0;
+				mna->b[offset + volt_sources_cnt] += value; 
+			}
+			else if (probe2_id == 0) {
+				mna->matrix->A[i][offset + volt_sources_cnt] = 1.0;
+				mna->matrix->A[offset + volt_sources_cnt][i] = 1.0;
+				mna->b[offset + volt_sources_cnt] += value;
+			}
+			else {
+				mna->matrix->A[i][offset + volt_sources_cnt] =  1.0;
+				mna->matrix->A[j][offset + volt_sources_cnt] = -1.0;
+				mna->matrix->A[offset + volt_sources_cnt][i] =  1.0;
+				mna->matrix->A[offset + volt_sources_cnt][j] = -1.0;
+				mna->b[offset + volt_sources_cnt] += value;
+			}
+			/* Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found */
+			volt_sources_cnt++;
+		}
+	}
+	if (options->ITER) {
+		/* Compute the M preconditioner */
+		jacobi_precond(mna->M, mna->matrix->A, NULL, mna->dimension, options->SPARSE);
+	}
+}
+
+/* Constructs the sparse MNA system */
 void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset) {
 	list1_t *curr;
 	double value;
@@ -168,86 +251,6 @@ void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 	if (options->ITER) {
 		/* Compute the M Jacobi Preconditioner */
 		jacobi_precond(mna->M, NULL, C, mna->dimension, options->SPARSE);
-	}
-}
-
-/* Create the MNA system array and vector */
-void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset) {
-	list1_t *curr;
-	double value;
-	int volt_sources_cnt = 0;
-	for (curr = index->head1; curr != NULL; curr = curr->next) {
-		int probe1_id = ht_get_id(hash_table, curr->probe1);
-		int probe2_id = ht_get_id(hash_table, curr->probe2);
-		int i = probe1_id - 1;
-		int j = probe2_id - 1;
-		if (curr->type == 'C' || curr->type == 'c') {
-			continue;
-		}
-		else if (curr->type == 'R' || curr->type == 'r') {
-			value = 1 / curr->value;
-			if (probe1_id == 0) {
-				mna->matrix->A[j][j] += value; 
-			}
-			else if (probe2_id == 0) {
-				mna->matrix->A[i][i] += value; 
-			}
-			else {
-				mna->matrix->A[i][i] += value;
-				mna->matrix->A[j][j] += value;
-				mna->matrix->A[i][j] -= value;
-				mna->matrix->A[j][i] -= value;
-			}
-		}
-		else if (curr->type == 'I' || curr->type == 'i') {
-			value = curr->value;
-			if (probe1_id == 0) {
-				mna->b[j] += value;
-			}
-			else if (probe2_id == 0) {
-				mna->b[i] -= value;
-			}
-			else {
-				mna->b[i] -= value;
-				mna->b[j] += value;
-			}
-		}
-		else {
-			if (curr->type == 'L' || curr->type == 'l') {
-				/* We treat the Inductor like a voltage source with value 0 */
-				value = 0.0;
-			}
-			else if (curr->type == 'V' || curr->type == 'v') {
-				value = curr->value;
-			}
-			/* Save the g2 element source you find, keep indexing */
-			mna->g2_indx[volt_sources_cnt].element = (char *)malloc(strlen(curr->element) * sizeof(char));
-			assert(mna->g2_indx[volt_sources_cnt].element != NULL);
-			strcpy(mna->g2_indx[volt_sources_cnt].element, curr->element);
-			if (probe1_id == 0) {
-				mna->matrix->A[j][offset + volt_sources_cnt] = -1.0;
-				mna->matrix->A[offset + volt_sources_cnt][j] = -1.0;
-				mna->b[offset + volt_sources_cnt] += value; 
-			}
-			else if (probe2_id == 0) {
-				mna->matrix->A[i][offset + volt_sources_cnt] = 1.0;
-				mna->matrix->A[offset + volt_sources_cnt][i] = 1.0;
-				mna->b[offset + volt_sources_cnt] += value;
-			}
-			else {
-				mna->matrix->A[i][offset + volt_sources_cnt] =  1.0;
-				mna->matrix->A[j][offset + volt_sources_cnt] = -1.0;
-				mna->matrix->A[offset + volt_sources_cnt][i] =  1.0;
-				mna->matrix->A[offset + volt_sources_cnt][j] = -1.0;
-				mna->b[offset + volt_sources_cnt] += value;
-			}
-			/* Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found */
-			volt_sources_cnt++;
-		}
-	}
-	if (options->ITER) {
-		/* Compute the M preconditioner */
-		jacobi_precond(mna->M, mna->matrix->A, NULL, mna->dimension, options->SPARSE);
 	}
 }
 
