@@ -100,9 +100,9 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 	}
 	/* Set new node struct fields */
 	strncpy(&new_node->type, &tokens[1][0], 1);
-	new_node->element = (char *)malloc(strlen(&tokens[1][0]) * sizeof(char));
-	new_node->probe1  = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
-	new_node->probe2  = (char *)malloc(strlen(&tokens[3][0]) * sizeof(char));
+	new_node->element = (char *)malloc((strlen(&tokens[1][0]) + 1) * sizeof(char));
+	new_node->probe1  = (char *)malloc((strlen(&tokens[2][0]) + 1) * sizeof(char));
+	new_node->probe2  = (char *)malloc((strlen(&tokens[3][0]) + 1) * sizeof(char));
 	assert(new_node->element != NULL);
 	assert(new_node->probe1 != NULL);
 	assert(new_node->probe2 != NULL);

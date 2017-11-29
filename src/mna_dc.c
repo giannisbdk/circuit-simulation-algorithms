@@ -398,9 +398,9 @@ void solve_cholesky(mna_system_t *mna, gsl_vector_view x) {
 		/* Cholesky decomposition A = LL^T*/
 		gsl_linalg_cholesky_decomp(&view_A.matrix);
 		mna->is_decomp = true;
-		printf("Cholesky Matrix:\n\n");
-		print_array(mna->matrix->A, mna->dimension);
-		printf("\n\n");
+		// printf("Cholesky Matrix:\n\n");
+		// print_array(mna->matrix->A, mna->dimension);
+		// printf("\n\n");
 	}
 	/* Solve the cholesky system */
 	gsl_linalg_cholesky_solve(&view_A.matrix, &view_b.vector, &x.vector);

@@ -30,6 +30,8 @@ parser_t *init_parser() {
     /* Initializes the dc_analysis array with a DC_ANALYSIS_NUM value that holds .DC options */
     parser->dc_analysis = (dc_analysis_t *)malloc(DC_ANALYSIS_NUM * sizeof(dc_analysis_t));
     assert(parser->dc_analysis != NULL);
+    parser->dc_analysis->volt_source = NULL;
+    parser->dc_analysis->nodes = NULL;
     return parser;
 }
 
@@ -139,7 +141,7 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
                 }
             }
             else if (strcmp(".DC", &tokens[1][0]) == 0) {
-                parser->dc_analysis[dc_counter].volt_source = (char *)malloc(strlen(&tokens[2][0]) * sizeof(char));
+                parser->dc_analysis[dc_counter].volt_source = (char *)malloc((strlen(&tokens[2][0]) + 1) * sizeof(char));
                 assert(parser->dc_analysis[dc_counter].volt_source != NULL);
                 sscanf(tokens[2], "%s",   parser->dc_analysis[dc_counter].volt_source);
                 sscanf(tokens[3], "%lf", &parser->dc_analysis[dc_counter].start);
@@ -153,10 +155,12 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
                 parser->dc_analysis[dc_counter].num_nodes = 0;
                 for (int i = 2; i <= num_tokens; i++) {
                     /* Allocate memory for the node name ommiting the parentheses and the V */
-                    parser->dc_analysis[dc_counter].nodes[i-2] = (char *)malloc((strlen(tokens[i]) - 3) * sizeof(char));
+                    /* Add +1 to include null termination */
+                    int length = strlen(tokens[i]) - 3 + 1;
+                    parser->dc_analysis[dc_counter].nodes[i-2] = (char *)malloc(length * sizeof(char));
                     assert(parser->dc_analysis[dc_counter].nodes[i-2] != NULL);
                     /* Strip V and the parentheses around node name */
-                    strncpy(parser->dc_analysis[dc_counter].nodes[i-2], tokens[i] + 2, (strlen(tokens[i]) - 3));
+                    snprintf(parser->dc_analysis[dc_counter].nodes[i-2], length * sizeof(char), "%s", tokens[i] + 2);
                     parser->dc_analysis[dc_counter].num_nodes++;
                 }
                 dc_counter++;
@@ -215,7 +219,8 @@ void print_netlist_info(netlist_t *netlist) {
 }
 
 void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter) {
-    if (dc_counter >0) printf("\nDC Analysis Summary:\n");
+    if (dc_counter <= 0) return;
+    printf("\nDC Analysis Summary:\n");
     for (int i = 0; i < dc_counter; i++) {
         printf("Volt_source: %s\n", dc_analysis[i].volt_source);
         printf("Start: %lf\n", dc_analysis[i].start);
