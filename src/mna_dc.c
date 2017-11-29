@@ -277,7 +277,7 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 				maxiter = mna->dimension;
 			 	iterations = conj_grad(NULL, mna->sp_matrix->A, *x, mna->b, mna->M, mna->dimension,
 			 						   options->ITOL, maxiter, options->SPARSE);
-				printf("Conjugate gradient method did %d iterations.\n", iterations);
+				//printf("Conjugate gradient method did %d iterations.\n", iterations);
 			}
 			else {
 				/* Set the maximum number of iterations Bi-CG worst case is O(2n) */
@@ -288,7 +288,7 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 					fprintf(stderr, "Bi-Conjugate gradient method failed.\n");
 					exit(EXIT_FAILURE);
 				}
-				printf("Bi-Conjugate gradient method did %d iterations.\n", iterations);
+				//printf("Bi-Conjugate gradient method did %d iterations.\n", iterations);
 			}
 		}
 		else {
@@ -380,10 +380,10 @@ void solve_lu(mna_system_t *mna, gsl_vector_view x) {
 		/* LU decomposition on A, PA = LU */
 		gsl_linalg_LU_decomp(&view_A.matrix, mna->matrix->P, &signum);
 		mna->is_decomp = true;
-		printf("LU Matrix:\n\n");
-		print_array(mna->matrix->A, mna->dimension);
-		printf("Permutation Vector:\n\n");
-		print_permutation(mna->matrix->P);
+		// printf("LU Matrix:\n\n");
+		// print_array(mna->matrix->A, mna->dimension);
+		// printf("Permutation Vector:\n\n");
+		// print_permutation(mna->matrix->P);
 	}
 	/* Solve the LU system */
 	gsl_linalg_LU_solve(&view_A.matrix, mna->matrix->P, &view_b.vector, &x.vector);

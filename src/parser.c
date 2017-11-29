@@ -75,15 +75,19 @@ char **tokenizer(char *line) {
 	}
 
 	tokens = (char **)malloc((num_tokens + 1) * sizeof(char *));
-	tokens[0] = (char *)malloc(sizeof(char));
+    /* Find the length required to store the num_tokens in a string */
+    int length = snprintf(NULL, 0, "%d", num_tokens);
+    /* Allocate +1 for NULL termination */
+	tokens[0] = (char *)malloc((length + 1) * sizeof(char));
 	assert(tokens != NULL);
 	assert(tokens[0] != NULL);
-	sprintf(tokens[0], "%d", num_tokens);
+    /* Copy the integer to string */
+    snprintf(tokens[0], length + 1, "%d", num_tokens);
 
 	token = strtok(line, delim);
 
 	while (token != NULL && i <= num_tokens) {
-		tokens[i] = (char *)malloc(strlen(token) * sizeof(char));
+		tokens[i] = (char *)malloc((strlen(token) + 1) * sizeof(char));
 		assert(tokens[i] != NULL);
 		strcpy(tokens[i], token);
 		token = strtok(NULL, delim);
@@ -211,7 +215,7 @@ void print_netlist_info(netlist_t *netlist) {
 }
 
 void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter) {
-    printf("\nDC Analysis Summary:\n");
+    if (dc_counter >0) printf("\nDC Analysis Summary:\n");
     for (int i = 0; i < dc_counter; i++) {
         printf("Volt_source: %s\n", dc_analysis[i].volt_source);
         printf("Start: %lf\n", dc_analysis[i].start);

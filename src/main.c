@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
     create_mna_system(mna, index, hash_table, parser->options, parser->netlist->num_nodes);
     
     /* Print the MNA system */
-    print_mna_system(mna, parser->options->SPARSE);
+    // print_mna_system(mna, parser->options->SPARSE);
     
     /* Dimension of MNA system */
     int dimension = parser->netlist->num_nodes + parser->netlist->num_g2_elem;
@@ -44,8 +44,9 @@ int main(int argc, char *argv[]) {
     
     /* Solve the MNA system */
     solve_mna_system(mna, &sol_x, parser->options);
-    printf("Solution of the MNA system:\n\n");
-    print_vector(sol_x, dimension);
+    
+    // printf("Solution of the MNA system:\n\n");
+    // print_vector(sol_x, dimension);
 
     /* DC Operating Point to file */
     dc_operating_point(hash_table, sol_x);
