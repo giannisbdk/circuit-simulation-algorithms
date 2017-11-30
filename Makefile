@@ -10,6 +10,7 @@ GSLFLAGS = $(shell gsl-config --cflags --libs)
 SRC = src
 OBJ = obj
 NLS = netlists
+IBM_NLS = ibm_netlists
 
 SOURCES = $(wildcard $(SRC)/*.c)
 OBJECTS = $(patsubst $(SRC)/%.c,$(OBJ)/%.o,$(SOURCES))
@@ -48,12 +49,48 @@ run_chol_sparse: main
 run_chol_sparse_iter: main
 	./main $(NLS)/cholesky_sparse_iter_netlist.txt
 
+run_ibm1: main
+	./main $(IBM_NLS)/ibmpg1.spice
+
+run_ibm2: main
+	./main $(IBM_NLS)/ibmpg2.spice
+
+run_ibm3: main
+	./main $(IBM_NLS)/ibmpg3.spice
+
+run_ibm4: main
+	./main $(IBM_NLS)/ibmpg4.spice
+
+run_ibm5: main
+	./main $(IBM_NLS)/ibmpg5.spice
+
+run_ibm6: main
+	./main $(IBM_NLS)/ibmpg6.spice
+
+download_ibm1:
+	./download_ibm.sh ibm1
+
+download_ibm2:
+	./download_ibm.sh ibm2
+
+download_ibm3:
+	./download_ibm.sh ibm3
+
+download_ibm4:
+	./download_ibm.sh ibm4
+
+download_ibm5:
+	./download_ibm.sh ibm5
+
+download_ibm6:
+	./download_ibm.sh ibm6	
+
 .PHONY: clean
 # Clean the output files
 clean:
-	$(RM) dc_*.txt
+	$(RM) dc_*.txt ./ibm_netlists/* 
 
 # Cleans the executable, the output files and the object files
 .PHONY: cleanall
 cleanall: clean
-	$(RM) main $(OBJECTS)
+	$(RM) main $(OBJECTS) rm -rf ibm_netlists
