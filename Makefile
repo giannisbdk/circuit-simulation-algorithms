@@ -88,9 +88,14 @@ download_ibm6:
 .PHONY: clean
 # Clean the output files
 clean:
-	$(RM) dc_*.txt ./ibm_netlists/* 
+	$(RM) dc_*.txt 
+
+.PHONY: clean_ibm
+# Clean the output files
+clean_ibm:
+	rm -rf ibm_netlists
 
 # Cleans the executable, the output files and the object files
 .PHONY: cleanall
-cleanall: clean
+cleanall: clean clean_ibm
 	$(RM) main $(OBJECTS) rm -rf ibm_netlists

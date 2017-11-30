@@ -97,7 +97,7 @@ case $FILE in
 		fi 
 	;;
 	*)
-		echo "sorry did't understand"
+		echo "Sorry didn't understand:" $FILE
 esac
 
 cd .. 
