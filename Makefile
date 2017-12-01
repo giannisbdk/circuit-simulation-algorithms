@@ -97,5 +97,5 @@ clean_ibm:
 
 # Cleans the executable, the output files and the object files
 .PHONY: cleanall
-cleanall: clean clean_ibm
-	$(RM) main $(OBJECTS) rm -rf ibm_netlists
+cleanall: clean
+	$(RM) main $(OBJECTS)
