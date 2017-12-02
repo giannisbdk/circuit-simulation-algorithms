@@ -35,27 +35,12 @@ hash_table_t *ht_create(int size) {
 
 /* Hash a string for a particular hash table */
 int ht_hash( hash_table_t *hash_table, char *key ) {
-	unsigned long int hashval = 0;
-	int i = 0;
-	/* Convert our string to an integer */
-	while (hashval < ULONG_MAX && i < strlen(key)) {
-		hashval = hashval << 8;
-		hashval += key[ i ];
-		i++;
-	}
-	return hashval % hash_table->size;
+	unsigned long hash = 5381;
+	int c;
+	while ((c = *key++))
+		hash = ((hash << 5) + hash) + c;  /* hash * 33 + c */
+	return hash % hash_table->size;
 }
-
-//TODO Perhaps change the hash function to the below one
-
-/* Just another hash function */
-// unsigned long ht_hash(char* str) {
-// 	unsigned long hash = 5381;
-// 	int c;
-// 	while ((c = *str++))
-// 		hash = ((hash << 5) + hash) + c;  /* hash * 33 + c */
-// 	return hash;
-// }
 
 /* Create a new node */
 entry_t *ht_new_node(hash_table_t *hash_table, char *key) {
