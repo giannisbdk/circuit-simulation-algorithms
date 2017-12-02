@@ -1,6 +1,7 @@
 #!/bin/sh
 
-if [ -d "cd ibm_netlists" ]; then
+# If folder exists do not issue mkdir
+if [ -d "ibm_netlists" ]; then
 	cd ibm_netlists
 else
 	mkdir ibm_netlists
@@ -14,7 +15,8 @@ RED='\033[1;31m'
 CYAN='\033[1;36m'
 NC='\033[0m' # No Color
 
-echo "\n"
+# Single newline
+echo ""
 
 case $FILE in
 	"ibm1" )
@@ -102,9 +104,9 @@ case $FILE in
 		fi 
 	;;
 	*)
-		echo "${RED}Sorry didn't understand: '$FILE' \nPlease check the generated input from the Makefile${NC}"
+		echo "${RED}Sorry didn't understand: '$FILE'.\nPlease check the Makefile for available download targets.${NC}"
 esac
 
 cd .. 
 
-echo "${CYAN}\n\nREMEMBER TO SET THE APPROPRIATE OPTIONS IN THE SPICE FILES${NC}\n\n"
+echo "${CYAN}\nREMEMBER TO SET THE APPROPRIATE OPTIONS IN THE SPICE FILES.${NC}"
