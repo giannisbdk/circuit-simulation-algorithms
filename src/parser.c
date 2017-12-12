@@ -18,6 +18,9 @@ parser_t *init_parser() {
     parser->options->SPD    = false;
     parser->options->ITER   = false;
     parser->options->SPARSE = false;
+    parser->options->TR     = true;
+    parser->options->BE     = false;
+    parser->options->TRAN   = false;
     parser->options->ITOL   = DEFAULT_ITOL;
 
     /* Initializes the netlist struct that holds info about the elements */
@@ -28,10 +31,16 @@ parser_t *init_parser() {
     parser->netlist->dc_counter  = 0;
 
     /* Initializes the dc_analysis array with a DC_ANALYSIS_NUM value that holds .DC options */
-    parser->dc_analysis = (dc_analysis_t *)malloc(DC_ANALYSIS_NUM * sizeof(dc_analysis_t));
+    parser->dc_analysis = (dc_analysis_t *)malloc(ANALYSIS_NUM * sizeof(dc_analysis_t));
     assert(parser->dc_analysis != NULL);
     parser->dc_analysis->volt_source = NULL;
     parser->dc_analysis->nodes = NULL;
+
+    /* Initializes the tr_analsysis array */
+    parser->tr_analysis = (tr_analysis_t *)malloc(ANALYSIS_NUM * sizeof(tr_analysis_t));
+    assert(parser->tr_analysis != NULL);
+    parser->tr_analysis->nodes = NULL;
+
     return parser;
 }
 
@@ -107,7 +116,8 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
     FILE *file_input;
     ssize_t read;
     size_t len = 0;
-    int num_tokens = 0, dc_counter = 0;
+    int num_tokens = 0, dc_counter = 0, tr_counter = 0;
+    bool tran = false;
     char **tokens = NULL, *line = NULL;
 
     printf("\nInput file is: %s\n", file_name);
@@ -138,6 +148,13 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
                     if (strncmp("ITOL", &tokens[i][0], 4) == 0) {
                         sscanf((&tokens[i][0]) + 5, "%lf", &parser->options->ITOL);
                     }
+                    if (strcmp("METHOD=BE", &tokens[i][0]) == 0) {
+                        parser->options->BE = true;
+                        parser->options->TR = false;
+                    }
+                    else if(strcmp("METHOD=TR", &tokens[i][0]) == 0) {
+                        parser->options->TR = true;
+                    }
                 }
             }
             else if (strcmp(".DC", &tokens[1][0]) == 0) {
@@ -147,23 +164,48 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
                 sscanf(tokens[3], "%lf", &parser->dc_analysis[dc_counter].start);
                 sscanf(tokens[4], "%lf", &parser->dc_analysis[dc_counter].end);
                 sscanf(tokens[5], "%lf", &parser->dc_analysis[dc_counter].increment);
+                tran = false;
+            }
+            else if (strcmp(".TRAN", &tokens[1][0]) == 0) {
+                sscanf(tokens[2], "%lf", &parser->tr_analysis[tr_counter].time_step);
+                sscanf(tokens[3], "%lf", &parser->tr_analysis[tr_counter].fin_time);
+                tran = true;
             }
             else if (strcmp(".PLOT", &tokens[1][0]) == 0 || strcmp(".PRINT", &tokens[1][0]) == 0) {
-                /* Allocate a 2d array that each row contains the node name */
-                parser->dc_analysis[dc_counter].nodes = (char **)malloc(num_tokens * sizeof(char *));
-                assert(parser->dc_analysis[dc_counter].nodes != NULL);
-                parser->dc_analysis[dc_counter].num_nodes = 0;
-                for (int i = 2; i <= num_tokens; i++) {
-                    /* Allocate memory for the node name ommiting the parentheses and the V */
-                    /* Add +1 to include null termination */
-                    int length = strlen(tokens[i]) - 3 + 1;
-                    parser->dc_analysis[dc_counter].nodes[i-2] = (char *)malloc(length * sizeof(char));
-                    assert(parser->dc_analysis[dc_counter].nodes[i-2] != NULL);
-                    /* Strip V and the parentheses around node name */
-                    snprintf(parser->dc_analysis[dc_counter].nodes[i-2], length * sizeof(char), "%s", tokens[i] + 2);
-                    parser->dc_analysis[dc_counter].num_nodes++;
+                if (!tran) {
+                    /* Allocate a 2d array that each row contains the node name */
+                    parser->dc_analysis[dc_counter].nodes = (char **)malloc(num_tokens * sizeof(char *));
+                    assert(parser->dc_analysis[dc_counter].nodes != NULL);
+                    parser->dc_analysis[dc_counter].num_nodes = 0;
+                    for (int i = 2; i <= num_tokens; i++) {
+                        /* Allocate memory for the node name ommiting the parentheses and the V */
+                        /* Add +1 to include null termination */
+                        int length = strlen(tokens[i]) - 3 + 1;
+                        parser->dc_analysis[dc_counter].nodes[i-2] = (char *)malloc(length * sizeof(char));
+                        assert(parser->dc_analysis[dc_counter].nodes[i-2] != NULL);
+                        /* Strip V and the parentheses around node name */
+                        snprintf(parser->dc_analysis[dc_counter].nodes[i-2], length * sizeof(char), "%s", tokens[i] + 2);
+                        parser->dc_analysis[dc_counter].num_nodes++;
+                    }
+                    dc_counter++;
                 }
-                dc_counter++;
+                else {
+                    /* Allocate a 2d array that each row contains the node name */
+                    parser->tr_analysis[tr_counter].nodes = (char **)malloc(num_tokens * sizeof(char *));
+                    assert(parser->tr_analysis[tr_counter].nodes != NULL);
+                    parser->tr_analysis[tr_counter].num_nodes = 0;
+                    for (int i = 2; i <= num_tokens; i++) {
+                        /* Allocate memory for the node name ommiting the parentheses and the V */
+                        /* Add +1 to include null termination */
+                        int length = strlen(tokens[i]) - 3 + 1;
+                        parser->tr_analysis[tr_counter].nodes[i-2] = (char *)malloc(length * sizeof(char));
+                        assert(parser->tr_analysis[tr_counter].nodes[i-2] != NULL);
+                        /* Strip V and the parentheses around node name */
+                        snprintf(parser->tr_analysis[tr_counter].nodes[i-2], length * sizeof(char), "%s", tokens[i] + 2);
+                        parser->tr_analysis[tr_counter].num_nodes++;
+                    }
+                    tr_counter++;
+                }
             }
         }
         else {
@@ -188,7 +230,12 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
     /* DC counter holds the number of .DC we found in the netlist */
     parser->netlist->nz = get_nz();
     parser->netlist->dc_counter = dc_counter;
+    parser->netlist->tr_counter = tr_counter;
     parser->netlist->num_nodes  = hash_table->seq - 1;
+
+    if(parser->netlist->tr_counter) {
+        parser->options->TRAN = true;
+    }
 
 #ifdef DEBUGL
     printf("Printing the lists\n");
@@ -198,7 +245,8 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
     printf("Finished parsing %d circuit elements.\n", index->size1 + index->size2);
     print_options(parser->options);
     print_netlist_info(parser->netlist);
-    print_dc_analysis_options(parser->dc_analysis, dc_counter);
+    print_dc_analysis_options(parser->dc_analysis, dc_counter, tr_counter);
+    print_tr_analysis_options(parser->tr_analysis, tr_counter);
 }
 
 /* Print all the specified options from the netlist */
@@ -207,6 +255,8 @@ void print_options(options_t *options) {
 	printf("SPD:\t%s\n",    options->SPD    ? "true" : "false");
 	printf("ITER:\t%s\n",   options->ITER   ? "true" : "false");
 	printf("SPARSE:\t%s\n", options->SPARSE ? "true" : "false");
+    printf("TR:\t%s\n",     options->TR     ? "true" : "false");
+    printf("BE:\t%s\n",     options->BE     ? "true" : "false");
 	printf("ITOL:\t%lf\n",  options->ITOL);
 }
 
@@ -218,17 +268,36 @@ void print_netlist_info(netlist_t *netlist) {
     printf("Number of dc analysis targets:\t%d\n",  netlist->dc_counter);
 }
 
-void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter) {
+/* Prints the dc analysis options */
+void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter, int tr_counter) {
     if (dc_counter <= 0) return;
     printf("\nDC Analysis Summary:");
     for (int i = 0; i < dc_counter; i++) {
         printf("\nVolt_source: %s\n", dc_analysis[i].volt_source);
-        printf("Start: %lf\n", dc_analysis[i].start);
-        printf("End: %lf\n", dc_analysis[i].end);
+        printf("Start:     %lf\n", dc_analysis[i].start);
+        printf("End:       %lf\n", dc_analysis[i].end);
         printf("Increment: %lf\n", dc_analysis[i].increment);
         printf("Node: ");
         for (int j = 0; j < dc_analysis[i].num_nodes; j++) {
             printf("%s ", dc_analysis[i].nodes[j]);
+        }
+        printf("\n");
+    }
+    if (!tr_counter) {
+        printf("\n");
+    }
+}
+
+/* Prints the transient analysis options */
+void print_tr_analysis_options(tr_analysis_t *tr_analysis, int tr_counter) {
+    if (tr_counter <= 0) return;
+    printf("\nTRANSIENT Analysis Summary:");
+    for (int i = 0; i < tr_counter; i++) {
+        printf("\nTime Step:  %lf\n",  tr_analysis[i].time_step);
+        printf("Final Time: %lf\n",    tr_analysis[i].fin_time);
+        printf("Node: ");
+        for (int j = 0; j < tr_analysis[i].num_nodes; j++) {
+            printf("%s ", tr_analysis[i].nodes[j]);
         }
         printf("\n");
     }
@@ -239,16 +308,29 @@ void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter) {
 void free_parser(parser_t **parser) {
     /* Free options struct */
     free((*parser)->options);
-    /* Free everything malloc'd in dc_analysis struct array */
-    for (int i = 0; i < (*parser)->netlist->dc_counter; i++) {
-        free((*parser)->dc_analysis[i].volt_source);
-        for (int j = 0; j < (*parser)->dc_analysis[i].num_nodes; j++) {
-            free((*parser)->dc_analysis[i].nodes[j]);
+    if ((*parser)->netlist->dc_counter) {
+        /* Free everything malloc'd in dc_analysis struct array */
+        for (int i = 0; i < (*parser)->netlist->dc_counter; i++) {
+            free((*parser)->dc_analysis[i].volt_source);
+            for (int j = 0; j < (*parser)->dc_analysis[i].num_nodes; j++) {
+                free((*parser)->dc_analysis[i].nodes[j]);
+            }
+            free((*parser)->dc_analysis[i].nodes);
         }
-        free((*parser)->dc_analysis[i].nodes);
+        /* Free the dc_analysis struct */
+        free((*parser)->dc_analysis);    
     }
-    /* Free the dc_analysis struct */
-    free((*parser)->dc_analysis);
+    if ((*parser)->netlist->tr_counter) {
+        /* Free everything malloc'd in dc_analysis struct array */
+        for (int i = 0; i < (*parser)->netlist->tr_counter; i++) {
+            for (int j = 0; j < (*parser)->tr_analysis[i].num_nodes; j++) {
+                free((*parser)->tr_analysis[i].nodes[j]);
+            }
+            free((*parser)->tr_analysis[i].nodes);
+        }
+        /* Free the tr_analysis struct */
+        free((*parser)->tr_analysis);    
+    }
     /* Free netlist struct */
     free((*parser)->netlist);
     /* Free the parser */

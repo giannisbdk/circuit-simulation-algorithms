@@ -42,6 +42,10 @@ void init_dense_matrix(mna_system_t *mna, options_t *options) {
 	mna->matrix->A = init_array(mna->dimension, mna->dimension);
 	mna->matrix->P = init_permutation(mna->dimension);
 	mna->sp_matrix = NULL;
+	if(options->TRAN) {
+		mna->matrix->G  = init_array(mna->dimension, mna->dimension);
+		mna->matrix->hC = init_array(mna->dimension, mna->dimension);
+	}
 }
 
 /* Allocate memory for a sparse representation of MNA */
@@ -57,9 +61,9 @@ void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz) {
 /* Allocate memory for the matrix of the MNA system */
 double **init_array(int row, int col) {
 	double **array = (double **)malloc(row * sizeof(double *));
-	assert(array !=NULL);
+	assert(array != NULL);
 	array[0] = (double *)calloc(row * col, sizeof(double));
-	assert(array[0] !=NULL);
+	assert(array[0] != NULL);
 	for (int i = 1; i < row; i++) {
 		array[i] = array[i-1] + col;
 	}
@@ -87,6 +91,9 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 	}
 	else {
 		create_dense_mna(mna, index, hash_table, options, offset);
+		if(options->TRAN) {
+			create_dense_trans_mna(mna, index, hash_table, options, offset);
+		}
 	}
 	printf("Creation of MNA system... OK\n");
 }
@@ -168,6 +175,62 @@ void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tabl
 	if (options->ITER) {
 		/* Compute the M preconditioner */
 		jacobi_precond(mna->M, mna->matrix->A, NULL, mna->dimension, options->SPARSE);
+	}
+}
+
+void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset) {
+	list1_t *curr;
+	double value;
+	int volt_sources_cnt = 0;
+
+	memcpy(*mna->matrix->G, *mna->matrix->A, mna->dimension * mna->dimension * sizeof(double));
+	assert(mna->matrix->G != NULL);
+
+	for (curr = index->head1; curr != NULL; curr = curr->next) {
+		int probe1_id = ht_get_id(hash_table, curr->probe1);
+		int probe2_id = ht_get_id(hash_table, curr->probe2);
+		int i = probe1_id - 1;
+		int j = probe2_id - 1;
+		if (curr->type == 'C' || curr->type == 'c') {
+			value = curr->value;
+			if (probe1_id == 0) {
+				mna->matrix->G[j][j] += value; 
+			}
+			else if (probe2_id == 0) {
+				mna->matrix->G[i][i] += value; 
+			}
+			else {
+				mna->matrix->G[i][i] += value;
+				mna->matrix->G[j][j] += value;
+				mna->matrix->G[i][j] -= value;
+				mna->matrix->G[j][i] -= value;
+			}
+		}
+		else if (curr->type == 'L' || curr->type == 'l') {
+			value = curr->value;
+			if (probe1_id == 0) {
+				mna->matrix->G[j][offset + volt_sources_cnt] = -1.0;
+				mna->matrix->G[offset + volt_sources_cnt][j] = -1.0;
+			}
+			else if (probe2_id == 0) {
+				mna->matrix->G[i][offset + volt_sources_cnt] = 1.0;
+				mna->matrix->G[offset + volt_sources_cnt][i] = 1.0;
+			}
+			else {
+				mna->matrix->G[i][offset + volt_sources_cnt] =  1.0;
+				mna->matrix->G[j][offset + volt_sources_cnt] = -1.0;
+				mna->matrix->G[offset + volt_sources_cnt][i] =  1.0;
+				mna->matrix->G[offset + volt_sources_cnt][j] = -1.0;
+			}
+			/* Set the L value in the diagonal of g2 area in matrix */
+			mna->matrix->G[offset + volt_sources_cnt][offset + volt_sources_cnt] = -value;
+			/* Keep track of how many voltage sources or inductors, we have already found */
+			volt_sources_cnt++;
+		}
+		else if (curr->type == 'V' || curr->type == 'v') {
+			/* Keep track of how many voltage sources or inductors, we have already found */
+			volt_sources_cnt++;
+		}
 	}
 }
 
@@ -408,12 +471,16 @@ void solve_cholesky(mna_system_t *mna, gsl_vector_view x) {
 }
 
 /* Print the MNA system */
-void print_mna_system(mna_system_t *mna, bool SPARSE) {
-	if(!SPARSE) {
+void print_mna_system(mna_system_t *mna, options_t *options) {
+	if(!options->SPARSE) {
 		printf("\nMNA A array:\n\n");
 		print_array(mna->matrix->A, mna->dimension);
 		printf("MNA b vector:\n\n");
 		print_vector(mna->b, mna->dimension);
+		if(options->TRAN) {
+			printf("\nMNA G array:\n\n");
+			print_array(mna->matrix->G, mna->dimension);
+		}
 	}
 	else {
 		// cs_print(mna->sp_matrix->A, "sparse.txt", 0);
