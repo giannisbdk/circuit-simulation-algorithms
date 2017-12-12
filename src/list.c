@@ -104,8 +104,8 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 	new_node->probe1  = (char *)malloc((strlen(&tokens[2][0]) + 1) * sizeof(char));
 	new_node->probe2  = (char *)malloc((strlen(&tokens[3][0]) + 1) * sizeof(char));
 	assert(new_node->element != NULL);
-	assert(new_node->probe1 != NULL);
-	assert(new_node->probe2 != NULL);
+	assert(new_node->probe1  != NULL);
+	assert(new_node->probe2  != NULL);
 	strcpy(new_node->element, &tokens[1][0]);
 	strcpy(new_node->probe1,  &tokens[2][0]);
 	strcpy(new_node->probe2,  &tokens[3][0]);
@@ -116,6 +116,71 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 	ht_set(hash_table, &tokens[2][0]);
 	ht_set(hash_table, &tokens[3][0]);
 	sscanf(tokens[4], "%Lf", &new_node->value);
+
+	/* Set the transient spec if exists */
+	int num_tokens = atoi(tokens[0]);
+	if (num_tokens > 4) {
+		trans_type type = get_type(tokens[5]);
+		new_node->trans_spec = (trans_spec_t *)malloc(sizeof(trans_spec_t));
+		new_node->trans_spec->exp 	= NULL;
+		new_node->trans_spec->sin 	= NULL;
+		new_node->trans_spec->pulse = NULL;
+		new_node->trans_spec->pwl 	= NULL;
+		/* Set the transient spec according to the type */
+		switch (type) {
+			case EXP:
+				new_node->trans_spec->exp  = (exp_t *)malloc(sizeof(exp_t));
+				new_node->trans_spec->type = type;
+				/* Strip parentheses of first token and last token */
+				sscanf(tokens[6],  "(%lf", &(new_node->trans_spec->exp->i1));
+				sscanf(tokens[7],  "%lf",  &(new_node->trans_spec->exp->i2));
+				sscanf(tokens[8],  "%lf",  &(new_node->trans_spec->exp->td1));
+				sscanf(tokens[9],  "%lf",  &(new_node->trans_spec->exp->tc1));
+				sscanf(tokens[10], "%lf",  &(new_node->trans_spec->exp->td2));
+				sscanf(tokens[11], "%lf)", &(new_node->trans_spec->exp->tc2));
+				break;
+			case SIN:
+				new_node->trans_spec->sin = (sin_t *)malloc(sizeof(sin_t));
+				new_node->trans_spec->type = type;
+				/* Strip parentheses of first token and last token */
+				sscanf(tokens[6],  "(%lf", &(new_node->trans_spec->sin->i1));
+				sscanf(tokens[7],  "%lf",  &(new_node->trans_spec->sin->ia));
+				sscanf(tokens[8],  "%lf",  &(new_node->trans_spec->sin->fr));
+				sscanf(tokens[9],  "%lf",  &(new_node->trans_spec->sin->td));
+				sscanf(tokens[10], "%lf",  &(new_node->trans_spec->sin->df));
+				sscanf(tokens[11], "%lf)", &(new_node->trans_spec->sin->ph));
+				break;
+			case PULSE:
+				new_node->trans_spec->pulse = (pulse_t *)malloc(sizeof(pulse_t));
+				new_node->trans_spec->type = type;
+				/* Strip parentheses of first token and last token */
+				sscanf(tokens[6],  "(%lf", &(new_node->trans_spec->pulse->i1));
+				sscanf(tokens[7],  "%lf",  &(new_node->trans_spec->pulse->i2));
+				sscanf(tokens[8],  "%lf",  &(new_node->trans_spec->pulse->td));
+				sscanf(tokens[9],  "%lf",  &(new_node->trans_spec->pulse->tr));
+				sscanf(tokens[10], "%lf",  &(new_node->trans_spec->pulse->tf));
+				sscanf(tokens[11], "%lf",  &(new_node->trans_spec->pulse->pw));
+				sscanf(tokens[12], "%lf)", &(new_node->trans_spec->pulse->per));
+				break;
+			case PWL:
+				new_node->trans_spec->pwl = (pwl_t *)malloc(sizeof(pwl_t));
+				new_node->trans_spec->type = type;
+				/* Start shows the index of trans_spec tokens */
+				int start = 6;
+				/* Get the number of states in the pwl */
+				new_node->trans_spec->pwl->n = (num_tokens - (start - 1)) / 2;
+				new_node->trans_spec->pwl->t = (double *)malloc(new_node->trans_spec->pwl->n * sizeof(double));
+				new_node->trans_spec->pwl->i = (double *)malloc(new_node->trans_spec->pwl->n * sizeof(double));
+				for (int i = 0; i < new_node->trans_spec->pwl->n; i++) {
+					sscanf(tokens[start + (i * 2)],     "(%lf", &(new_node->trans_spec->pwl->t[i]));
+					sscanf(tokens[start + (i * 2) + 1], "%lf)", &(new_node->trans_spec->pwl->i[i]));
+				}
+				break;
+			default:
+				fprintf(stderr, "Wrong transient spec type: %s\n", tokens[5]);
+				exit(EXIT_FAILURE);
+		}
+	}
 	return SUCCESS;
 }
 
@@ -216,6 +281,26 @@ int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table) {
 	return SUCCESS;
 }
 
+/* Returns the transient spec type */
+trans_type get_type(char *spec) {
+	if (strcmp(spec, "EXP") == 0) {
+		return EXP;
+	}
+	else if (strcmp(spec, "SIN") == 0) {
+		return SIN;
+	}
+	else if (strcmp(spec, "PULSE") == 0) {
+		return PULSE;
+	}
+	else if (strcmp(spec, "PWL") == 0) {
+		return PWL;
+	}
+	else {
+		fprintf(stderr, "Wrong transient spec type: %s\n", spec);
+		exit(EXIT_FAILURE);
+	}
+}
+
 /* Free all the dynamic memory allocated for the lists index */
 void free_index(index_t **index) {
 	/* Free the the lists */
@@ -274,13 +359,53 @@ void print_lists(index_t *index, hash_table_t *hash_table) {
 void print_list1(list1_t *head, hash_table_t *hash_table) {
 	list1_t *curr = head;
 	while (curr != NULL) {
-		printf("Type: %c\n", curr->type);
+		printf("\nType: %c\n", curr->type);
 		printf("Element: %s\n", curr->element);
 		printf("Probe1: %s\n", curr->probe1);
 		printf("Probe2: %s\n", curr->probe2);
 		printf("Value: %.20Lf\n", curr->value);
 		printf("Probe1 id: %d\n", ht_get_id(hash_table, curr->probe1));
 		printf("Probe2 id: %d\n", ht_get_id(hash_table, curr->probe2));
+		if (curr->trans_spec != NULL) {
+			switch (curr->trans_spec->type) {
+				case EXP:
+					printf("Transient Spec: EXP\n");
+					printf("i1:  %lf\n", curr->trans_spec->exp->i1);
+					printf("i2:  %lf\n", curr->trans_spec->exp->i2);
+					printf("td1: %lf\n", curr->trans_spec->exp->td1);
+					printf("tc1: %lf\n", curr->trans_spec->exp->tc1);
+					printf("td2: %lf\n", curr->trans_spec->exp->td2);
+					printf("tc2: %lf\n", curr->trans_spec->exp->tc2);
+					break;
+				case SIN:
+					printf("Transient Spec: SIN\n");
+					printf("i1: %lf\n", curr->trans_spec->sin->i1);
+					printf("ia: %lf\n", curr->trans_spec->sin->ia);
+					printf("fr: %lf\n", curr->trans_spec->sin->fr);
+					printf("td: %lf\n", curr->trans_spec->sin->td);
+					printf("df: %lf\n", curr->trans_spec->sin->df);
+					printf("ph: %lf\n", curr->trans_spec->sin->ph);
+					break;
+				case PULSE:
+					printf("Transient Spec: PULSE\n");
+					printf("i1:  %lf\n", curr->trans_spec->pulse->i1);
+					printf("i2:  %lf\n", curr->trans_spec->pulse->i2);
+					printf("td:  %lf\n", curr->trans_spec->pulse->td);
+					printf("tr:  %lf\n", curr->trans_spec->pulse->tr);
+					printf("tf:  %lf\n", curr->trans_spec->pulse->tf);
+					printf("pw:  %lf\n", curr->trans_spec->pulse->pw);
+					printf("per: %lf\n", curr->trans_spec->pulse->per);
+					break;
+				case PWL:
+					printf("Transient Spec: PWL\n");
+					for (int i = 0; i < curr->trans_spec->pwl->n; i++) {
+						printf("t[%d]: %6g\ti[%d]: %6g\n", i, curr->trans_spec->pwl->t[i], i, curr->trans_spec->pwl->i[i]);
+					}
+					break;
+				default:
+					fprintf(stderr, "Wrong transient type %d\n", curr->trans_spec->type);
+			}
+		}
 		printf("\n");
 		curr = curr->next;
 	}

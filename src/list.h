@@ -6,12 +6,63 @@
 #define SUCCESS	 1
 #define FAILURE	-1
 
+typedef enum {
+	EXP,
+	SIN,
+	PULSE,
+	PWL
+} trans_type;
+
+typedef struct exp {
+	double i1;
+	double i2;
+	double td1;
+	double td2;
+	double tc1;
+	double tc2;
+} exp_t;
+
+typedef struct sin {
+	double i1;
+	double ia;
+	double fr;
+	double td;
+	double df;
+	double ph;
+} sin_t;
+
+typedef struct pulse {
+	double i1;
+	double i2;
+	double td;
+	double tr;
+	double tf;
+	double pw;
+	double per;
+} pulse_t;
+
+typedef struct pwl {
+	/* n shows how many states there are in the arrays */
+	int n;
+	double *t;
+	double *i;
+} pwl_t;
+
+typedef struct trans_spec {
+	trans_type type;
+	exp_t 	*exp;
+	sin_t 	*sin;
+	pulse_t	*pulse;
+	pwl_t	*pwl;
+} trans_spec_t;
+
 typedef struct list1 {
 	char type;
 	char *element;
 	char *probe1;
 	char *probe2;
 	long double value;
+	trans_spec_t *trans_spec;
 	struct list1 *next;
 	struct list1 *prev;
 } list1_t;
@@ -49,6 +100,7 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table);
 int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table);
 int get_nz();
 void set_nz(char element, char probe1, char probe2);
+trans_type get_type(char *spec);
 void free_index(index_t **index);
 void free_list1(list1_t **head, list1_t **tail);
 void free_list2(list2_t **head, list2_t **tail);

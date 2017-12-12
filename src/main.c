@@ -27,6 +27,9 @@ int main(int argc, char *argv[]) {
     /* Parse the netlist filename is in argv[1] */
     parse_netlist(parser, argv[1], index, hash_table);
 
+    print_list1(index->head1, hash_table);
+    return;
+
     /* Initialize the MNA_system */
     mna_system_t *mna = init_mna_system(parser->netlist->num_nodes, parser->netlist->num_g2_elem, parser->options, parser->netlist->nz);
     
