@@ -116,7 +116,8 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 	ht_set(hash_table, &tokens[2][0]);
 	ht_set(hash_table, &tokens[3][0]);
 	sscanf(tokens[4], "%Lf", &new_node->value);
-
+	/* Initialize to null */
+	new_node->trans_spec = NULL;
 	/* Set the transient spec if exists */
 	int num_tokens = atoi(tokens[0]);
 	if (num_tokens > 4) {
@@ -404,6 +405,7 @@ void print_list1(list1_t *head, hash_table_t *hash_table) {
 					break;
 				default:
 					fprintf(stderr, "Wrong transient type %d\n", curr->trans_spec->type);
+					fprintf(stderr, "Element %s\n", curr->element);
 			}
 		}
 		printf("\n");

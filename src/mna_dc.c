@@ -42,9 +42,26 @@ void init_dense_matrix(mna_system_t *mna, options_t *options) {
 	mna->matrix->A = init_array(mna->dimension, mna->dimension);
 	mna->matrix->P = init_permutation(mna->dimension);
 	mna->sp_matrix = NULL;
-	if(options->TRAN) {
-		mna->matrix->G  = init_array(mna->dimension, mna->dimension);
-		mna->matrix->hC = init_array(mna->dimension, mna->dimension);
+	if (options->TRAN) {
+		mna->matrix->G    = init_array(mna->dimension, mna->dimension);
+		mna->matrix->hC   = init_array(mna->dimension, mna->dimension);
+		mna->matrix->aGhC = init_array(mna->dimension, mna->dimension);
+		/* If method is not the default Trapezoidal, we dont need the sGhC matrix, we use hC insteed */
+		if (!options->TR) {
+			mna->matrix->sGhC = NULL;
+		}
+		else {
+			mna->matrix->sGhC = init_array(mna->dimension, mna->dimension);
+		}
+		mna->matrix->resp = (resp_t *)malloc(sizeof(resp_t));
+		mna->matrix->resp->value = init_vector(mna->dimension);
+		mna->matrix->resp->nodes = (list1_t **)malloc(mna->dimension * sizeof(list1_t *));
+		assert(mna->matrix->resp->nodes != NULL);
+		mna->matrix->resp->nodes[0] = (list1_t *)malloc(mna->dimension * sizeof(list1_t));
+		assert(mna->matrix->resp->nodes[0] != NULL);
+		for (int i = 1; i < mna->dimension; i++) {
+			mna->matrix->resp->nodes[i] = mna->matrix->resp->nodes[i-1] + 1;
+		}
 	}
 }
 
@@ -85,14 +102,14 @@ gsl_permutation *init_permutation(int dimension) {
 }
 
 /* Constructs the MNA system either sparse or dense */
-void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset) {
+void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset) {
 	if (options->SPARSE) {
 		create_sparse_mna(mna, index, hash_table, options, offset);
 	}
 	else {
 		create_dense_mna(mna, index, hash_table, options, offset);
 		if(options->TRAN) {
-			create_dense_trans_mna(mna, index, hash_table, options, offset);
+			create_dense_trans_mna(mna, index, hash_table, options, tr_step, offset);
 		}
 	}
 	printf("Creation of MNA system... OK\n");
@@ -178,13 +195,20 @@ void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tabl
 	}
 }
 
-void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset) {
+void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset) {
 	list1_t *curr;
-	double value;
+	double value, h;
 	int volt_sources_cnt = 0;
 
 	memcpy(*mna->matrix->G, *mna->matrix->A, mna->dimension * mna->dimension * sizeof(double));
 	assert(mna->matrix->G != NULL);
+
+	if (!options->BE) {
+		h = 2 / tr_step;
+	}
+	else {
+		h = 1 / tr_step;
+	}
 
 	for (curr = index->head1; curr != NULL; curr = curr->next) {
 		int probe1_id = ht_get_id(hash_table, curr->probe1);
@@ -192,46 +216,109 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 		int i = probe1_id - 1;
 		int j = probe2_id - 1;
 		if (curr->type == 'C' || curr->type == 'c') {
-			value = curr->value;
+			value = h * curr->value;
 			if (probe1_id == 0) {
-				mna->matrix->G[j][j] += value; 
+				mna->matrix->hC[j][j] += value;
 			}
 			else if (probe2_id == 0) {
-				mna->matrix->G[i][i] += value; 
+				mna->matrix->hC[i][i] += value;
 			}
 			else {
-				mna->matrix->G[i][i] += value;
-				mna->matrix->G[j][j] += value;
-				mna->matrix->G[i][j] -= value;
-				mna->matrix->G[j][i] -= value;
+				mna->matrix->hC[i][i] += value;
+				mna->matrix->hC[j][j] += value;
+				mna->matrix->hC[i][j] -= value;
+				mna->matrix->hC[j][i] -= value;
 			}
 		}
-		else if (curr->type == 'L' || curr->type == 'l') {
-			value = curr->value;
-			if (probe1_id == 0) {
-				mna->matrix->G[j][offset + volt_sources_cnt] = -1.0;
-				mna->matrix->G[offset + volt_sources_cnt][j] = -1.0;
-			}
-			else if (probe2_id == 0) {
-				mna->matrix->G[i][offset + volt_sources_cnt] = 1.0;
-				mna->matrix->G[offset + volt_sources_cnt][i] = 1.0;
-			}
-			else {
-				mna->matrix->G[i][offset + volt_sources_cnt] =  1.0;
-				mna->matrix->G[j][offset + volt_sources_cnt] = -1.0;
-				mna->matrix->G[offset + volt_sources_cnt][i] =  1.0;
-				mna->matrix->G[offset + volt_sources_cnt][j] = -1.0;
-			}
-			/* Set the L value in the diagonal of g2 area in matrix */
-			mna->matrix->G[offset + volt_sources_cnt][offset + volt_sources_cnt] = -value;
+		else if(curr->type == 'L' || curr->type == 'l') {
+			/* Set the L value in the diagonal of g2 area in matrices */
+			mna->matrix->hC[offset + volt_sources_cnt][offset + volt_sources_cnt] = -curr->value * h;
 			/* Keep track of how many voltage sources or inductors, we have already found */
 			volt_sources_cnt++;
 		}
 		else if (curr->type == 'V' || curr->type == 'v') {
+			value = get_response_value(curr);
+			/* Keep track of the node that contributes */
+			mna->matrix->resp->nodes[offset + volt_sources_cnt] = curr;
+			/* Keep track of how many voltage sources or inductors, we have already found */
+			if (probe1_id == 0) {
+				mna->matrix->resp->value[offset + volt_sources_cnt] += value;
+			}
+			else if (probe2_id == 0) {
+				mna->matrix->resp->value[offset + volt_sources_cnt] += value;
+			}
+			else {
+				mna->matrix->resp->value[offset + volt_sources_cnt] += value;
+			}
 			/* Keep track of how many voltage sources or inductors, we have already found */
 			volt_sources_cnt++;
 		}
+		else if (curr->type == 'I' || curr->type == 'i') {
+			value = get_response_value(curr);
+			if (probe1_id == 0) {
+				mna->matrix->resp->value[j] += value;
+				mna->matrix->resp->nodes[j]  = curr;
+			}
+			else if (probe2_id == 0) {
+				mna->matrix->resp->value[i] -= value;
+				mna->matrix->resp->nodes[i]  = curr;
+			}
+			else {
+				mna->matrix->resp->value[i] -= value;
+				mna->matrix->resp->value[j] += value;
+				mna->matrix->resp->nodes[i]  = curr;
+				mna->matrix->resp->nodes[j]  = curr;
+			}
+		}
 	}
+	// printf("Printing resp struct\n");
+	// for(int i = 0; i < mna->dimension; i++) {
+	// 	if(mna->matrix->resp->nodes[i]->trans_spec != NULL) {
+	// 		printf("curr element %s, type is %d, init value: %lf\n", mna->matrix->resp->nodes[i]->element, 
+	// 			mna->matrix->resp->nodes[i]->trans_spec->type, mna->matrix->resp->value[i]);
+	// 	}
+	// 	else {
+	// 		printf("curr element %s, no type, init value: %lf\n", mna->matrix->resp->nodes[i]->element, mna->matrix->resp->value[i]);
+	// 	}
+	// }
+
+	/* Compute the matrices G + 1/h*C and G - 2/h*C */
+	for (int i = 0; i < mna->dimension; i++) {
+		for (int j = 0; j < mna->dimension; j++) {
+			mna->matrix->aGhC[i][j] = mna->matrix->G[i][j] + mna->matrix->hC[i][j];
+			if (options->TR) {
+				mna->matrix->sGhC[i][j] = mna->matrix->G[i][j] - mna->matrix->hC[i][j];
+			}
+		}
+	}
+
+	/* Free what is no longer needed */
+	// free(mna->matrix->G);
+	// if (options->TR) {
+	// 	free(mna->matrix->hC);
+	// }
+}
+
+/* Gets the response value according to the transient spec */
+double get_response_value(list1_t *curr) {
+	if (curr->type == 'I' || curr-> type == 'i' || curr->type == 'V' || curr->type == 'v') {
+		if(curr->trans_spec != NULL) {
+			switch (curr->trans_spec->type) {
+				case EXP:
+					return curr->trans_spec->exp->i1;
+				case SIN:
+					return curr->trans_spec->sin->i1;
+				case PULSE:
+					return curr->trans_spec->pulse->i1;
+				case PWL:
+					return curr->trans_spec->pwl->i[0];
+			}
+		}
+		else {
+			return curr->value;
+		}
+	}
+	return 0.0;
 }
 
 /* Constructs the sparse MNA system */
@@ -387,17 +474,27 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 			}
 		}
 		else {
-			if (options->SPD) {
-				solve_cholesky(mna, view_x);
+			/* Pointer to set the appropriate matrix */
+			double **matrix_ptr;
+			if (options->TRAN) {
+				matrix_ptr = mna->matrix->aGhC;
 			}
 			else {
-				solve_lu(mna, view_x);
+				matrix_ptr = mna->matrix->A;
+			}
+			if (options->SPD) {
+				solve_cholesky(matrix_ptr, mna->b, view_x, mna->dimension, mna->is_decomp);
+			}
+			else {
+				solve_lu(matrix_ptr, mna->b, view_x, mna->matrix->P, mna->dimension, mna->is_decomp);
 			}
 		}
 	}
 	if (!mna->is_decomp) {
 		mna->is_decomp = true;
-    	printf("Solution of MNA system... OK\n");
+		if (!options->TRAN) {
+    		printf("Solution of MNA system... OK\n");
+    	}
 	}
 }
 
@@ -436,30 +533,30 @@ void solve_sparse_cholesky(mna_system_t *mna, double **x) {
 }
 
 /* Solve the MNA system using LU decomposition */
-void solve_lu(mna_system_t *mna, gsl_vector_view x) {
+void solve_lu(double **A, double *b, gsl_vector_view x, gsl_permutation *P, int dimension, bool is_decomp) {
 	/* The sign of the permutation matrix */
 	int signum;
 	/* Allocate memory for the solution vector */
-	gsl_matrix_view view_A = gsl_matrix_view_array(mna->matrix->A[0], mna->dimension, mna->dimension);
-	gsl_vector_view view_b = gsl_vector_view_array(mna->b, mna->dimension);
-	if (!mna->is_decomp) {
+	gsl_matrix_view view_A = gsl_matrix_view_array(A[0], dimension, dimension);
+	gsl_vector_view view_b = gsl_vector_view_array(b, dimension);
+	if (!is_decomp) {
 		/* LU decomposition on A, PA = LU */
-		gsl_linalg_LU_decomp(&view_A.matrix, mna->matrix->P, &signum);
+		gsl_linalg_LU_decomp(&view_A.matrix, P, &signum);
 		// printf("LU Matrix:\n\n");
 		// print_array(mna->matrix->A, mna->dimension);
 		// printf("Permutation Vector:\n\n");
 		// print_permutation(mna->matrix->P);
 	}
 	/* Solve the LU system */
-	gsl_linalg_LU_solve(&view_A.matrix, mna->matrix->P, &view_b.vector, &x.vector);
+	gsl_linalg_LU_solve(&view_A.matrix, P, &view_b.vector, &x.vector);
 }
 
 /* Solve the MNA system using cholesky decomposition */
-void solve_cholesky(mna_system_t *mna, gsl_vector_view x) {
+void solve_cholesky(double **A, double *b, gsl_vector_view x, int dimension, bool is_decomp) {
 	/* Allocate memory for the solution vector */
-	gsl_matrix_view view_A = gsl_matrix_view_array(mna->matrix->A[0], mna->dimension, mna->dimension);
-	gsl_vector_view view_b = gsl_vector_view_array(mna->b, mna->dimension);
-	if (!mna->is_decomp) {
+	gsl_matrix_view view_A = gsl_matrix_view_array(A[0], dimension, dimension);
+	gsl_vector_view view_b = gsl_vector_view_array(b, dimension);
+	if (!is_decomp) {
 		/* Cholesky decomposition A = LL^T*/
 		gsl_linalg_cholesky_decomp(&view_A.matrix);
 		// printf("Cholesky Matrix:\n\n");
@@ -472,14 +569,24 @@ void solve_cholesky(mna_system_t *mna, gsl_vector_view x) {
 
 /* Print the MNA system */
 void print_mna_system(mna_system_t *mna, options_t *options) {
-	if(!options->SPARSE) {
+	if (!options->SPARSE) {
 		printf("\nMNA A array:\n\n");
 		print_array(mna->matrix->A, mna->dimension);
 		printf("MNA b vector:\n\n");
 		print_vector(mna->b, mna->dimension);
-		if(options->TRAN) {
+		if (options->TRAN) {
+			printf("MNA init_response vector:\n\n");
+			print_vector(mna->matrix->resp->value, mna->dimension);
 			printf("\nMNA G array:\n\n");
 			print_array(mna->matrix->G, mna->dimension);
+			printf("\nMNA hC array:\n\n");
+			print_array(mna->matrix->hC, mna->dimension);
+			printf("\nMNA aGhC array:\n\n");
+			print_array(mna->matrix->aGhC, mna->dimension);
+			if (options->TR) {
+				printf("\nMNA sGhC array:\n\n");
+				print_array(mna->matrix->sGhC, mna->dimension);
+			}
 		}
 	}
 	else {

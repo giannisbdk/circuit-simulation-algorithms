@@ -88,7 +88,7 @@ download_ibm6:
 .PHONY: clean
 # Clean the output files
 clean:
-	$(RM) main dc_*.txt 
+	$(RM) main dc_*.txt tr_*.txt
 
 .PHONY: clean_ibm
 # Clean the output files
