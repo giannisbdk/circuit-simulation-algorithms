@@ -100,6 +100,7 @@ void set_trapezoidal_rhs(mna_system_t *mna, double *curr_response, double *prev_
 					break;
 				case PULSE:
 					curr_response[i] = eval_pulse(curr->trans_spec->pulse, h * k);
+					// printf("PULSE IS %lf\n\n\n", curr_response[i]);
 					break;
 				case PWL:
 					curr_response[i] = eval_pwl(curr->trans_spec->pwl, h * k);
@@ -182,20 +183,30 @@ double eval_sin(sin_t *sinus, double t) {
 double eval_pulse(pulse_t *pulse, double t) {
 	int curr_per = t / pulse->per;
 	double period_off = curr_per * pulse->per;
+	// printf("curr_time is %lf\n", t);
+	// printf("curr_period is %d\n", curr_per);
+	// printf("period_off is %lf\n", period_off);
+
 	if (0 <= t && t < pulse->td) {
+		// printf("in 1st if %lf - %lf\n", t, pulse->td);
 		return pulse->i1;
 	}
 	else if ((pulse->td + period_off) <= t && t < (pulse->td + pulse->tr + period_off)) {
+		// printf("in 2nd if %lf - %lf\n", (pulse->td + period_off), (pulse->td + pulse->tr + period_off));
 		/* Find the line equation */
-		return pulse->i1 + ((pulse->i2 - pulse->i1) / pulse->tr) * (t - pulse->td);
+		// printf("i1: %lf, i2: %lf, tr: %lf, t: %lf, td: %lf\n", pulse->i1, pulse->i2, pulse->tr, t, pulse->td);
+		return pulse->i1 + ((pulse->i2 - pulse->i1) / pulse->tr) * (t - (curr_per * pulse->per + pulse->td));
 	}
 	else if ((pulse->td + pulse->tr + period_off) <= t && t < (pulse->td + pulse->tr + pulse->pw + period_off)) {
+		// printf("in 3rd if %lf - %lf\n", (pulse->td + pulse->tr + period_off), (pulse->td + pulse->tr + pulse->pw + period_off));
 		return pulse->i2;
 	}
 	else if ((pulse->td + pulse->tr + pulse->pw + period_off) <= t && t < (pulse->td + pulse->tr + pulse->pw + pulse->tf + period_off)) {
-		return pulse->i2 + ((pulse->i1 - pulse->i2) / pulse->tf) * (t - pulse->td - pulse->tr - pulse->pw);
+		// printf("in 4th if %lf - %lf\n", (pulse->td + pulse->tr + pulse->pw + period_off), (pulse->td + pulse->tr + pulse->pw + pulse->tf + period_off));
+		return pulse->i2 + ((pulse->i1 - pulse->i2) / pulse->tf) * (t - (pulse->td + curr_per * pulse->per) - pulse->tr - pulse->pw);
 	}
 	else {
+		// printf("in 5th if %lf - %lf\n", pulse->td+pulse->tr+pulse->pw+pulse->tf+period_off, pulse->td+pulse->per+period_off);
 		return pulse->i1;
 	}
 }
