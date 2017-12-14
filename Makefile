@@ -40,6 +40,18 @@ run_lu_sparse: main
 run_lu_sparse_iter: main
 	./main $(NLS)/lu_sparse_iter_netlist.txt
 
+run_lu_tran_tr: main
+	./main $(NLS)/lu_tran_tr_netlist.txt
+
+run_lu_tran_tr_iter: main
+	./main $(NLS)/lu_tran_tr_iter_netlist.txt
+
+run_lu_tran_be: main
+	./main $(NLS)/lu_tran_be_netlist.txt
+
+run_lu_tran_be_iter: main
+	./main $(NLS)/lu_tran_be_iter_netlist.txt
+
 run_chol: main
 	./main $(NLS)/cholesky_netlist.txt
 
@@ -52,17 +64,17 @@ run_chol_sparse: main
 run_chol_sparse_iter: main
 	./main $(NLS)/cholesky_sparse_iter_netlist.txt
 
-run_lu_tran: main
-	./main $(NLS)/lu_tran_netlist.txt
+run_chol_tran_tr: main
+	./main $(NLS)/cholesky_tran_tr_netlist.txt
 
-run_lu_tran_iter: main
-	./main $(NLS)/lu_tran_iter_netlist.txt
+run_chol_tran_tr_iter: main
+	./main $(NLS)/cholesky_tran_tr_iter_netlist.txt
 
-run_chol_tran: main
-	./main $(NLS)/cholesky_tran_netlist.txt
+run_chol_tran_be: main
+	./main $(NLS)/cholesky_tran_be_netlist.txt
 
-run_chol_tran_iter: main
-	./main $(NLS)/cholesky_tran_iter_netlist.txt
+run_chol_tran_be_iter: main
+	./main $(NLS)/cholesky_tran_be_iter_netlist.txt
 
 run_ibm1: main
 	./main $(IBM_NLS)/ibmpg1.spice
