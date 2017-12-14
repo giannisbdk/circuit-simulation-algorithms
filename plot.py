@@ -31,6 +31,7 @@ def plot_all(dir_path):
 	plt.grid(True)
 	plt.legend(loc='best')
 	plt.savefig(plots_path + "/" + "Transient_Analysis")
+	plt.autoscale(True, True, True)
 	plt.show()
 
 
@@ -42,7 +43,7 @@ def plot_file(filename):
 
 	step_list = []
 	val_list  = []
-	pat = r"([0-9]*\.?[0-9]+)\s+([0-9]*\.?[0-9]+)"
+	pat = r"([0-9]*\.?[0-9]+)\s+(-?[0-9]*\.?[0-9]+)"
 
 	for line in lines[1:]:
 		match = re.search(pat, line)

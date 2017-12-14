@@ -52,6 +52,18 @@ run_chol_sparse: main
 run_chol_sparse_iter: main
 	./main $(NLS)/cholesky_sparse_iter_netlist.txt
 
+run_lu_tran: main
+	./main $(NLS)/lu_tran_netlist.txt
+
+run_lu_tran_iter: main
+	./main $(NLS)/lu_tran_iter_netlist.txt
+
+run_chol_tran: main
+	./main $(NLS)/cholesky_tran_netlist.txt
+
+run_chol_tran_iter: main
+	./main $(NLS)/cholesky_tran_iter_netlist.txt
+
 run_ibm1: main
 	./main $(IBM_NLS)/ibmpg1.spice
 
@@ -95,7 +107,7 @@ plot:
 .PHONY: clean
 # Clean the output files
 clean:
-	$(RM) main dc_*.txt tr_*.txt
+	$(RM) dc_*.txt tr_*.txt
 
 .PHONY: clean_ibm
 # Clean the output files
@@ -105,4 +117,4 @@ clean_ibm:
 # Cleans the executable, the output files and the object files
 .PHONY: cleanall
 cleanall: clean
-	$(RM) $(OBJECTS) -rf $(PLS)
+	$(RM) main $(OBJECTS) -rf $(PLS)
