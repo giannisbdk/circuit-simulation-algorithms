@@ -34,6 +34,15 @@ typedef struct sp_matrix {
 	cs 	*A;
 	css *A_symbolic;
 	csn *A_numeric;
+
+	cs *G;
+	cs *hC;
+	/* aGhC = G + hC */
+	cs *aGhC;
+	/* aGhC = G - hC */
+	cs *sGhC;
+
+
 } sp_matrix_t;
 
 /* Keeps the indexing for the sources of group 2 */
@@ -47,6 +56,7 @@ typedef struct mna_system {
 	sp_matrix_t *sp_matrix;
 	/* Jacobi Preconditioner M, we only store the diagonal of A not zeros */
 	double *M;
+	double *M_trans;
 	/* Right hand side vector b for the Ax=b */
 	double *b;
 	bool is_decomp;
@@ -65,6 +75,7 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset);
 void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset);
 void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
+void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
 void solve_mna_system(mna_system_t *mna, double **x, options_t *options);
 // void solve_lu(mna_system_t *mna, gsl_vector_view x);
 void solve_lu(double **A, double *b, gsl_vector_view x, gsl_permutation *P, int dimension, bool is_decomp);

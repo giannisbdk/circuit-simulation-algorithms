@@ -10,9 +10,6 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 	char prefix[] = "tr_analysis_";
 	char file_name[MAX_FILE_NAME];
 
-	FILE *gnuplot = popen("gnuplot", "w");
-    fprintf(gnuplot, "plot '-'\n");
-
 	/* Clear the decomposition flag for the mna system */
 	mna->is_decomp = false;
 	mna->tr_analysis_init = true;
@@ -67,7 +64,6 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
             for (int j = 0; j < parser->tr_analysis[i].num_nodes; j++) {
                 int offset = ht_get_id(hash_table, parser->tr_analysis[i].nodes[j]) - 1;
                 fprintf(files[j], "%-15lf%-15lf\n", step * parser->tr_analysis->time_step, sol_x[offset]);
-			    fprintf(gnuplot, "%g %g\n", step * parser->tr_analysis->time_step, sol_x[offset]);
             }
 			/* Copy current solution to prev to use for next iteration */
 			memcpy(prev_sol, sol_x, mna->dimension * sizeof(double));
@@ -79,8 +75,6 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 	}
 	mna->tr_analysis_init = false;
 	printf("Transient Analysis....... OK\n");
-	fprintf(gnuplot, "e\n");
-	fflush(gnuplot);
 }
 
 /* Computes and returns the right hand side of the trapezoidal */

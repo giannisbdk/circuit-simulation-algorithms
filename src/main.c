@@ -73,6 +73,5 @@ int main(int argc, char *argv[]) {
     free_parser(&parser);
     ht_free(&hash_table);
     free(sol_x);
-    sleep(100);
 	return 0;
 }

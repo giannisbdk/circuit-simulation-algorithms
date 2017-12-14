@@ -20,9 +20,16 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	/* In case we will use iterative methods allocate memory for the prerequisites */
 	if (options->ITER) {
 		mna->M = init_vector(mna->dimension);
+		if(options->TRAN) {
+			mna->M_trans = init_vector(mna->dimension);
+		}
+		else {
+			mna->M_trans = NULL;
+		}
 	}
 	else {
 		mna->M = NULL;
+		mna->M_trans = NULL;
 	}
 	mna->b = init_vector(mna->dimension);
 	mna->is_decomp = false;
@@ -76,6 +83,19 @@ void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz) {
 	assert(mna->sp_matrix->A != NULL);
 	mna->sp_matrix->A->nz = 0;
 	mna->matrix = NULL;
+
+	if (options->TRAN) {
+		mna->sp_matrix->G    = cs_spalloc(mna->dimension, mna->dimension, nz, 1 , 1);
+		mna->sp_matrix->hC   = cs_spalloc(mna->dimension, mna->dimension, nz, 1 , 1);
+		mna->sp_matrix->aGhC = cs_spalloc(mna->dimension, mna->dimension, nz, 1 , 1);
+		/* If method is not the default Trapezoidal, we dont need the sGhC matrix, we use hC insteed */
+		if (!options->TR) {
+			mna->sp_matrix->sGhC = NULL;
+		}
+		else {
+			mna->sp_matrix->sGhC = cs_spalloc(mna->dimension, mna->dimension, nz, 1 , 1);
+		}
+	}
 }
 
 /* Allocate memory for the matrix of the MNA system */
@@ -108,6 +128,9 @@ gsl_permutation *init_permutation(int dimension) {
 void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset) {
 	if (options->SPARSE) {
 		create_sparse_mna(mna, index, hash_table, options, offset);
+		if(options->TRAN) {
+			create_sparse_trans_mna(mna, index, hash_table, options, tr_step, offset);
+		}
 	}
 	else {
 		create_dense_mna(mna, index, hash_table, options, offset);
@@ -295,33 +318,16 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 		}
 	}
 
+	if (options->ITER) {
+		/* Compute the M preconditioner */
+		jacobi_precond(mna->M_trans, mna->matrix->aGhC, NULL, mna->dimension, options->SPARSE);
+	}
+
 	/* Free what is no longer needed */
 	// free(mna->matrix->G);
 	// if (options->TR) {
 	// 	free(mna->matrix->hC);
 	// }
-}
-
-/* Gets the response value according to the transient spec */
-double get_response_value(list1_t *curr) {
-	if (curr->type == 'I' || curr-> type == 'i' || curr->type == 'V' || curr->type == 'v') {
-		if(curr->trans_spec != NULL) {
-			switch (curr->trans_spec->type) {
-				case EXP:
-					return curr->trans_spec->exp->i1;
-				case SIN:
-					return curr->trans_spec->sin->i1;
-				case PULSE:
-					return curr->trans_spec->pulse->i1;
-				case PWL:
-					return curr->trans_spec->pwl->i[0];
-			}
-		}
-		else {
-			return curr->value;
-		}
-	}
-	return 0.0;
 }
 
 /* Constructs the sparse MNA system */
@@ -408,6 +414,33 @@ void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 	}
 }
 
+void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset) {
+
+
+}
+
+/* Gets the response value according to the transient spec */
+double get_response_value(list1_t *curr) {
+	if (curr->type == 'I' || curr-> type == 'i' || curr->type == 'V' || curr->type == 'v') {
+		if(curr->trans_spec != NULL) {
+			switch (curr->trans_spec->type) {
+				case EXP:
+					return curr->trans_spec->exp->i1;
+				case SIN:
+					return curr->trans_spec->sin->i1;
+				case PULSE:
+					return curr->trans_spec->pulse->i1;
+				case PWL:
+					return curr->trans_spec->pwl->i[0];
+			}
+		}
+		else {
+			return curr->value;
+		}
+	}
+	return 0.0;
+}
+
 /* Searches through the g2_indx of the mna system and returns the index of the argument element */
 int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *element) {
 	for (int i = 0; i < num_g2_elem; i++) {
@@ -455,19 +488,30 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 		}
 	}
 	else {
+		/* Pointer to set the appropriate matrix */
+		double **matrix_ptr;
+		double *M_precond;
+		if (mna->tr_analysis_init) {
+			matrix_ptr = mna->matrix->aGhC;
+			M_precond  = mna->M_trans;
+		}
+		else {
+			matrix_ptr = mna->matrix->A;
+			M_precond  = mna->M;
+		}
 		gsl_vector_view view_x = gsl_vector_view_array(*x, mna->dimension);
 		if (options->ITER) {
 			if (options->SPD) {
 				/* Set the maximum number of iterations CG worst case is O(n) */
 				maxiter = mna->dimension;
-			 	iterations = conj_grad(mna->matrix->A, NULL, *x, mna->b, mna->M, mna->dimension,
+			 	iterations = conj_grad(matrix_ptr, NULL, *x, mna->b, M_precond, mna->dimension,
 			 						   options->ITOL, maxiter, options->SPARSE);
 				//printf("Conjugate gradient method did %d iterations.\n", iterations);
 			}
 			else {
 				/* Set the maximum number of iterations Bi-CG worst case is O(2n) */
 				maxiter = 2 * mna->dimension;
-				iterations = bi_conj_grad(mna->matrix->A, NULL, *x, mna->b, mna->M, mna->dimension, 
+				iterations = bi_conj_grad(matrix_ptr, NULL, *x, mna->b, M_precond, mna->dimension, 
 										  options->ITOL, maxiter, options->SPARSE);
 				if (iterations == FAILURE) {
 					fprintf(stderr, "Bi-Conjugate gradient method failed.\n");
@@ -477,14 +521,6 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 			}
 		}
 		else {
-			/* Pointer to set the appropriate matrix */
-			double **matrix_ptr;
-			if (mna->tr_analysis_init) {
-				matrix_ptr = mna->matrix->aGhC;
-			}
-			else {
-				matrix_ptr = mna->matrix->A;
-			}
 			if (options->SPD) {
 				solve_cholesky(matrix_ptr, mna->b, view_x, mna->dimension, mna->is_decomp);
 			}

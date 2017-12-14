@@ -11,6 +11,9 @@ SRC = src
 OBJ = obj
 NLS = netlists
 IBM_NLS = ibm_netlists
+PLS = plots
+
+PLT_SRC = plot.py
 
 SOURCES = $(wildcard $(SRC)/*.c)
 OBJECTS = $(patsubst $(SRC)/%.c,$(OBJ)/%.o,$(SOURCES))
@@ -85,6 +88,10 @@ download_ibm5:
 download_ibm6:
 	./download_ibm.sh ibm6	
 
+plot:
+	@echo "Executing $(PLT_SRC)..."
+	@python2.7 $(PLT_SRC)
+
 .PHONY: clean
 # Clean the output files
 clean:
@@ -98,4 +105,4 @@ clean_ibm:
 # Cleans the executable, the output files and the object files
 .PHONY: cleanall
 cleanall: clean
-	$(RM) $(OBJECTS)
+	$(RM) $(OBJECTS) -rf $(PLS)
