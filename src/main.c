@@ -50,8 +50,9 @@ int main(int argc, char *argv[]) {
     double *dc_op_sol_x = (double *)calloc(dimension, sizeof(double));
     
     /* Solve the MNA system */
-    solve_mna_system(mna, &sol_x, parser->options);
-
+    // solve_mna_system(mna, &sol_x, parser->options);
+    gsl_vector_view view_x = gsl_vector_view_array(sol_x, mna->dimension);
+    solve_lu(mna->matrix->G, mna->b, view_x, mna->matrix->P, mna->dimension, mna->is_decomp);
     // printf("Solution of the MNA system:\n\n");
     // print_vector(sol_x, dimension);
 
