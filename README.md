@@ -12,10 +12,12 @@
 * Katsaros Nikos
 
 ## Dependencies: ##
-This project requires GSL library to be installed.  
+This project requires `GSL` library to be installed for **C**.  
+In order to plot the transient analysis `matplotlib` for **python** is also required.
 
-Install it using:
+
+Install them using:
 ```bash
-sudo apt-get install libgsl0-dev
+1. sudo apt install libgsl0-dev
+2. sudo apt install python-matplotlib
 ```
-
