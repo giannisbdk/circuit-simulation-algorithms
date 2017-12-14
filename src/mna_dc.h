@@ -55,6 +55,7 @@ typedef struct mna_system {
 	/* Keep some info about g2 elements */
 	int num_g2_elem;
 	g2_indx_t *g2_indx;
+	bool tr_analysis_init;
 } mna_system_t;
 
 mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options, int nz);

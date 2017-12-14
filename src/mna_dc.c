@@ -30,6 +30,9 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	mna->num_g2_elem = num_g2_elem;
 	mna->g2_indx = (g2_indx_t *)malloc(num_g2_elem * sizeof(g2_indx_t));
 	assert(mna->g2_indx != NULL);
+
+	mna->tr_analysis_init = false;
+
 	return mna;
 }
 
@@ -476,7 +479,7 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 		else {
 			/* Pointer to set the appropriate matrix */
 			double **matrix_ptr;
-			if (options->TRAN) {
+			if (mna->tr_analysis_init) {
 				matrix_ptr = mna->matrix->aGhC;
 			}
 			else {

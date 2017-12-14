@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "parser.h"
 #include "list.h"
@@ -40,7 +41,7 @@ int main(int argc, char *argv[]) {
     // print_mna_system(mna, parser->options);
     
     /* Print the MNA system */
-    print_mna_system(mna, parser->options);
+    // print_mna_system(mna, parser->options);
     
     /* Dimension of MNA system */
     int dimension = parser->netlist->num_nodes + parser->netlist->num_g2_elem;
@@ -50,16 +51,12 @@ int main(int argc, char *argv[]) {
     double *dc_op_sol_x = (double *)calloc(dimension, sizeof(double));
     
     /* Solve the MNA system */
-    // solve_mna_system(mna, &sol_x, parser->options);
-    gsl_vector_view view_x = gsl_vector_view_array(sol_x, mna->dimension);
-    solve_lu(mna->matrix->G, mna->b, view_x, mna->matrix->P, mna->dimension, mna->is_decomp);
-    // printf("Solution of the MNA system:\n\n");
-    // print_vector(sol_x, dimension);
+    solve_mna_system(mna, &sol_x, parser->options);
+    printf("Solution of the MNA system:\n\n");
+    print_vector(sol_x, dimension);
 
     /* DC Operating Point to file */
     dc_operating_point(hash_table, sol_x);
-    printf("initial sol_x of dc is\n");
-    print_vector(sol_x, mna->dimension);
     
     /* Hold dc op value for transient */
     memcpy(dc_op_sol_x, sol_x, mna->dimension * sizeof(double));
@@ -76,6 +73,6 @@ int main(int argc, char *argv[]) {
     free_parser(&parser);
     ht_free(&hash_table);
     free(sol_x);
-
+    sleep(100);
 	return 0;
 }

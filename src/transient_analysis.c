@@ -10,17 +10,25 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 	char prefix[] = "tr_analysis_";
 	char file_name[MAX_FILE_NAME];
 
+	FILE *gnuplot = popen("gnuplot", "w");
+    fprintf(gnuplot, "plot '-'\n");
+
 	/* Clear the decomposition flag for the mna system */
 	mna->is_decomp = false;
-
+	mna->tr_analysis_init = true;
 	/* b is the RHS of the trapezoidal/backward euler */
 	double *prev_sol = init_vector(mna->dimension);
 	double *curr_response = init_vector(mna->dimension);
-	double *prev_response = init_vector(mna->dimension);
+	double *prev_response;
+	if (parser->options->TR) {
+		prev_response = init_vector(mna->dimension);
+	}
 
 	for (int i = 0; i < parser->netlist->tr_counter; i++) {
 		memcpy(prev_sol, init_sol, mna->dimension * sizeof(double));
-		memcpy(prev_response, mna->matrix->resp->value, mna->dimension * sizeof(double));
+		if (parser->options->TR) {
+			memcpy(prev_response, mna->matrix->resp->value, mna->dimension * sizeof(double));
+		}
 		FILE *files[parser->tr_analysis[i].num_nodes];
         /* Open different files for each node in plot/print array */
         for (int j = 0; j < parser->tr_analysis[i].num_nodes; j++) {
@@ -52,13 +60,14 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 				set_trapezoidal_rhs(mna, curr_response, prev_response, prev_sol, parser->tr_analysis->time_step, step);
 			}
 			else {
-				// backward_euler(head, hash_table, mna, parser, sol_x);
+				set_backward_euler_rhs(mna, curr_response, prev_sol, parser->tr_analysis->time_step, step);
 			}
 			/* Solve the system */
 			solve_mna_system(mna, &sol_x, parser->options);
             for (int j = 0; j < parser->tr_analysis[i].num_nodes; j++) {
                 int offset = ht_get_id(hash_table, parser->tr_analysis[i].nodes[j]) - 1;
                 fprintf(files[j], "%-15lf%-15lf\n", step * parser->tr_analysis->time_step, sol_x[offset]);
+			    fprintf(gnuplot, "%g %g\n", step * parser->tr_analysis->time_step, sol_x[offset]);
             }
 			/* Copy current solution to prev to use for next iteration */
 			memcpy(prev_sol, sol_x, mna->dimension * sizeof(double));
@@ -68,6 +77,10 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
             fclose(files[j]);
         }
 	}
+	mna->tr_analysis_init = false;
+	printf("Transient Analysis....... OK\n");
+	fprintf(gnuplot, "e\n");
+	fflush(gnuplot);
 }
 
 /* Computes and returns the right hand side of the trapezoidal */
@@ -105,6 +118,38 @@ void set_trapezoidal_rhs(mna_system_t *mna, double *curr_response, double *prev_
 	mat_vec_mul(sGhc_x, mna->matrix->sGhC, prev_sol, mna->dimension);
 	sub_vector(mna->b, response_add, sGhc_x, mna->dimension);
 	memcpy(prev_response, curr_response, mna->dimension * sizeof(double));
+}
+
+void set_backward_euler_rhs(mna_system_t *mna, double *curr_response, double *prev_sol, double h, int k) {
+	/* curr_response is e(tk) and prev_response is e(tk-1) */
+	/* Set the values of the e(tk) vector */
+	for (int i = 0; i < mna->dimension; i++) {
+		list1_t *curr = mna->matrix->resp->nodes[i];
+		if (curr->trans_spec != NULL) {
+			switch (curr->trans_spec->type) {
+				case EXP:
+					curr_response[i] = eval_exp(curr->trans_spec->exp, h * k);
+					break;
+				case SIN:
+					curr_response[i] = eval_sin(curr->trans_spec->sin, h * k);
+					break;
+				case PULSE:
+					curr_response[i] = eval_pulse(curr->trans_spec->pulse, h * k);
+					break;
+				case PWL:
+					curr_response[i] = eval_pwl(curr->trans_spec->pwl, h * k);
+					break;
+			}
+		}
+		else {
+			/* If transient spec is absent set the DC value */
+			curr_response[i] = mna->matrix->resp->value[i];
+		}
+	}
+	/* Compute: e(tk) + (1/h)C*x(tk-1) and save it to the provided b vector */
+	double *hC_x = init_vector(mna->dimension);
+	mat_vec_mul(hC_x, mna->matrix->hC, prev_sol, mna->dimension);
+	add_vector(mna->b, curr_response, hC_x, mna->dimension);
 }
 
 /* Evaluates the exponential transient at given time t */
