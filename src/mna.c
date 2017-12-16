@@ -3,7 +3,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "mna_dc.h"
+#include "mna.h"
 
 /* Allocate memory for the MNA system */
 mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options, int nz) {
@@ -31,14 +31,29 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 		mna->M = NULL;
 		mna->M_trans = NULL;
 	}
+	/* In case netlists has .TRAN, allocate the resp_t struct that holds the transient response *
+	 * and the nodes that contribute to it. It's the same for dense and sparse matrix           */
+	if (options->TRAN) {
+		mna->resp = (resp_t *)malloc(sizeof(resp_t));
+		mna->resp->value = init_vector(mna->dimension);
+		mna->resp->nodes = (list1_t **)malloc(mna->dimension * sizeof(list1_t *));
+		assert(mna->resp->nodes != NULL);
+		mna->resp->nodes[0] = (list1_t *)malloc(mna->dimension * sizeof(list1_t));
+		assert(mna->resp->nodes[0] != NULL);
+		for (int i = 1; i < mna->dimension; i++) {
+			mna->resp->nodes[i] = mna->resp->nodes[i-1] + 1;
+		}
+	}
+	/* Allocate the rhs vector */
 	mna->b = init_vector(mna->dimension);
+	/* Init the other fields of the mna system*/
 	mna->is_decomp = false;
+	mna->tr_analysis_init = false;
 	mna->num_nodes = num_nodes;
 	mna->num_g2_elem = num_g2_elem;
+	/* Allocate a vector that holds the names of g2 elements */
 	mna->g2_indx = (g2_indx_t *)malloc(num_g2_elem * sizeof(g2_indx_t));
 	assert(mna->g2_indx != NULL);
-
-	mna->tr_analysis_init = false;
 
 	return mna;
 }
@@ -53,7 +68,6 @@ void init_dense_matrix(mna_system_t *mna, options_t *options) {
 	mna->matrix->P = init_permutation(mna->dimension);
 	mna->sp_matrix = NULL;
 	if (options->TRAN) {
-		mna->matrix->G    = init_array(mna->dimension, mna->dimension);
 		mna->matrix->hC   = init_array(mna->dimension, mna->dimension);
 		mna->matrix->aGhC = init_array(mna->dimension, mna->dimension);
 		/* If method is not the default Trapezoidal, we dont need the sGhC matrix, we use hC insteed */
@@ -63,29 +77,20 @@ void init_dense_matrix(mna_system_t *mna, options_t *options) {
 		else {
 			mna->matrix->sGhC = init_array(mna->dimension, mna->dimension);
 		}
-		mna->matrix->resp = (resp_t *)malloc(sizeof(resp_t));
-		mna->matrix->resp->value = init_vector(mna->dimension);
-		mna->matrix->resp->nodes = (list1_t **)malloc(mna->dimension * sizeof(list1_t *));
-		assert(mna->matrix->resp->nodes != NULL);
-		mna->matrix->resp->nodes[0] = (list1_t *)malloc(mna->dimension * sizeof(list1_t));
-		assert(mna->matrix->resp->nodes[0] != NULL);
-		for (int i = 1; i < mna->dimension; i++) {
-			mna->matrix->resp->nodes[i] = mna->matrix->resp->nodes[i-1] + 1;
-		}
 	}
 }
 
 /* Allocate memory for a sparse representation of MNA */
 void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz) {
+	/* Allocate for the matrices struct */
 	mna->sp_matrix = (sp_matrix_t *)malloc(sizeof(sp_matrix_t));
 	assert(mna->sp_matrix != NULL);
+	/* Allocate for every different matrix */
 	mna->sp_matrix->A = cs_spalloc(mna->dimension, mna->dimension, nz, 1 , 1);
 	assert(mna->sp_matrix->A != NULL);
 	mna->sp_matrix->A->nz = 0;
 	mna->matrix = NULL;
-
 	if (options->TRAN) {
-		mna->sp_matrix->G    = cs_spalloc(mna->dimension, mna->dimension, nz, 1 , 1);
 		mna->sp_matrix->hC   = cs_spalloc(mna->dimension, mna->dimension, nz, 1 , 1);
 		mna->sp_matrix->aGhC = cs_spalloc(mna->dimension, mna->dimension, nz, 1 , 1);
 		/* If method is not the default Trapezoidal, we dont need the sGhC matrix, we use hC insteed */
@@ -226,9 +231,6 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 	double value, h;
 	int volt_sources_cnt = 0;
 
-	memcpy(*mna->matrix->G, *mna->matrix->A, mna->dimension * mna->dimension * sizeof(double));
-	assert(mna->matrix->G != NULL);
-
 	if (!options->BE) {
 		h = 2 / tr_step;
 	}
@@ -265,16 +267,16 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 		else if (curr->type == 'V' || curr->type == 'v') {
 			value = get_response_value(curr);
 			/* Keep track of the node that contributes */
-			mna->matrix->resp->nodes[offset + volt_sources_cnt] = curr;
+			mna->resp->nodes[offset + volt_sources_cnt] = curr;
 			/* Keep track of how many voltage sources or inductors, we have already found */
 			if (probe1_id == 0) {
-				mna->matrix->resp->value[offset + volt_sources_cnt] += value;
+				mna->resp->value[offset + volt_sources_cnt] += value;
 			}
 			else if (probe2_id == 0) {
-				mna->matrix->resp->value[offset + volt_sources_cnt] += value;
+				mna->resp->value[offset + volt_sources_cnt] += value;
 			}
 			else {
-				mna->matrix->resp->value[offset + volt_sources_cnt] += value;
+				mna->resp->value[offset + volt_sources_cnt] += value;
 			}
 			/* Keep track of how many voltage sources or inductors, we have already found */
 			volt_sources_cnt++;
@@ -282,38 +284,28 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 		else if (curr->type == 'I' || curr->type == 'i') {
 			value = get_response_value(curr);
 			if (probe1_id == 0) {
-				mna->matrix->resp->value[j] += value;
-				mna->matrix->resp->nodes[j]  = curr;
+				mna->resp->value[j] += value;
+				mna->resp->nodes[j]  = curr;
 			}
 			else if (probe2_id == 0) {
-				mna->matrix->resp->value[i] -= value;
-				mna->matrix->resp->nodes[i]  = curr;
+				mna->resp->value[i] -= value;
+				mna->resp->nodes[i]  = curr;
 			}
 			else {
-				mna->matrix->resp->value[i] -= value;
-				mna->matrix->resp->value[j] += value;
-				mna->matrix->resp->nodes[i]  = curr;
-				mna->matrix->resp->nodes[j]  = curr;
+				mna->resp->value[i] -= value;
+				mna->resp->value[j] += value;
+				mna->resp->nodes[i]  = curr;
+				mna->resp->nodes[j]  = curr;
 			}
 		}
 	}
-	// printf("Printing resp struct\n");
-	// for(int i = 0; i < mna->dimension; i++) {
-	// 	if(mna->matrix->resp->nodes[i]->trans_spec != NULL) {
-	// 		printf("curr element %s, type is %d, init value: %lf\n", mna->matrix->resp->nodes[i]->element, 
-	// 			mna->matrix->resp->nodes[i]->trans_spec->type, mna->matrix->resp->value[i]);
-	// 	}
-	// 	else {
-	// 		printf("curr element %s, no type, init value: %lf\n", mna->matrix->resp->nodes[i]->element, mna->matrix->resp->value[i]);
-	// 	}
-	// }
 
 	/* Compute the matrices G + 1/h*C and G - 2/h*C */
 	for (int i = 0; i < mna->dimension; i++) {
 		for (int j = 0; j < mna->dimension; j++) {
-			mna->matrix->aGhC[i][j] = mna->matrix->G[i][j] + mna->matrix->hC[i][j];
+			mna->matrix->aGhC[i][j] = mna->matrix->A[i][j] + mna->matrix->hC[i][j];
 			if (options->TR) {
-				mna->matrix->sGhC[i][j] = mna->matrix->G[i][j] - mna->matrix->hC[i][j];
+				mna->matrix->sGhC[i][j] = mna->matrix->A[i][j] - mna->matrix->hC[i][j];
 			}
 		}
 	}
@@ -324,10 +316,9 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 	}
 
 	/* Free what is no longer needed */
-	// free(mna->matrix->G);
-	// if (options->TR) {
-	// 	free(mna->matrix->hC);
-	// }
+	if (options->TR) {
+		free(mna->matrix->hC);
+	}
 }
 
 /* Constructs the sparse MNA system */
@@ -352,8 +343,8 @@ void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 				cs_entry(mna->sp_matrix->A, i, i, value);
 			}
 			else {
-				cs_entry(mna->sp_matrix->A, i, i, value);
-				cs_entry(mna->sp_matrix->A, j, j, value);
+				cs_entry(mna->sp_matrix->A, i, i,  value);
+				cs_entry(mna->sp_matrix->A, j, j,  value);
 				cs_entry(mna->sp_matrix->A, i, j, -value);
 				cs_entry(mna->sp_matrix->A, j, i, -value);
 			}
@@ -415,8 +406,114 @@ void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 }
 
 void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset) {
+	list1_t *curr;
+	double value, h;
+	int volt_sources_cnt = 0;
 
+	// memcpy(*mna->sp_matrix->G, *mna->sp_matrix->A, mna->dimension * mna->dimension * sizeof(double));
+	// assert(mna->sp_matrix->G != NULL);
 
+	if (!options->BE) {
+		h = 2 / tr_step;
+	}
+	else {
+		h = 1 / tr_step;
+	}
+
+	for (curr = index->head1; curr != NULL; curr = curr->next) {
+		int probe1_id = ht_get_id(hash_table, curr->probe1);
+		int probe2_id = ht_get_id(hash_table, curr->probe2);
+		int i = probe1_id - 1;
+		int j = probe2_id - 1;
+		if (curr->type == 'C' || curr->type == 'c') {
+			value = h * curr->value;
+			if (probe1_id == 0) {
+				cs_entry(mna->sp_matrix->hC, j, j, value);
+			}
+			else if (probe2_id == 0) {
+				cs_entry(mna->sp_matrix->hC, i, i, value);
+			}
+			else {
+				cs_entry(mna->sp_matrix->hC, i, i,  value);
+				cs_entry(mna->sp_matrix->hC, j, j,  value);
+				cs_entry(mna->sp_matrix->hC, i, j, -value);
+				cs_entry(mna->sp_matrix->hC, j, i, -value);
+			}
+		}
+		else if(curr->type == 'L' || curr->type == 'l') {
+			/* Set the L value in the diagonal of g2 area in matrices */
+			cs_entry(mna->sp_matrix->hC, offset + volt_sources_cnt, offset + volt_sources_cnt, -curr->value * h);
+			/* Keep track of how many voltage sources or inductors, we have already found */
+			volt_sources_cnt++;
+		}
+		else if (curr->type == 'V' || curr->type == 'v') {
+			value = get_response_value(curr);
+			/* Keep track of the node that contributes */
+			mna->resp->nodes[offset + volt_sources_cnt] = curr;
+			/* Keep track of how many voltage sources or inductors, we have already found */
+			if (probe1_id == 0) {
+				mna->resp->value[offset + volt_sources_cnt] += value;
+			}
+			else if (probe2_id == 0) {
+				mna->resp->value[offset + volt_sources_cnt] += value;
+			}
+			else {
+				mna->resp->value[offset + volt_sources_cnt] += value;
+			}
+			/* Keep track of how many voltage sources or inductors, we have already found */
+			volt_sources_cnt++;
+		}
+		else if (curr->type == 'I' || curr->type == 'i') {
+			value = get_response_value(curr);
+			if (probe1_id == 0) {
+				mna->resp->value[j] += value;
+				mna->resp->nodes[j]  = curr;
+			}
+			else if (probe2_id == 0) {
+				mna->resp->value[i] -= value;
+				mna->resp->nodes[i]  = curr;
+			}
+			else {
+				mna->resp->value[i] -= value;
+				mna->resp->value[j] += value;
+				mna->resp->nodes[i]  = curr;
+				mna->resp->nodes[j]  = curr;
+			}
+		}
+	}
+
+	/* Compute the matrices G + 1/h*C and G - 2/h*C */
+	mna->sp_matrix->aGhC = cs_add(mna->sp_matrix->A, mna->sp_matrix->hC, 1, 1);
+	/* Compress the aGhC matrix */
+	cs *aGhC_comp = cs_compress(mna->sp_matrix->aGhC);
+	cs_spfree(mna->sp_matrix->aGhC);
+	mna->sp_matrix->aGhC = aGhC_comp;
+	cs_dupl(mna->sp_matrix->aGhC);
+
+	/* In case we have Trapezoidal method */
+	if (options->TR) {
+		mna->sp_matrix->sGhC = cs_add(mna->sp_matrix->A, mna->sp_matrix->hC, 1, -1);
+		/* Compress the sGhC matrix */
+		cs *sGhC_comp = cs_compress(mna->sp_matrix->sGhC);
+		cs_spfree(mna->sp_matrix->sGhC);
+		mna->sp_matrix->sGhC = sGhC_comp;
+		cs_dupl(mna->sp_matrix->sGhC);
+		/* Free what is no longer needed */
+		cs_spfree(mna->sp_matrix->hC);
+		free(mna->matrix->hC);
+	}
+	else {
+		/* Compress the hC matrix */
+		cs *hC_comp = cs_compress(mna->sp_matrix->hC);
+		cs_spfree(mna->sp_matrix->hC);
+		mna->sp_matrix->hC = hC_comp;
+		cs_dupl(mna->sp_matrix->hC);
+	}
+	
+	if (options->ITER) {
+		/* Compute the M preconditioner */
+		jacobi_precond(mna->M_trans, NULL, aGhC_comp, mna->dimension, options->SPARSE);
+	}
 }
 
 /* Gets the response value according to the transient spec */
@@ -615,9 +712,9 @@ void print_mna_system(mna_system_t *mna, options_t *options) {
 		print_vector(mna->b, mna->dimension);
 		if (options->TRAN) {
 			printf("MNA init_response vector:\n\n");
-			print_vector(mna->matrix->resp->value, mna->dimension);
+			print_vector(mna->resp->value, mna->dimension);
 			printf("\nMNA G array:\n\n");
-			print_array(mna->matrix->G, mna->dimension);
+			print_array(mna->matrix->A, mna->dimension);
 			printf("\nMNA hC array:\n\n");
 			print_array(mna->matrix->hC, mna->dimension);
 			printf("\nMNA aGhC array:\n\n");

@@ -5,7 +5,7 @@
 #include "parser.h"
 #include "list.h"
 #include "hash_table.h"
-#include "mna_dc.h"
+#include "mna.h"
 #include "routines.h"
 #include "dc_analysis.h"
 #include "time_tools.h"
@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     /* Parse the netlist filename is in argv[1] */
     parse_netlist(parser, argv[1], index, hash_table);
 
-    print_list1(index->head1, hash_table);
+    // print_list1(index->head1, hash_table);
 
     /* Initialize the MNA_system */
     mna_system_t *mna = init_mna_system(parser->netlist->num_nodes, parser->netlist->num_g2_elem, parser->options, parser->netlist->nz);
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
     
     /* Solve the MNA system */
     solve_mna_system(mna, &sol_x, parser->options);
-    printf("Solution of the MNA system:\n\n");
+    printf("\nSolution of the MNA system:\n\n");
     print_vector(sol_x, dimension);
 
     /* DC Operating Point to file */

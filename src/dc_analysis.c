@@ -112,5 +112,7 @@ void dc_sweep(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, parser
             }
         }
     }
-    printf("DC Sweep................. OK\n");
+    if (parser->netlist->dc_counter) {
+        printf("DC Sweep................. OK\n");
+    }
 }

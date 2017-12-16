@@ -2,7 +2,7 @@
 #define DC_ANALYSIS_H
 
 #include "hash_table.h"
-#include "mna_dc.h"
+#include "mna.h"
 #include "routines.h"
 
 #define MAX_FILE_NAME 50

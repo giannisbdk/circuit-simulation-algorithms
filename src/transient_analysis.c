@@ -2,7 +2,6 @@
 #include <string.h>
 
 #include "transient_analysis.h"
-#include "mna_dc.h"
 
 /* Do transient analysis */
 void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, double *init_sol, double *sol_x) {
@@ -24,32 +23,32 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 	for (int i = 0; i < parser->netlist->tr_counter; i++) {
 		memcpy(prev_sol, init_sol, mna->dimension * sizeof(double));
 		if (parser->options->TR) {
-			memcpy(prev_response, mna->matrix->resp->value, mna->dimension * sizeof(double));
+			memcpy(prev_response, mna->resp->value, mna->dimension * sizeof(double));
 		}
 		FILE *files[parser->tr_analysis[i].num_nodes];
-        /* Open different files for each node in plot/print array */
-        for (int j = 0; j < parser->tr_analysis[i].num_nodes; j++) {
-        	/* Temp buffer */
-        	char name[10];
-            /* Construct the file name */
-            strcpy(file_name, prefix);
-            strcat(file_name, parser->tr_analysis[i].nodes[j]);
-            strcat(file_name, "_");
-    		sprintf(name, "%g", parser->tr_analysis[i].time_step);
-            strcat(file_name, name);
-            strcat(file_name, "_");
-    		sprintf(name, "%g", parser->tr_analysis[i].fin_time);
-            strcat(file_name, name);
-            strcat(file_name, ".txt");
-            /* Open the output file */
-            files[j] = fopen(file_name, "w");
-            if (files[j] == NULL) {
-                fprintf(stderr, "Error opening file: %s\n", strerror(errno));
-                exit(EXIT_FAILURE);
-            }
-            //TODO perhaps add fin_time and time_step inside file
-            fprintf(files[j], "%-15s%-15s\n", "Time", "Value");
-        }
+		/* Open different files for each node in plot/print array */
+		for (int j = 0; j < parser->tr_analysis[i].num_nodes; j++) {
+			/* Temp buffer */
+			char name[10];
+			/* Construct the file name */
+			strcpy(file_name, prefix);
+			strcat(file_name, parser->tr_analysis[i].nodes[j]);
+			strcat(file_name, "_");
+			sprintf(name, "%g", parser->tr_analysis[i].time_step);
+			strcat(file_name, name);
+			strcat(file_name, "_");
+			sprintf(name, "%g", parser->tr_analysis[i].fin_time);
+			strcat(file_name, name);
+			strcat(file_name, ".txt");
+			/* Open the output file */
+			files[j] = fopen(file_name, "w");
+			if (files[j] == NULL) {
+				fprintf(stderr, "Error opening file: %s\n", strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+			//TODO perhaps add fin_time and time_step inside file
+			fprintf(files[j], "%-15s%-15s\n", "Time", "Value");
+		}
 		/* Find how many steps are required */
 		int n_steps = parser->tr_analysis->fin_time / parser->tr_analysis->time_step;
 		for (int step = 0; step <= n_steps; step++) {
@@ -61,20 +60,22 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 			}
 			/* Solve the system */
 			solve_mna_system(mna, &sol_x, parser->options);
-            for (int j = 0; j < parser->tr_analysis[i].num_nodes; j++) {
-                int offset = ht_get_id(hash_table, parser->tr_analysis[i].nodes[j]) - 1;
-                fprintf(files[j], "%-15lf%-15lf\n", step * parser->tr_analysis->time_step, sol_x[offset]);
-            }
+			for (int j = 0; j < parser->tr_analysis[i].num_nodes; j++) {
+				int offset = ht_get_id(hash_table, parser->tr_analysis[i].nodes[j]) - 1;
+				fprintf(files[j], "%-15lf%-15lf\n", step * parser->tr_analysis->time_step, sol_x[offset]);
+			}
 			/* Copy current solution to prev to use for next iteration */
 			memcpy(prev_sol, sol_x, mna->dimension * sizeof(double));
 		}
 		/* Close the file descriptors for the current transient analysis */
-        for (int j = 0; j < parser->dc_analysis[i].num_nodes; j++) {
-            fclose(files[j]);
-        }
+		for (int j = 0; j < parser->dc_analysis[i].num_nodes; j++) {
+		    fclose(files[j]);
+		}
 	}
 	mna->tr_analysis_init = false;
-	printf("Transient Analysis....... OK\n");
+	if (parser->netlist->tr_counter) {
+		printf("Transient Analysis....... OK\n");
+	}
 }
 
 /* Computes and returns the right hand side of the trapezoidal */
@@ -82,30 +83,7 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 void set_trapezoidal_rhs(mna_system_t *mna, double *curr_response, double *prev_response, double *prev_sol, double h, int k) {
 	/* curr_response is e(tk) and prev_response is e(tk-1) */
 	/* Set the values of the e(tk) vector */
-	for (int i = 0; i < mna->dimension; i++) {
-		list1_t *curr = mna->matrix->resp->nodes[i];
-		if (curr->trans_spec != NULL) {
-			switch (curr->trans_spec->type) {
-				case EXP:
-					curr_response[i] = eval_exp(curr->trans_spec->exp, h * k);
-					break;
-				case SIN:
-					curr_response[i] = eval_sin(curr->trans_spec->sin, h * k);
-					break;
-				case PULSE:
-					curr_response[i] = eval_pulse(curr->trans_spec->pulse, h * k);
-					// printf("PULSE IS %lf\n\n\n", curr_response[i]);
-					break;
-				case PWL:
-					curr_response[i] = eval_pwl(curr->trans_spec->pwl, h * k);
-					break;
-			}
-		}
-		else {
-			/* If transient spec is absent set the DC value */
-			curr_response[i] = mna->matrix->resp->value[i];
-		}
-	}
+	set_response_vector(curr_response, mna->resp, h * k, mna->dimension);
 	/* Compute: e(tk) + e(tk-1) - sGhC*x(tk-1) and save it to the provided b vector */
 	double *response_add = init_vector(mna->dimension);
 	double *sGhc_x = init_vector(mna->dimension);
@@ -115,36 +93,43 @@ void set_trapezoidal_rhs(mna_system_t *mna, double *curr_response, double *prev_
 	memcpy(prev_response, curr_response, mna->dimension * sizeof(double));
 }
 
+/* Computes and returns the right hand side of the backward euler */
+/* h is time_step and k is the iteration */
 void set_backward_euler_rhs(mna_system_t *mna, double *curr_response, double *prev_sol, double h, int k) {
-	/* curr_response is e(tk) and prev_response is e(tk-1) */
+	/* curr_response is e(tk) */
 	/* Set the values of the e(tk) vector */
-	for (int i = 0; i < mna->dimension; i++) {
-		list1_t *curr = mna->matrix->resp->nodes[i];
-		if (curr->trans_spec != NULL) {
-			switch (curr->trans_spec->type) {
+	set_response_vector(curr_response, mna->resp, h * k, mna->dimension);
+	/* Compute: e(tk) + (1/h)C*x(tk-1) and save it to the provided b vector */
+	double *hC_x = init_vector(mna->dimension);
+	mat_vec_mul(hC_x, mna->matrix->hC, prev_sol, mna->dimension);
+	add_vector(mna->b, curr_response, hC_x, mna->dimension);
+}
+
+/* Set the values of the e(tk) vector */
+void set_response_vector(double *response, resp_t *resp, double time, int dimension) {
+	for (int i = 0; i < dimension; i++) {
+		list1_t *node = resp->nodes[i];
+		if (node->trans_spec != NULL) {
+			switch (node->trans_spec->type) {
 				case EXP:
-					curr_response[i] = eval_exp(curr->trans_spec->exp, h * k);
+					response[i] = eval_exp(node->trans_spec->exp, time);
 					break;
 				case SIN:
-					curr_response[i] = eval_sin(curr->trans_spec->sin, h * k);
+					response[i] = eval_sin(node->trans_spec->sin, time);
 					break;
 				case PULSE:
-					curr_response[i] = eval_pulse(curr->trans_spec->pulse, h * k);
+					response[i] = eval_pulse(node->trans_spec->pulse, time);
 					break;
 				case PWL:
-					curr_response[i] = eval_pwl(curr->trans_spec->pwl, h * k);
+					response[i] = eval_pwl(node->trans_spec->pwl, time);
 					break;
 			}
 		}
 		else {
 			/* If transient spec is absent set the DC value */
-			curr_response[i] = mna->matrix->resp->value[i];
+			response[i] = resp->value[i];
 		}
 	}
-	/* Compute: e(tk) + (1/h)C*x(tk-1) and save it to the provided b vector */
-	double *hC_x = init_vector(mna->dimension);
-	mat_vec_mul(hC_x, mna->matrix->hC, prev_sol, mna->dimension);
-	add_vector(mna->b, curr_response, hC_x, mna->dimension);
 }
 
 /* Evaluates the exponential transient at given time t */
@@ -177,30 +162,22 @@ double eval_sin(sin_t *sinus, double t) {
 double eval_pulse(pulse_t *pulse, double t) {
 	int curr_per = t / pulse->per;
 	double period_off = curr_per * pulse->per;
-	// printf("curr_time is %lf\n", t);
-	// printf("curr_period is %d\n", curr_per);
-	// printf("period_off is %lf\n", period_off);
 
 	if (0 <= t && t < pulse->td) {
-		// printf("in 1st if %lf - %lf\n", t, pulse->td);
 		return pulse->i1;
 	}
 	else if ((pulse->td + period_off) <= t && t < (pulse->td + pulse->tr + period_off)) {
-		// printf("in 2nd if %lf - %lf\n", (pulse->td + period_off), (pulse->td + pulse->tr + period_off));
 		/* Find the line equation */
-		// printf("i1: %lf, i2: %lf, tr: %lf, t: %lf, td: %lf\n", pulse->i1, pulse->i2, pulse->tr, t, pulse->td);
 		return pulse->i1 + ((pulse->i2 - pulse->i1) / pulse->tr) * (t - (curr_per * pulse->per + pulse->td));
 	}
 	else if ((pulse->td + pulse->tr + period_off) <= t && t < (pulse->td + pulse->tr + pulse->pw + period_off)) {
-		// printf("in 3rd if %lf - %lf\n", (pulse->td + pulse->tr + period_off), (pulse->td + pulse->tr + pulse->pw + period_off));
 		return pulse->i2;
 	}
 	else if ((pulse->td + pulse->tr + pulse->pw + period_off) <= t && t < (pulse->td + pulse->tr + pulse->pw + pulse->tf + period_off)) {
-		// printf("in 4th if %lf - %lf\n", (pulse->td + pulse->tr + pulse->pw + period_off), (pulse->td + pulse->tr + pulse->pw + pulse->tf + period_off));
+		/* Find the line equation */
 		return pulse->i2 + ((pulse->i1 - pulse->i2) / pulse->tf) * (t - (pulse->td + curr_per * pulse->per) - pulse->tr - pulse->pw);
 	}
 	else {
-		// printf("in 5th if %lf - %lf\n", pulse->td+pulse->tr+pulse->pw+pulse->tf+period_off, pulse->td+pulse->per+period_off);
 		return pulse->i1;
 	}
 }

@@ -1,5 +1,5 @@
-#ifndef MNA_DC_H
-#define MNA_DC_H
+#ifndef MNA_H
+#define MNA_H
 
 #include <gsl/gsl_linalg.h>
 #include <stdbool.h>
@@ -20,13 +20,12 @@ typedef struct resp {
 typedef struct matrix {
 	double **A;
 	gsl_permutation *P;
-	double **G;
+	/* Matrices for the Transient Analysis */
 	double **hC;
-	/* aGhC = G + hC */
+	/* aGhC = G + hC, G = A */
 	double **aGhC;
-	/* aGhC = G - hC */
+	/* aGhC = G - hC, G = A */
 	double **sGhC;
-	resp_t *resp;
 } matrix_t;
 
 /* Holds the sparse representation of the MNA */
@@ -34,15 +33,12 @@ typedef struct sp_matrix {
 	cs 	*A;
 	css *A_symbolic;
 	csn *A_numeric;
-
-	cs *G;
+	/* Matrices for the Transient Analysis */
 	cs *hC;
-	/* aGhC = G + hC */
+	/* aGhC = G + hC, G = A */
 	cs *aGhC;
-	/* aGhC = G - hC */
+	/* aGhC = G - hC, G = A */
 	cs *sGhC;
-
-
 } sp_matrix_t;
 
 /* Keeps the indexing for the sources of group 2 */
@@ -54,6 +50,8 @@ typedef struct mna_system {
 	/* Pointers to the dense and sparse matrix of the MNA */
 	matrix_t 	*matrix;
 	sp_matrix_t *sp_matrix;
+	/* Pointer to the transient response and the nodes that contribute to it */
+	resp_t *resp;
 	/* Jacobi Preconditioner M, we only store the diagonal of A not zeros */
 	double *M;
 	double *M_trans;
