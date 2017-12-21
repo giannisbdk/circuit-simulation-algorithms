@@ -19,9 +19,11 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	}
 	/* In case we will use iterative methods allocate memory for the prerequisites */
 	if (options->ITER) {
-		mna->M = init_vector(mna->dimension);
+		// TODO work in jacobi_precond to set 1.0 in one step with indexes and not here
+		mna->M = init_val_vector(mna->dimension, 1.0);
 		if(options->TRAN) {
-			mna->M_trans = init_vector(mna->dimension);
+			// TODO work in jacobi_precond to set 1.0 in one step with indexes and not here
+			mna->M_trans = init_val_vector(mna->dimension, 1.0);
 		}
 		else {
 			mna->M_trans = NULL;
@@ -119,6 +121,16 @@ double **init_array(int row, int col) {
 double *init_vector(int row) {
 	double *vector = (double *)calloc(row, sizeof(double));;
 	assert(vector != NULL);
+	return vector;
+}
+
+/* Allocate memory for the new vector and set all values to val */
+double *init_val_vector(int row, double val) {
+	double *vector = (double *)malloc(row * sizeof(double));
+	assert(vector != NULL);
+	for (int i = 0; i < row ; i++) {
+		vector[i] = val;
+	}
 	return vector;
 }
 
@@ -482,37 +494,29 @@ void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *ha
 		}
 	}
 
+	/* Compress the hC matrix */
+	cs *hC_comp = cs_compress(mna->sp_matrix->hC);
+	cs_spfree(mna->sp_matrix->hC);
+	mna->sp_matrix->hC = hC_comp;
+	cs_dupl(mna->sp_matrix->hC);
+
 	/* Compute the matrices G + 1/h*C and G - 2/h*C */
+	/* cs_add takes compressed column matrices, the result is also compressed column matrix */
 	mna->sp_matrix->aGhC = cs_add(mna->sp_matrix->A, mna->sp_matrix->hC, 1, 1);
-	/* Compress the aGhC matrix */
-	cs *aGhC_comp = cs_compress(mna->sp_matrix->aGhC);
-	cs_spfree(mna->sp_matrix->aGhC);
-	mna->sp_matrix->aGhC = aGhC_comp;
-	cs_dupl(mna->sp_matrix->aGhC);
+	assert(mna->sp_matrix->aGhC != NULL);
 
 	/* In case we have Trapezoidal method */
 	if (options->TR) {
+		/* cs_add takes compressed column matrices, the result is also compressed column matrix */
 		mna->sp_matrix->sGhC = cs_add(mna->sp_matrix->A, mna->sp_matrix->hC, 1, -1);
-		/* Compress the sGhC matrix */
-		cs *sGhC_comp = cs_compress(mna->sp_matrix->sGhC);
-		cs_spfree(mna->sp_matrix->sGhC);
-		mna->sp_matrix->sGhC = sGhC_comp;
-		cs_dupl(mna->sp_matrix->sGhC);
+		assert(mna->sp_matrix->aGhC != NULL);
 		/* Free what is no longer needed */
 		cs_spfree(mna->sp_matrix->hC);
-		free(mna->matrix->hC);
-	}
-	else {
-		/* Compress the hC matrix */
-		cs *hC_comp = cs_compress(mna->sp_matrix->hC);
-		cs_spfree(mna->sp_matrix->hC);
-		mna->sp_matrix->hC = hC_comp;
-		cs_dupl(mna->sp_matrix->hC);
 	}
 	
 	if (options->ITER) {
 		/* Compute the M preconditioner */
-		jacobi_precond(mna->M_trans, NULL, aGhC_comp, mna->dimension, options->SPARSE);
+		jacobi_precond(mna->M_trans, NULL, mna->sp_matrix->aGhC, mna->dimension, options->SPARSE);
 	}
 }
 
@@ -553,34 +557,43 @@ int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *eleme
  * (LU, Cholesky, Iterative Conj_Grad / Bi-Conj_Grad) and stores the solution on the supplied vector x
  */
 void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
-	int maxiter, iterations;
+	int iterations;
+	/* Set the maximum number of iterations CG/bi-CG */
+	int maxiter = mna->dimension;
 	if (options->SPARSE) {
+		/* Pointer to set the appropriate matrix */
+		cs *matrix_ptr;
+		double *M_precond;
+		if (mna->tr_analysis_init) {
+			matrix_ptr = mna->sp_matrix->aGhC;
+			M_precond  = mna->M_trans;
+		}
+		else {
+			matrix_ptr = mna->sp_matrix->A;
+			M_precond  = mna->M;
+		}
 		if (options->ITER) {
 			if (options->SPD) {
-				/* Set the maximum number of iterations CG worst case is O(n) */
-				maxiter = mna->dimension;
-			 	iterations = conj_grad(NULL, mna->sp_matrix->A, *x, mna->b, mna->M, mna->dimension,
+			 	iterations = conj_grad(NULL, matrix_ptr, *x, mna->b, M_precond, mna->dimension,
 			 						   options->ITOL, maxiter, options->SPARSE);
 				//printf("Conjugate gradient method did %d iterations.\n", iterations);
 			}
 			else {
-				/* Set the maximum number of iterations Bi-CG worst case is O(2n) */
-				maxiter = 2 * mna->dimension;
-				iterations = bi_conj_grad(NULL, mna->sp_matrix->A, *x, mna->b, mna->M, mna->dimension, 
+				iterations = bi_conj_grad(NULL, matrix_ptr, *x, mna->b, M_precond, mna->dimension, 
 										  options->ITOL, maxiter, options->SPARSE);
 				if (iterations == FAILURE) {
 					fprintf(stderr, "Bi-Conjugate gradient method failed.\n");
 					exit(EXIT_FAILURE);
 				}
-				//printf("Bi-Conjugate gradient method did %d iterations.\n", iterations);
+				// printf("Bi-Conjugate gradient method did %d iterations.\n", iterations);
 			}
 		}
 		else {
 			if (options->SPD) {
-				solve_sparse_cholesky(mna, x);
+				solve_sparse_cholesky(mna, matrix_ptr, x);
 			}
 			else {
-				solve_sparse_lu(mna, x);
+				solve_sparse_lu(mna, matrix_ptr, x);
 			}
 		}
 	}
@@ -599,20 +612,20 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 		gsl_vector_view view_x = gsl_vector_view_array(*x, mna->dimension);
 		if (options->ITER) {
 			if (options->SPD) {
-				/* Set the maximum number of iterations CG worst case is O(n) */
-				maxiter = mna->dimension;
 			 	iterations = conj_grad(matrix_ptr, NULL, *x, mna->b, M_precond, mna->dimension,
 			 						   options->ITOL, maxiter, options->SPARSE);
 				//printf("Conjugate gradient method did %d iterations.\n", iterations);
 			}
 			else {
-				/* Set the maximum number of iterations Bi-CG worst case is O(2n) */
-				maxiter = 2 * mna->dimension;
 				iterations = bi_conj_grad(matrix_ptr, NULL, *x, mna->b, M_precond, mna->dimension, 
 										  options->ITOL, maxiter, options->SPARSE);
 				if (iterations == FAILURE) {
 					fprintf(stderr, "Bi-Conjugate gradient method failed.\n");
 					exit(EXIT_FAILURE);
+				}
+				else if ((maxiter < MAX_ITER_THRESHOLD && iterations == MAX_ITER_THRESHOLD) || 
+						 (maxiter > MAX_ITER_THRESHOLD && iterations == maxiter)) {
+					printf("Bi-Conjugate gradient reached max iterations without convergence.\n");
 				}
 				//printf("Bi-Conjugate gradient method did %d iterations.\n", iterations);
 			}
@@ -635,13 +648,13 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 }
 
 /* Solves the sparse mna system with LU factorization */
-void solve_sparse_lu(mna_system_t *mna, double **x) {
+void solve_sparse_lu(mna_system_t *mna, cs *A, double **x) {
 	double *temp_b = (double *)malloc(mna->dimension * sizeof(double));
 	memcpy(temp_b, mna->b, mna->dimension * sizeof(double));
 	if (!mna->is_decomp) {
-		mna->sp_matrix->A_symbolic = cs_sqr(2, mna->sp_matrix->A, 0);
-		mna->sp_matrix->A_numeric = cs_lu(mna->sp_matrix->A, mna->sp_matrix->A_symbolic, 1);
-		cs_spfree(mna->sp_matrix->A);
+		mna->sp_matrix->A_symbolic = cs_sqr(2, A, 0);
+		mna->sp_matrix->A_numeric = cs_lu(A, mna->sp_matrix->A_symbolic, 1);
+		cs_spfree(A);
 	}
 	cs_ipvec(mna->sp_matrix->A_numeric->pinv, temp_b, *x, mna->dimension);
 	cs_lsolve(mna->sp_matrix->A_numeric->L, *x);
@@ -652,13 +665,17 @@ void solve_sparse_lu(mna_system_t *mna, double **x) {
 }
 
 /* Solves the sparse mna system with Cholesky factorization */
-void solve_sparse_cholesky(mna_system_t *mna, double **x) {
+void solve_sparse_cholesky(mna_system_t *mna, cs *A, double **x) {
 	double *temp_b = (double *)malloc(mna->dimension * sizeof(double));
 	memcpy(temp_b, mna->b, mna->dimension * sizeof(double));
 	if (!mna->is_decomp) {
-		mna->sp_matrix->A_symbolic = cs_schol(1, mna->sp_matrix->A);
-		mna->sp_matrix->A_numeric = cs_chol(mna->sp_matrix->A, mna->sp_matrix->A_symbolic);
-		cs_spfree(mna->sp_matrix->A);
+		mna->sp_matrix->A_symbolic = cs_schol(1, A);
+		mna->sp_matrix->A_numeric = cs_chol(A, mna->sp_matrix->A_symbolic);
+		if (mna->sp_matrix->A_numeric == NULL || mna->sp_matrix->A_symbolic == NULL) {
+			fprintf(stderr, "\nCholesky method failed...non SPD matrix\n");
+			exit(EXIT_FAILURE);
+		}
+		cs_spfree(A);
 	}
 	cs_ipvec(mna->sp_matrix->A_symbolic->pinv, temp_b, *x, mna->dimension);
 	cs_lsolve(mna->sp_matrix->A_numeric->L, *x);
@@ -711,12 +728,14 @@ void print_mna_system(mna_system_t *mna, options_t *options) {
 		printf("MNA b vector:\n\n");
 		print_vector(mna->b, mna->dimension);
 		if (options->TRAN) {
-			printf("MNA init_response vector:\n\n");
-			print_vector(mna->resp->value, mna->dimension);
+			// printf("MNA init_response vector:\n\n");
+			// print_vector(mna->resp->value, mna->dimension);
 			printf("\nMNA G array:\n\n");
 			print_array(mna->matrix->A, mna->dimension);
-			printf("\nMNA hC array:\n\n");
-			print_array(mna->matrix->hC, mna->dimension);
+			if (!options->TR) {
+				printf("\nMNA hC array:\n\n");
+				print_array(mna->matrix->hC, mna->dimension);
+			}
 			printf("\nMNA aGhC array:\n\n");
 			print_array(mna->matrix->aGhC, mna->dimension);
 			if (options->TR) {

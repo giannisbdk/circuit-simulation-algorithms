@@ -53,10 +53,10 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 		int n_steps = parser->tr_analysis->fin_time / parser->tr_analysis->time_step;
 		for (int step = 0; step <= n_steps; step++) {
 			if (parser->options->TR) {
-				set_trapezoidal_rhs(mna, curr_response, prev_response, prev_sol, parser->tr_analysis->time_step, step);
+				set_trapezoidal_rhs(mna, curr_response, prev_response, prev_sol, parser->tr_analysis->time_step, step, parser->options->SPARSE);
 			}
 			else {
-				set_backward_euler_rhs(mna, curr_response, prev_sol, parser->tr_analysis->time_step, step);
+				set_backward_euler_rhs(mna, curr_response, prev_sol, parser->tr_analysis->time_step, step, parser->options->SPARSE);
 			}
 			/* Solve the system */
 			solve_mna_system(mna, &sol_x, parser->options);
@@ -80,7 +80,7 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 
 /* Computes and returns the right hand side of the trapezoidal */
 /* h is time_step and k is the iteration */
-void set_trapezoidal_rhs(mna_system_t *mna, double *curr_response, double *prev_response, double *prev_sol, double h, int k) {
+void set_trapezoidal_rhs(mna_system_t *mna, double *curr_response, double *prev_response, double *prev_sol, double h, int k, bool SPARSE) {
 	/* curr_response is e(tk) and prev_response is e(tk-1) */
 	/* Set the values of the e(tk) vector */
 	set_response_vector(curr_response, mna->resp, h * k, mna->dimension);
@@ -88,20 +88,32 @@ void set_trapezoidal_rhs(mna_system_t *mna, double *curr_response, double *prev_
 	double *response_add = init_vector(mna->dimension);
 	double *sGhc_x = init_vector(mna->dimension);
 	add_vector(response_add, curr_response, prev_response, mna->dimension);
-	mat_vec_mul(sGhc_x, mna->matrix->sGhC, prev_sol, mna->dimension);
+	if (SPARSE) {
+		// cs_mat_vec_mul(sGhc_x, mna->sp_matrix->sGhC, prev_sol);
+		cs_gaxpy(mna->sp_matrix->sGhC, prev_sol, sGhc_x);
+	}
+	else {
+		mat_vec_mul(sGhc_x, mna->matrix->sGhC, prev_sol, mna->dimension);
+	}
 	sub_vector(mna->b, response_add, sGhc_x, mna->dimension);
 	memcpy(prev_response, curr_response, mna->dimension * sizeof(double));
 }
 
 /* Computes and returns the right hand side of the backward euler */
 /* h is time_step and k is the iteration */
-void set_backward_euler_rhs(mna_system_t *mna, double *curr_response, double *prev_sol, double h, int k) {
+void set_backward_euler_rhs(mna_system_t *mna, double *curr_response, double *prev_sol, double h, int k, bool SPARSE) {
 	/* curr_response is e(tk) */
 	/* Set the values of the e(tk) vector */
 	set_response_vector(curr_response, mna->resp, h * k, mna->dimension);
 	/* Compute: e(tk) + (1/h)C*x(tk-1) and save it to the provided b vector */
 	double *hC_x = init_vector(mna->dimension);
-	mat_vec_mul(hC_x, mna->matrix->hC, prev_sol, mna->dimension);
+	if (SPARSE) {
+		cs_gaxpy(mna->sp_matrix->hC, prev_sol, hC_x);
+		// cs_mat_vec_mul(hC_x, mna->sp_matrix->hC, prev_sol);
+	}
+	else {
+		mat_vec_mul(hC_x, mna->matrix->hC, prev_sol, mna->dimension);
+	}
 	add_vector(mna->b, curr_response, hC_x, mna->dimension);
 }
 

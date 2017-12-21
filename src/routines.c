@@ -2,6 +2,8 @@
 
 #include "routines.h"
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 /* Computes the dest = a*x + y , x and y are vectors and a is a constant */
 void axpy(double *dest, double a, double *x, double *y, int n) {
     for (int i = 0; i < n; i++)
@@ -90,19 +92,12 @@ void jacobi_precond(double *M, double **A, cs *C, int n, bool SPARSE) {
         }
     }
     else {
-        int num_nodes;
         for (int j = 0; j < C->n; j++) {
             for (int p = C->p[j]; p < C->p[j+1]; p++) {
                 if (C->i[p] == j) {
-                    M[j] = 1 / C->x[p];
-                    /* Save the last position of the non zero diagonal element */
-                    num_nodes = j;
+                    M[j] =  1 / C->x[p];
                 }
             }
-        }
-        /* Handle the g2 elements which have zero on diagonal of A */
-        for (int i = num_nodes + 1; i < C->n; i++) {
-            M[i] = 1.0;
         }
     }
 }
@@ -118,5 +113,12 @@ void precond_solve(double *M_fin, double *M, double *x, int n) {
 void zero_out_vec(double *x, int dimension) {
     for (int i = 0; i < dimension; i++) {
         x[i] = 0.0;
+    }
+}
+
+/* Sets the value <val> to the supplied vector x */
+void set_vec_val(double *x, double val, int dimension) {
+    for (int i = 0; i < dimension; i++) {
+        x[i] = val;
     }
 }

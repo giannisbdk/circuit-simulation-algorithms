@@ -31,14 +31,15 @@ typedef struct matrix {
 /* Holds the sparse representation of the MNA */
 typedef struct sp_matrix {
 	cs 	*A;
-	css *A_symbolic;
-	csn *A_numeric;
 	/* Matrices for the Transient Analysis */
 	cs *hC;
 	/* aGhC = G + hC, G = A */
 	cs *aGhC;
 	/* aGhC = G - hC, G = A */
 	cs *sGhC;
+
+	css *A_symbolic;
+	csn *A_numeric;
 } sp_matrix_t;
 
 /* Keeps the indexing for the sources of group 2 */
@@ -79,11 +80,12 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options);
 void solve_lu(double **A, double *b, gsl_vector_view x, gsl_permutation *P, int dimension, bool is_decomp);
 // void solve_cholesky(mna_system_t *mna, gsl_vector_view x);
 void solve_cholesky(double **A, double *b, gsl_vector_view x, int dimension, bool is_decomp);
-void solve_sparse_lu(mna_system_t *mna, double **x);
-void solve_sparse_cholesky(mna_system_t *mna, double **x);
+void solve_sparse_lu(mna_system_t *mna, cs *A, double **x);
+void solve_sparse_cholesky(mna_system_t *mna, cs *A, double **x);
 int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *element);
 double **init_array(int row, int col);
 double *init_vector(int row);
+double *init_val_vector(int row, double val);
 gsl_permutation *init_permutation(int dimension);
 double get_response_value(list1_t *curr);
 void print_mna_system(mna_system_t *mna, options_t *options);

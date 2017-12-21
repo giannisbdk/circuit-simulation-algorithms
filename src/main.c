@@ -38,10 +38,9 @@ int main(int argc, char *argv[]) {
     
     /* Create the MNA system */
     create_mna_system(mna, index, hash_table, parser->options, parser->tr_analysis->time_step, parser->netlist->num_nodes);
-    // print_mna_system(mna, parser->options);
     
     /* Print the MNA system */
-    // print_mna_system(mna, parser->options);
+    print_mna_system(mna, parser->options);
     
     /* Dimension of MNA system */
     int dimension = parser->netlist->num_nodes + parser->netlist->num_g2_elem;

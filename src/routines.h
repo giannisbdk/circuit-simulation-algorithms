@@ -16,5 +16,6 @@ void precond_solve(double *M_fin, double *M, double *x, int n);
 void sub_vector(double *dest, double *x, double *y, int n);
 void add_vector(double *dest, double *x, double *y, int n);
 void zero_out_vec(double *x, int dimension);
+void set_vec_val(double *x, double val, int dimension);
 
 #endif

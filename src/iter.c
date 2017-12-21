@@ -5,6 +5,8 @@
 
 #include "iter.h"
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 /* Solve the SPD system with the iterative conjugate gradient method
  * store the result in vector x and also return the number of iterations
  */ 
@@ -83,6 +85,8 @@ int conj_grad(double **A, cs *C, double *x, double *b, double *M, int dimension,
  * or FAILURE in case it fails
  */ 
 int bi_conj_grad(double **A, cs *C, double *x, double *b, double *M, int dimension, double itol, int maxiter, bool SPARSE) {
+	/* Set maxiter to our threshold in case the provided one is small for Bi-CG */
+	maxiter = MAX(maxiter, MAX_ITER_THRESHOLD);
 	/* Vector to store A*x */
 	double *Ax = (double *)malloc(dimension * sizeof(double));
 	/* Residual vector r */
