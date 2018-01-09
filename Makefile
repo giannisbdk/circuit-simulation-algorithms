@@ -13,13 +13,19 @@ NLS = netlists
 IBM_NLS = ibm_netlists
 PLS = plots
 
+#I = -I../Include -I../../SuiteSparse_config
+
+CS_LIB = cx_sparse/Lib/libcxsparse.a
+
+CSX_SRC = cx_sparse/Source
+
 PLT_SRC = plot.py
 
 SOURCES = $(wildcard $(SRC)/*.c)
 OBJECTS = $(patsubst $(SRC)/%.c,$(OBJ)/%.o,$(SOURCES))
 
 main: $(OBJECTS)
-	$(CC) $(CFLAGS) $^ $(GSLFLAGS) -o $@ $(DBGFLAGS)
+	$(CC) $(CFLAGS) $^ $(GSLFLAGS) -o $@ $(DBGFLAGS) $(CS_LIB)
 
 $(OBJ)/%.o: $(SRC)/%.c
 	$(CC) $(CFLAGS) -I$(SRC) -c $< $(GSLFLAGS) -o $@ $(DBGFLAGS)

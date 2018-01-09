@@ -8,7 +8,7 @@
 #include "parser.h"
 #include "iter.h"
 #include "routines.h"
-#include "csparse.h"
+#include "../cx_sparse/Include/cs.h"
 
 /* Holds the transient response and the nodes that contribute to it */
 typedef struct resp {

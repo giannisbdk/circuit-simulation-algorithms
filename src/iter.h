@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #include "routines.h"
-#include "csparse.h"
+#include "../cx_sparse/Include/cs.h"
 
 #define EPSILON				1e-16
 #define MAX_ITER_THRESHOLD 	20

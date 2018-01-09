@@ -1,7 +1,7 @@
 #ifndef ROUTINES_H
 #define ROUTINES_H
 
-#include "csparse.h"
+#include "../cx_sparse/Include/cs.h"
 #include "stdbool.h"
 
 double dot_product(double *x, double *y, int n);
