@@ -120,66 +120,88 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 	new_node->trans_spec = NULL;
 	/* Set the transient spec if exists */
 	int num_tokens = atoi(tokens[0]);
+	/* Check if transient or ac spec exists */
 	if (num_tokens > 4) {
-		trans_type type = get_type(tokens[5]);
-		new_node->trans_spec = (trans_spec_t *)malloc(sizeof(trans_spec_t));
-		new_node->trans_spec->exp 	= NULL;
-		new_node->trans_spec->sin 	= NULL;
-		new_node->trans_spec->pulse = NULL;
-		new_node->trans_spec->pwl 	= NULL;
-		/* Set the transient spec according to the type */
-		switch (type) {
-			case EXP:
-				new_node->trans_spec->exp  = (exp_t *)malloc(sizeof(exp_t));
-				new_node->trans_spec->type = type;
-				/* Strip parentheses of first token and last token */
-				sscanf(tokens[6],  "(%lf", &(new_node->trans_spec->exp->i1));
-				sscanf(tokens[7],  "%lf",  &(new_node->trans_spec->exp->i2));
-				sscanf(tokens[8],  "%lf",  &(new_node->trans_spec->exp->td1));
-				sscanf(tokens[9],  "%lf",  &(new_node->trans_spec->exp->tc1));
-				sscanf(tokens[10], "%lf",  &(new_node->trans_spec->exp->td2));
-				sscanf(tokens[11], "%lf)", &(new_node->trans_spec->exp->tc2));
-				break;
-			case SIN:
-				new_node->trans_spec->sin = (sin_t *)malloc(sizeof(sin_t));
-				new_node->trans_spec->type = type;
-				/* Strip parentheses of first token and last token */
-				sscanf(tokens[6],  "(%lf", &(new_node->trans_spec->sin->i1));
-				sscanf(tokens[7],  "%lf",  &(new_node->trans_spec->sin->ia));
-				sscanf(tokens[8],  "%lf",  &(new_node->trans_spec->sin->fr));
-				sscanf(tokens[9],  "%lf",  &(new_node->trans_spec->sin->td));
-				sscanf(tokens[10], "%lf",  &(new_node->trans_spec->sin->df));
-				sscanf(tokens[11], "%lf)", &(new_node->trans_spec->sin->ph));
-				break;
-			case PULSE:
-				new_node->trans_spec->pulse = (pulse_t *)malloc(sizeof(pulse_t));
-				new_node->trans_spec->type = type;
-				/* Strip parentheses of first token and last token */
-				sscanf(tokens[6],  "(%lf", &(new_node->trans_spec->pulse->i1));
-				sscanf(tokens[7],  "%lf",  &(new_node->trans_spec->pulse->i2));
-				sscanf(tokens[8],  "%lf",  &(new_node->trans_spec->pulse->td));
-				sscanf(tokens[9],  "%lf",  &(new_node->trans_spec->pulse->tr));
-				sscanf(tokens[10], "%lf",  &(new_node->trans_spec->pulse->tf));
-				sscanf(tokens[11], "%lf",  &(new_node->trans_spec->pulse->pw));
-				sscanf(tokens[12], "%lf)", &(new_node->trans_spec->pulse->per));
-				break;
-			case PWL:
-				new_node->trans_spec->pwl = (pwl_t *)malloc(sizeof(pwl_t));
-				new_node->trans_spec->type = type;
-				/* Start shows the index of trans_spec tokens */
-				int start = 6;
-				/* Get the number of states in the pwl */
-				new_node->trans_spec->pwl->n = (num_tokens - (start - 1)) / 2;
-				new_node->trans_spec->pwl->t = (double *)malloc(new_node->trans_spec->pwl->n * sizeof(double));
-				new_node->trans_spec->pwl->i = (double *)malloc(new_node->trans_spec->pwl->n * sizeof(double));
-				for (int i = 0; i < new_node->trans_spec->pwl->n; i++) {
-					sscanf(tokens[start + (i * 2)],     "(%lf", &(new_node->trans_spec->pwl->t[i]));
-					sscanf(tokens[start + (i * 2) + 1], "%lf)", &(new_node->trans_spec->pwl->i[i]));
-				}
-				break;
-			default:
-				fprintf(stderr, "Wrong transient spec type: %s\n", tokens[5]);
-				exit(EXIT_FAILURE);
+		trans_type type;
+		int ac_index = 5;
+		bool AC = check_ac(tokens, num_tokens);
+		if (is_transient(tokens[5], &type)) {
+			new_node->trans_spec = (trans_spec_t *)malloc(sizeof(trans_spec_t));
+			new_node->trans_spec->exp 	= NULL;
+			new_node->trans_spec->sin 	= NULL;
+			new_node->trans_spec->pulse = NULL;
+			new_node->trans_spec->pwl 	= NULL;
+			/* Set the transient spec according to the type */
+			switch (type) {
+				case EXP:
+					new_node->trans_spec->exp  = (exp_t *)malloc(sizeof(exp_t));
+					new_node->trans_spec->type = type;
+					/* Strip parentheses of first token and last token */
+					sscanf(tokens[6],  "(%lf", &(new_node->trans_spec->exp->i1));
+					sscanf(tokens[7],  "%lf",  &(new_node->trans_spec->exp->i2));
+					sscanf(tokens[8],  "%lf",  &(new_node->trans_spec->exp->td1));
+					sscanf(tokens[9],  "%lf",  &(new_node->trans_spec->exp->tc1));
+					sscanf(tokens[10], "%lf",  &(new_node->trans_spec->exp->td2));
+					sscanf(tokens[11], "%lf)", &(new_node->trans_spec->exp->tc2));
+					ac_index = 12;
+					break;
+				case SIN:
+					new_node->trans_spec->sin = (sin_t *)malloc(sizeof(sin_t));
+					new_node->trans_spec->type = type;
+					/* Strip parentheses of first token and last token */
+					sscanf(tokens[6],  "(%lf", &(new_node->trans_spec->sin->i1));
+					sscanf(tokens[7],  "%lf",  &(new_node->trans_spec->sin->ia));
+					sscanf(tokens[8],  "%lf",  &(new_node->trans_spec->sin->fr));
+					sscanf(tokens[9],  "%lf",  &(new_node->trans_spec->sin->td));
+					sscanf(tokens[10], "%lf",  &(new_node->trans_spec->sin->df));
+					sscanf(tokens[11], "%lf)", &(new_node->trans_spec->sin->ph));
+					ac_index = 12;
+					break;
+				case PULSE:
+					new_node->trans_spec->pulse = (pulse_t *)malloc(sizeof(pulse_t));
+					new_node->trans_spec->type = type;
+					/* Strip parentheses of first token and last token */
+					sscanf(tokens[6],  "(%lf", &(new_node->trans_spec->pulse->i1));
+					sscanf(tokens[7],  "%lf",  &(new_node->trans_spec->pulse->i2));
+					sscanf(tokens[8],  "%lf",  &(new_node->trans_spec->pulse->td));
+					sscanf(tokens[9],  "%lf",  &(new_node->trans_spec->pulse->tr));
+					sscanf(tokens[10], "%lf",  &(new_node->trans_spec->pulse->tf));
+					sscanf(tokens[11], "%lf",  &(new_node->trans_spec->pulse->pw));
+					sscanf(tokens[12], "%lf)", &(new_node->trans_spec->pulse->per));
+					ac_index = 13;
+					break;
+				case PWL:
+					new_node->trans_spec->pwl = (pwl_t *)malloc(sizeof(pwl_t));
+					new_node->trans_spec->type = type;
+					/* Start shows the index of trans_spec tokens */
+					int start = 6;
+					/* Get the number of states in the pwl */
+					if (AC) {
+						new_node->trans_spec->pwl->n = ((num_tokens - 3) - (start -1)) / 2;
+					}
+					else {
+						new_node->trans_spec->pwl->n = (num_tokens - (start - 1)) / 2;
+					}
+					new_node->trans_spec->pwl->t = (double *)malloc(new_node->trans_spec->pwl->n * sizeof(double));
+					new_node->trans_spec->pwl->i = (double *)malloc(new_node->trans_spec->pwl->n * sizeof(double));
+					for (int i = 0; i < new_node->trans_spec->pwl->n; i++) {
+						sscanf(tokens[start + (i * 2)],     "(%lf", &(new_node->trans_spec->pwl->t[i]));
+						sscanf(tokens[start + (i * 2) + 1], "%lf)", &(new_node->trans_spec->pwl->i[i]));
+						ac_index = start + (i * 2) + 2;
+					}
+					break;
+				default:
+					fprintf(stderr, "Wrong transient spec type: %s\n", tokens[5]);
+					exit(EXIT_FAILURE);
+			}
+		}
+		if (AC) {
+			new_node->ac = (ac_t *)malloc(sizeof(ac_t));
+			sscanf(tokens[ac_index + 1], "%lf",  &(new_node->ac->magnitude));
+			sscanf(tokens[ac_index + 2], "%lf",  &(new_node->ac->phase));
+		}
+		else {
+			new_node->ac = NULL;
 		}
 	}
 	return SUCCESS;
@@ -282,23 +304,36 @@ int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table) {
 	return SUCCESS;
 }
 
-/* Returns the transient spec type */
-trans_type get_type(char *spec) {
+/* Check if AC exists inside tokens */
+bool check_ac(char **tokens, int num_tokens) {
+	if (strcmp(tokens[num_tokens - 2], "AC") == 0) {
+		return true;
+	}
+	return false;
+}
+
+/* Check if it is a transient or ac and in case it is transient it sets type to the appropriate enum */
+bool is_transient(char *spec, trans_type *type) {
 	if (strcmp(spec, "EXP") == 0) {
-		return EXP;
+		*type = EXP;
+		return true;
 	}
 	else if (strcmp(spec, "SIN") == 0) {
-		return SIN;
+		*type = SIN;
+		return true;
 	}
 	else if (strcmp(spec, "PULSE") == 0) {
-		return PULSE;
+		*type = PULSE;
+		return true;
 	}
 	else if (strcmp(spec, "PWL") == 0) {
-		return PWL;
+		*type = PWL;
+		return true;
 	}
 	else {
-		fprintf(stderr, "Wrong transient spec type: %s\n", spec);
-		exit(EXIT_FAILURE);
+		/* It means its AC */
+		type = NULL;
+		return false;
 	}
 }
 

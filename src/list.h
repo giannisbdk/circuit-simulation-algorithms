@@ -1,11 +1,18 @@
 #ifndef LIST_H
 #define LIST_H
 
+#include <stdbool.h>
+
 #include "hash_table.h"
 #include "trans_spec.h"
 
 #define SUCCESS	 1
 #define FAILURE	-1
+
+typedef struct ac {
+	double magnitude;
+	double phase;
+} ac_t;
 
 typedef struct list1 {
 	char type;
@@ -14,6 +21,7 @@ typedef struct list1 {
 	char *probe2;
 	long double value;
 	trans_spec_t *trans_spec;
+	ac_t *ac;
 	struct list1 *next;
 	struct list1 *prev;
 } list1_t;
@@ -51,7 +59,9 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table);
 int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table);
 int get_nz();
 void set_nz(char element, char probe1, char probe2);
-trans_type get_type(char *spec);
+// trans_type get_type(char *spec);
+bool is_transient(char *spec, trans_type *type);
+bool check_ac(char **tokens, int num_tokens);
 void free_index(index_t **index);
 void free_list1(list1_t **head, list1_t **tail);
 void free_list2(list2_t **head, list2_t **tail);
