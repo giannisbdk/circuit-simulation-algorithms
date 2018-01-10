@@ -96,7 +96,9 @@ gsl_permutation *init_permutation(int dimension);
 double get_response_value(list1_t *curr);
 void print_mna_system(mna_system_t *mna, options_t *options);
 void print_array(double **A, int dimension);
+void print_complex_array(double complex **A, int dimension);
 void print_vector(double *b, int dimension);
+void print_complex_vector(double complex *b, int dimension);
 void print_permutation(gsl_permutation *P);
 void free_mna_system(mna_system_t **mna, options_t *options);
 

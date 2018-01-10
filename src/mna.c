@@ -396,7 +396,12 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 			}
 		}
 		else if (curr->type == 'I' || curr->type == 'i') {
-			value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+			if (curr->ac == NULL) {
+				value = curr->value;
+			}
+			else {
+				value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+			}
 			if (probe1_id == 0) {
 				mna->matrix->e_ac[j] += value;
 			}
@@ -415,13 +420,19 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 			volt_sources_cnt++;
 		}
 		else if (curr->type == 'V' || curr->type == 'v') {
-			value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+			if (curr->ac == NULL) {
+				value = curr->value;
+			}
+			else {
+				value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+			}
 			/* Keep track of how many voltage sources or inductors, we have already found */
 			mna->matrix->e_ac[offset + volt_sources_cnt] += value; 
 			/* Keep track of how many voltage sources or inductors, we have already found */
 			volt_sources_cnt++;
 		}
 	}
+
 
 
 	// if (options->ITER) {
@@ -841,6 +852,12 @@ void print_mna_system(mna_system_t *mna, options_t *options) {
 				print_array(mna->matrix->sGhC, mna->dimension);
 			}
 		}
+		if (options->AC) {
+			printf("\nMNA G_ac array:\n\n");
+			print_complex_array(mna->matrix->G_ac, mna->dimension);
+			printf("\nMNA e_ac vector:\n\n");
+			print_complex_vector(mna->matrix->e_ac, mna->dimension);
+		}
 	}
 	else {
 		// cs_print(mna->sp_matrix->A, "sparse.txt", 0);
@@ -862,10 +879,31 @@ void print_array(double **A, int dimension) {
 	printf("\n");
 }
 
+/* Print the complex array */
+void print_complex_array(double complex **A, int dimension) {
+	int rows = dimension;
+	int cols = dimension;
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+			printf("%-15.4lf + i%-15.4lf", creal(A[i][j]), cimag(A[i][j]));
+		}
+		printf("\n");
+	}
+	printf("\n");
+}
+
 /* Print the vector */
 void print_vector(double *b, int dimension) {
 	for (int i = 0; i< dimension; i++) {
 		printf("%lf\n", b[i]);
+	}
+    printf("\n");
+}
+
+/* Print the complex vector */
+void print_complex_vector(double complex *b, int dimension) {
+	for (int i = 0; i< dimension; i++) {
+		printf("%lf + i%lf\n", creal(b[i]), cimag(b[i]));
 	}
     printf("\n");
 }
