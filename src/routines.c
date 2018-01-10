@@ -122,3 +122,8 @@ void set_vec_val(double *x, double val, int dimension) {
         x[i] = val;
     }
 }
+
+double complex pol_to_rect(double magnitude, double phase){
+    double complex x = magnitude * cos(phase) + magnitude * sin(phase) * I;
+    return x;
+}

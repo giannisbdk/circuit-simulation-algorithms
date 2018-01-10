@@ -80,6 +80,10 @@ void init_dense_matrix(mna_system_t *mna, options_t *options) {
 			mna->matrix->sGhC = init_array(mna->dimension, mna->dimension);
 		}
 	}
+	if (options->AC) {
+		mna->matrix->G_ac = init_complex_array(mna->dimension, mna->dimension);
+		mna->matrix->e_ac = init_complex_vector(mna->dimension);
+	}
 }
 
 /* Allocate memory for a sparse representation of MNA */
@@ -124,6 +128,25 @@ double *init_vector(int row) {
 	return vector;
 }
 
+/* Allocate memory for the matrix of the MNA system */
+double complex **init_complex_array(int row, int col) {
+	double complex **array = (double complex **)malloc(row * sizeof(double complex *));
+	assert(array != NULL);
+	array[0] = (double complex *)calloc(row * col, sizeof(double complex));
+	assert(array[0] != NULL);
+	for (int i = 1; i < row; i++) {
+		array[i] = array[i-1] + col;
+	}
+	return array;
+}
+
+/* Allocate memory for the vector of the MNA system */
+double complex *init_complex_vector(int row) {
+	double complex *vector = (double complex *)calloc(row, sizeof(double complex));;
+	assert(vector != NULL);
+	return vector;
+}
+
 /* Allocate memory for the new vector and set all values to val */
 double *init_val_vector(int row, double val) {
 	double *vector = (double *)malloc(row * sizeof(double));
@@ -142,17 +165,21 @@ gsl_permutation *init_permutation(int dimension) {
 }
 
 /* Constructs the MNA system either sparse or dense */
-void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset) {
+void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, double start_freq, int offset) {
 	if (options->SPARSE) {
 		create_sparse_mna(mna, index, hash_table, options, offset);
-		if(options->TRAN) {
+		if (options->TRAN) {
 			create_sparse_trans_mna(mna, index, hash_table, options, tr_step, offset);
 		}
 	}
 	else {
 		create_dense_mna(mna, index, hash_table, options, offset);
-		if(options->TRAN) {
+		if (options->TRAN) {
 			create_dense_trans_mna(mna, index, hash_table, options, tr_step, offset);
+		}
+		if (options->AC) {
+			double omega = start_freq * 2 * M_PI;
+			create_dense_ac_mna(mna, index, hash_table, options, offset, omega, false);
 		}
 	}
 	printf("Creation of MNA system... OK\n");
@@ -332,6 +359,77 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 		free(mna->matrix->hC);
 	}
 }
+
+/* Constructs the dense MNA system */
+void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega, bool initialized) {
+	list1_t *curr;
+	double complex value;
+	int volt_sources_cnt = 0;
+
+	if (!initialized) {
+		for (int i = 0; i < mna->dimension; i++) {
+			for (int j = 0; j < mna->dimension; j++) {
+				mna->matrix->G_ac[i][j] = mna->matrix->A[i][j];
+			}
+		}
+	}
+
+	for (curr = index->head1; curr != NULL; curr = curr->next) {
+		int probe1_id = ht_get_id(hash_table, curr->probe1);
+		int probe2_id = ht_get_id(hash_table, curr->probe2);
+		int i = probe1_id - 1;
+		int j = probe2_id - 1;
+
+		if (curr->type == 'C' || curr->type == 'c') {
+			value = I * omega * curr->value;
+			if (probe1_id == 0) {
+				mna->matrix->G_ac[j][j] += value; 
+			}
+			else if (probe2_id == 0) {
+				mna->matrix->G_ac[i][i] += value; 
+			}
+			else {
+				mna->matrix->G_ac[i][i] += value;
+				mna->matrix->G_ac[j][j] += value;
+				mna->matrix->G_ac[i][j] -= value;
+				mna->matrix->G_ac[j][i] -= value;
+			}
+		}
+		else if (curr->type == 'I' || curr->type == 'i') {
+			value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+			if (probe1_id == 0) {
+				mna->matrix->e_ac[j] += value;
+			}
+			else if (probe2_id == 0) {
+				mna->matrix->e_ac[i] -= value;
+			}
+			else {
+				mna->matrix->e_ac[i] -= value;
+				mna->matrix->e_ac[j] += value;
+			}
+		}
+		else if (curr->type == 'L' || curr->type == 'l') {
+			/* Set the L value in the diagonal of g2 area in matrices */
+			mna->matrix->G_ac[offset + volt_sources_cnt][offset + volt_sources_cnt] = - I * omega * curr->value;
+			/* Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found */
+			volt_sources_cnt++;
+		}
+		else if (curr->type == 'V' || curr->type == 'v') {
+			value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+			/* Keep track of how many voltage sources or inductors, we have already found */
+			mna->matrix->e_ac[offset + volt_sources_cnt] += value; 
+			/* Keep track of how many voltage sources or inductors, we have already found */
+			volt_sources_cnt++;
+		}
+	}
+
+
+	// if (options->ITER) {
+	// 	/* Compute the M preconditioner */
+	// 	jacobi_precond(mna->M, mna->matrix->A, NULL, mna->dimension, options->SPARSE);
+	// }
+}
+
 
 /* Constructs the sparse MNA system */
 void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset) {

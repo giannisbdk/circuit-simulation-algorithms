@@ -19,7 +19,6 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 	if (parser->options->TR) {
 		prev_response = init_vector(mna->dimension);
 	}
-
 	for (int i = 0; i < parser->netlist->tr_counter; i++) {
 		memcpy(prev_sol, init_sol, mna->dimension * sizeof(double));
 		if (parser->options->TR) {

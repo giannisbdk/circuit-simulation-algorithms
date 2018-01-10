@@ -1,6 +1,8 @@
 #ifndef ROUTINES_H
 #define ROUTINES_H
 
+#include <complex.h>
+
 #include "../cx_sparse/Include/cs.h"
 #include "stdbool.h"
 
@@ -17,5 +19,6 @@ void sub_vector(double *dest, double *x, double *y, int n);
 void add_vector(double *dest, double *x, double *y, int n);
 void zero_out_vec(double *x, int dimension);
 void set_vec_val(double *x, double val, int dimension);
+double complex pol_to_rect(double magnitude, double phase);
 
 #endif

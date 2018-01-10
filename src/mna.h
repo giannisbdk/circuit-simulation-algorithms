@@ -19,6 +19,9 @@ typedef struct resp {
 /* Holds the dense representation of the MNA */
 typedef struct matrix {
 	double **A;
+	/*Complex matrix G*/
+	double complex **G_ac;
+	double complex *e_ac;
 	gsl_permutation *P;
 	/* Matrices for the Transient Analysis */
 	double **hC;
@@ -70,10 +73,11 @@ typedef struct mna_system {
 mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options, int nz);
 void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz);
 void init_dense_matrix(mna_system_t *mna, options_t *options);
-void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
+void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, double start_freq, int offset);
 void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset);
 void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset);
 void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
+void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega, bool initialized);
 void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
 void solve_mna_system(mna_system_t *mna, double **x, options_t *options);
 // void solve_lu(mna_system_t *mna, gsl_vector_view x);
@@ -85,6 +89,8 @@ void solve_sparse_cholesky(mna_system_t *mna, cs *A, double **x);
 int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *element);
 double **init_array(int row, int col);
 double *init_vector(int row);
+double complex **init_complex_array(int row, int col);
+double complex *init_complex_vector(int row);
 double *init_val_vector(int row, double val);
 gsl_permutation *init_permutation(int dimension);
 double get_response_value(list1_t *curr);
