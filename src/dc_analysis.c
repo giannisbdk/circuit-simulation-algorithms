@@ -94,7 +94,7 @@ void dc_sweep(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, parser
                         }
                     }
                     /* Solve the system */
-                    solve_mna_system(mna, &sol_x, parser->options);
+                    solve_mna_system(mna, &sol_x, NULL, parser->options);
                     /* DC analysis output to every file */
                     int offset;
                     for (int j = 0; j < parser->dc_analysis[i].num_nodes; j++) {

@@ -8,8 +8,9 @@
 #include "mna.h"
 #include "routines.h"
 #include "dc_analysis.h"
-#include "time_tools.h"
 #include "transient_analysis.h"
+#include "ac_analysis.h"
+#include "time_tools.h"
 
 /* This is defined here because we specify the length from main */
 #define HASH_TABLE_SIZE 59999
@@ -38,17 +39,15 @@ int main(int argc, char *argv[]) {
     create_mna_system(mna, index, hash_table, parser->options, parser->tr_analysis->time_step, parser->netlist->num_nodes);
     
     /* Print the MNA system */
-    print_mna_system(mna, parser->options);
-
     /* Dimension of MNA system */
     int dimension = parser->netlist->num_nodes + parser->netlist->num_g2_elem;
 
     /* Sol_x will hold the solution of the MNA system */
     double *sol_x = (double *)calloc(dimension, sizeof(double));
     double *dc_op_sol_x = (double *)calloc(dimension, sizeof(double));
-    
+
     /* Solve the MNA system */
-    solve_mna_system(mna, &sol_x, parser->options);
+    solve_mna_system(mna, &sol_x, NULL, parser->options);
     printf("\nSolution of the MNA system:\n\n");
     print_vector(sol_x, dimension);
 
@@ -63,6 +62,10 @@ int main(int argc, char *argv[]) {
 
     /* Transient analysis */
     tr_analysis(hash_table, mna, parser, dc_op_sol_x, sol_x);
+
+    /* AC analysis */
+    gsl_vector_complex *x_complex = init_gsl_complex_vector(mna->dimension);
+    ac_analysis(index, hash_table, mna, parser, x_complex);
 
     /* Free all the dynamic allocated memory */
     free_index(&index);

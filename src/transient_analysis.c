@@ -58,7 +58,7 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 				set_backward_euler_rhs(mna, curr_response, prev_sol, parser->tr_analysis->time_step, step, parser->options->SPARSE);
 			}
 			/* Solve the system */
-			solve_mna_system(mna, &sol_x, parser->options);
+			solve_mna_system(mna, &sol_x, NULL, parser->options);
 			for (int j = 0; j < parser->tr_analysis[i].num_nodes; j++) {
 				int offset = ht_get_id(hash_table, parser->tr_analysis[i].nodes[j]) - 1;
 				fprintf(files[j], "%-15lf%-15lf\n", step * parser->tr_analysis->time_step, sol_x[offset]);

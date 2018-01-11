@@ -2,6 +2,7 @@
 #define ROUTINES_H
 
 #include <complex.h>
+#include <gsl/gsl_complex.h>
 
 #include "../cx_sparse/Include/cs.h"
 #include "stdbool.h"
@@ -21,7 +22,7 @@ void add_vector(double *dest, double *x, double *y, int n);
 void zero_out_vec(double *x, int dimension);
 void set_vec_val(double *x, double val, int dimension);
 double complex pol_to_rect(double magnitude, double phase);
-ac_t rect_to_polar(double complex z);
+ac_t rect_to_polar(gsl_complex z);
 double to_degrees(double radians);
 
 #endif

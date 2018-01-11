@@ -51,6 +51,7 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	/* Init the other fields of the mna system*/
 	mna->is_decomp = false;
 	mna->tr_analysis_init = false;
+	mna->ac_analysis_init = false;
 	mna->num_nodes = num_nodes;
 	mna->num_g2_elem = num_g2_elem;
 	/* Allocate a vector that holds the names of g2 elements */
@@ -81,8 +82,6 @@ void init_dense_matrix(mna_system_t *mna, options_t *options) {
 		}
 	}
 	if (options->AC) {
-		// mna->matrix->G_ac = init_complex_array(mna->dimension, mna->dimension);
-		// mna->matrix->e_ac = init_complex_vector(mna->dimension);
 		mna->matrix->G_ac = init_gsl_complex_array(mna->dimension, mna->dimension);
 		mna->matrix->e_ac = init_gsl_complex_vector(mna->dimension);
 	}
@@ -144,25 +143,6 @@ gsl_matrix_complex *init_gsl_complex_array(int row, int col) {
 /* Allocate memory for the complex gsl vector of the MNA system */
 gsl_vector_complex *init_gsl_complex_vector(int row) {
 	return gsl_vector_complex_alloc(row);
-}
-
-/* Allocate memory for the matrix of the MNA system */
-double complex **init_complex_array(int row, int col) {
-	double complex **array = (double complex **)malloc(row * sizeof(double complex *));
-	assert(array != NULL);
-	array[0] = (double complex *)calloc(row * col, sizeof(double complex));
-	assert(array[0] != NULL);
-	for (int i = 1; i < row; i++) {
-		array[i] = array[i-1] + col;
-	}
-	return array;
-}
-
-/* Allocate memory for the vector of the MNA system */
-double complex *init_complex_vector(int row) {
-	double complex *vector = (double complex *)calloc(row, sizeof(double complex));
-	assert(vector != NULL);
-	return vector;
 }
 
 /* Allocate memory for the new vector and set all values to val */
@@ -277,11 +257,10 @@ void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tabl
 		/* Compute the M preconditioner */
 		jacobi_precond(mna->M, mna->matrix->A, NULL, mna->dimension, options->SPARSE);
 	}
-
 	/* Copy the data from A to A_base before LU factorization to build matrices in AC and TRAN analysis */
 	if (options->TRAN || options->AC) {
 		for (int i = 0; i < mna->dimension; i++) {
-			memcpy(&mna->matrix->A_base[i], &mna->matrix->A[i], mna->dimension * sizeof(double));
+			memcpy(mna->matrix->A_base[i], mna->matrix->A[i], mna->dimension * sizeof(double));
 		}
 	}
 }
@@ -383,75 +362,106 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 /* Constructs the dense MNA system */
 void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega) {
 	list1_t *curr;
-	double complex value;
 	int volt_sources_cnt = 0;
 
 	/* Copy the base for the AC matrix and zero-out the vector for the next step */
 	for (int i = 0; i < mna->dimension; i++) {
+		gsl_complex z;
 		for (int j = 0; j < mna->dimension; j++) {
-			mna->matrix->G_ac[i][j] = mna->matrix->A_base[i][j];
+			// mna->matrix->G_ac[i][j] = mna->matrix->A_base[i][j];
+			z = gsl_complex_rect(mna->matrix->A_base[i][j], 0);
+			gsl_matrix_complex_set(mna->matrix->G_ac, i, j, z);
 		}
-		mna->matrix->e_ac[i] = 0.0 + I * 0.0;
+		// mna->matrix->e_ac[i] = 0.0 + I * 0.0;
 	}
-
+	gsl_vector_complex_set_zero(mna->matrix->e_ac);
 	for (curr = index->head1; curr != NULL; curr = curr->next) {
 		int probe1_id = ht_get_id(hash_table, curr->probe1);
 		int probe2_id = ht_get_id(hash_table, curr->probe2);
 		int i = probe1_id - 1;
 		int j = probe2_id - 1;
+		gsl_complex z, z_prev;
 		if (curr->type == 'C' || curr->type == 'c') {
-			value = I * omega * curr->value;
+			// value = I * omega * curr->value;
+			z = gsl_complex_rect(0.0, omega * curr->value);
 			if (probe1_id == 0) {
-				mna->matrix->G_ac[j][j] += value; 
+				// mna->matrix->G_ac[j][j] += value;
+				z_prev = gsl_matrix_complex_get(mna->matrix->G_ac, j, j);
+				gsl_matrix_complex_set(mna->matrix->G_ac, j, j, gsl_complex_add(z_prev, z));
 			}
 			else if (probe2_id == 0) {
-				mna->matrix->G_ac[i][i] += value; 
+				// mna->matrix->G_ac[i][i] += value;
+				z_prev = gsl_matrix_complex_get(mna->matrix->G_ac, i, i);
+				gsl_matrix_complex_set(mna->matrix->G_ac, i, i, gsl_complex_add(z_prev, z));
 			}
 			else {
-				mna->matrix->G_ac[i][i] += value;
-				mna->matrix->G_ac[j][j] += value;
-				mna->matrix->G_ac[i][j] -= value;
-				mna->matrix->G_ac[j][i] -= value;
+				// mna->matrix->G_ac[i][i] += value;
+				z_prev = gsl_matrix_complex_get(mna->matrix->G_ac, i, i);
+				gsl_matrix_complex_set(mna->matrix->G_ac, i, i, gsl_complex_add(z_prev, z));
+				// mna->matrix->G_ac[j][j] += value;
+				z_prev = gsl_matrix_complex_get(mna->matrix->G_ac, j, j);
+				gsl_matrix_complex_set(mna->matrix->G_ac, j, j, gsl_complex_add(z_prev, z));
+				// mna->matrix->G_ac[i][j] -= value;
+				z_prev = gsl_matrix_complex_get(mna->matrix->G_ac, i, j);
+				gsl_matrix_complex_set(mna->matrix->G_ac, i, j, gsl_complex_sub(z_prev, z));
+				// mna->matrix->G_ac[j][i] -= value;
+				z_prev = gsl_matrix_complex_get(mna->matrix->G_ac, j, i);
+				gsl_matrix_complex_set(mna->matrix->G_ac, j, i, gsl_complex_sub(z_prev, z));
 			}
 		}
 		else if (curr->type == 'I' || curr->type == 'i') {
 			if (curr->ac == NULL) {
-				value = 0;
+				// value = 0;
+				z = gsl_complex_rect(0.0, 0.0);
 			}
 			else {
-				value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+				// value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+				z = gsl_complex_polar(curr->ac->magnitude, curr->ac->phase);
 			}
 			if (probe1_id == 0) {
-				mna->matrix->e_ac[j] += value;
+				// mna->matrix->e_ac[j] += value;
+				z_prev = gsl_vector_complex_get(mna->matrix->e_ac, j);
+				gsl_vector_complex_set(mna->matrix->e_ac, j, gsl_complex_add(z_prev, z));
 			}
 			else if (probe2_id == 0) {
-				mna->matrix->e_ac[i] -= value;
+				// mna->matrix->e_ac[i] -= value;
+				z_prev = gsl_vector_complex_get(mna->matrix->e_ac, i);
+				gsl_vector_complex_set(mna->matrix->e_ac, i, gsl_complex_add(z_prev, z));
 			}
 			else {
-				mna->matrix->e_ac[i] -= value;
-				mna->matrix->e_ac[j] += value;
+				// mna->matrix->e_ac[i] -= value;
+				z_prev = gsl_vector_complex_get(mna->matrix->e_ac, i);
+				gsl_vector_complex_set(mna->matrix->e_ac, i, gsl_complex_add(z_prev, z));
+				// mna->matrix->e_ac[j] += value;
+				z_prev = gsl_vector_complex_get(mna->matrix->e_ac, j);
+				gsl_vector_complex_set(mna->matrix->e_ac, j, gsl_complex_add(z_prev, z));
 			}
 		}
 		else if (curr->type == 'L' || curr->type == 'l') {
 			/* Set the L value in the diagonal of g2 area in matrices */
-			mna->matrix->G_ac[offset + volt_sources_cnt][offset + volt_sources_cnt] = - I * omega * curr->value;
+			// mna->matrix->G_ac[offset + volt_sources_cnt][offset + volt_sources_cnt] = - I * omega * curr->value;
+			z = gsl_complex_rect(0.0, omega * curr->value);
+			gsl_matrix_complex_set(mna->matrix->G_ac, offset + volt_sources_cnt, offset + volt_sources_cnt, z);
 			/* Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found */
 			volt_sources_cnt++;
 		}
 		else if (curr->type == 'V' || curr->type == 'v') {
 			if (curr->ac == NULL) {
-				value = 0;
+				// value = 0;
+				z = gsl_complex_rect(0.0, 0.0);
 			}
 			else {
-				value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+				// value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+				z = gsl_complex_polar(curr->ac->magnitude, curr->ac->phase);
 			}
 			/* Keep track of how many voltage sources or inductors, we have already found */
-			mna->matrix->e_ac[offset + volt_sources_cnt] += value; 
+			// mna->matrix->e_ac[offset + volt_sources_cnt] += value;
+			z_prev = gsl_vector_complex_get(mna->matrix->e_ac, offset + volt_sources_cnt);
+			gsl_vector_complex_set(mna->matrix->e_ac, offset + volt_sources_cnt, gsl_complex_add(z_prev, z));
 			/* Keep track of how many voltage sources or inductors, we have already found */
 			volt_sources_cnt++;
 		}
 	}
-
 	// if (options->ITER) {
 	// 	/* Compute the M preconditioner */
 	// 	jacobi_precond(mna->M, mna->matrix->A, NULL, mna->dimension, options->SPARSE);
@@ -682,7 +692,7 @@ int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *eleme
 /* Solves the mna system according to the specified method provided by options argument
  * (LU, Cholesky, Iterative Conj_Grad / Bi-Conj_Grad) and stores the solution on the supplied vector x
  */
-void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
+void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_complex, options_t *options) {
 	int iterations;
 	/* Set the maximum number of iterations CG/bi-CG */
 	int maxiter = mna->dimension;
@@ -725,17 +735,20 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 	}
 	else { /* Dense */
 		/* Pointer to set the appropriate matrix */
-		double **matrix_ptr;
-		double *M_precond;
-		if (mna->tr_analysis_init) {
-			matrix_ptr = mna->matrix->aGhC;
-			M_precond  = mna->M_trans;
+		double **matrix_ptr = NULL;
+		double *M_precond = NULL;
+		gsl_vector_view view_x;
+		if (!mna->ac_analysis_init) {
+			if (mna->tr_analysis_init) {
+				matrix_ptr = mna->matrix->aGhC;
+				M_precond  = mna->M_trans;
+			}
+			else {
+				matrix_ptr = mna->matrix->A;
+				M_precond  = mna->M;
+			}
+			view_x = gsl_vector_view_array(*x, mna->dimension);
 		}
-		else {
-			matrix_ptr = mna->matrix->A;
-			M_precond  = mna->M;
-		}
-		gsl_vector_view view_x = gsl_vector_view_array(*x, mna->dimension);
 		if (options->ITER) {
 			if (options->SPD) {
 			 	iterations = conj_grad(matrix_ptr, NULL, *x, mna->b, M_precond, mna->dimension,
@@ -761,7 +774,12 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 				solve_cholesky(matrix_ptr, mna->b, view_x, mna->dimension, mna->is_decomp);
 			}
 			else {
-				solve_lu(matrix_ptr, mna->b, view_x, mna->matrix->P, mna->dimension, mna->is_decomp);
+				if (mna->ac_analysis_init) {
+					solve_complex_lu(mna->matrix->G_ac, mna->matrix->e_ac, x_complex, mna->matrix->P, mna->dimension);
+				}
+				else {
+					solve_lu(matrix_ptr, mna->b, view_x, mna->matrix->P, mna->dimension, mna->is_decomp);
+				}
 			}
 		}
 	}
@@ -830,6 +848,20 @@ void solve_lu(double **A, double *b, gsl_vector_view x, gsl_permutation *P, int 
 	gsl_linalg_LU_solve(&view_A.matrix, P, &view_b.vector, &x.vector);
 }
 
+/* Solve the MNA system using complex LU decomposition */
+void solve_complex_lu(gsl_matrix_complex *A, gsl_vector_complex *b, gsl_vector_complex *x, gsl_permutation *P, int dimension) {
+	/* The sign of the permutation matrix */
+	int signum;
+	/* LU decomposition on A, PA = LU */
+	gsl_linalg_complex_LU_decomp(A, P, &signum);
+	// printf("LU Matrix:\n\n");
+	// print_array(mna->matrix->A, mna->dimension);
+	// printf("Permutation Vector:\n\n");
+	// print_permutation(mna->matrix->P);
+	/* Solve the LU system */
+	gsl_linalg_complex_LU_solve(A, P, b, x);
+}
+
 /* Solve the MNA system using cholesky decomposition */
 void solve_cholesky(double **A, double *b, gsl_vector_view x, int dimension, bool is_decomp) {
 	/* Allocate memory for the solution vector */
@@ -844,6 +876,17 @@ void solve_cholesky(double **A, double *b, gsl_vector_view x, int dimension, boo
 	}
 	/* Solve the cholesky system */
 	gsl_linalg_cholesky_solve(&view_A.matrix, &view_b.vector, &x.vector);
+}
+
+/* Solve the MNA system using complex cholesky decomposition */
+void solve_complex_cholesky(gsl_matrix_complex *A, gsl_vector_complex *b, gsl_vector_complex *x, int dimension) {
+	/* Cholesky decomposition A = LL^T*/
+	gsl_linalg_complex_cholesky_decomp(A);
+	// printf("Cholesky Matrix:\n\n");
+	// print_array(mna->matrix->A, mna->dimension);
+	// printf("\n\n");;
+	/* Solve the cholesky system */
+	gsl_linalg_complex_cholesky_solve(A, b, x);
 }
 
 /* Print the MNA system */
@@ -897,12 +940,14 @@ void print_array(double **A, int dimension) {
 }
 
 /* Print the complex array */
-void print_complex_array(double complex **A, int dimension) {
+void print_complex_array(gsl_matrix_complex *A, int dimension) {
 	int rows = dimension;
 	int cols = dimension;
+	gsl_complex z;
 	for (int i = 0; i < rows; i++) {
 		for (int j = 0; j < cols; j++) {
-			printf("%-15.4lf + i%-15.4lf", creal(A[i][j]), cimag(A[i][j]));
+			z = gsl_matrix_complex_get(A, i, j);
+			printf("(%-8.4lf, %-8.4lf) ", GSL_REAL(z), GSL_IMAG(z));
 		}
 		printf("\n");
 	}
@@ -918,9 +963,11 @@ void print_vector(double *b, int dimension) {
 }
 
 /* Print the complex vector */
-void print_complex_vector(double complex *b, int dimension) {
+void print_complex_vector(gsl_vector_complex *b, int dimension) {
+	gsl_complex z;
 	for (int i = 0; i< dimension; i++) {
-		printf("%lf + i%lf\n", creal(b[i]), cimag(b[i]));
+		z = gsl_vector_complex_get(b, i);
+		printf("(%lf, %lf)\n", GSL_REAL(z), GSL_IMAG(z));
 	}
     printf("\n");
 }

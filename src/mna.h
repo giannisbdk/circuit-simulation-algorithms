@@ -2,6 +2,8 @@
 #define MNA_H
 
 #include <gsl/gsl_linalg.h>
+#include <gsl/gsl_complex.h>
+#include <gsl/gsl_complex_math.h>
 #include <stdbool.h>
 
 #include "list.h"
@@ -23,8 +25,6 @@ typedef struct matrix {
 	double **A_base;
 	gsl_permutation *P;
 	/* Complex matrix G, for the AC Analysis */
-	// double complex **G_ac;
-	// double complex *e_ac;
 	gsl_matrix_complex *G_ac;
 	gsl_vector_complex *e_ac;
 	/* Matrices for the Transient Analysis */
@@ -71,6 +71,7 @@ typedef struct mna_system {
 	int num_g2_elem;
 	g2_indx_t *g2_indx;
 	bool tr_analysis_init;
+	bool ac_analysis_init;
 } mna_system_t;
 
 mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options, int nz);
@@ -82,26 +83,26 @@ void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tabl
 void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
 void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega);
 void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
-void solve_mna_system(mna_system_t *mna, double **x, options_t *options);
-// void solve_lu(mna_system_t *mna, gsl_vector_view x);
+void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_complex, options_t *options);
 void solve_lu(double **A, double *b, gsl_vector_view x, gsl_permutation *P, int dimension, bool is_decomp);
-// void solve_cholesky(mna_system_t *mna, gsl_vector_view x);
+void solve_complex_lu(gsl_matrix_complex *A, gsl_vector_complex *b, gsl_vector_complex *x, gsl_permutation *P, int dimension);
 void solve_cholesky(double **A, double *b, gsl_vector_view x, int dimension, bool is_decomp);
+void solve_complex_cholesky(gsl_matrix_complex *A, gsl_vector_complex *b, gsl_vector_complex *x, int dimension);
 void solve_sparse_lu(mna_system_t *mna, cs *A, double **x);
 void solve_sparse_cholesky(mna_system_t *mna, cs *A, double **x);
 int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *element);
 double **init_array(int row, int col);
 double *init_vector(int row);
-double complex **init_complex_array(int row, int col);
-double complex *init_complex_vector(int row);
+gsl_matrix_complex *init_gsl_complex_array(int row, int col);
+gsl_vector_complex *init_gsl_complex_vector(int row);
 double *init_val_vector(int row, double val);
 gsl_permutation *init_permutation(int dimension);
 double get_response_value(list1_t *curr);
 void print_mna_system(mna_system_t *mna, options_t *options);
 void print_array(double **A, int dimension);
-void print_complex_array(double complex **A, int dimension);
+void print_complex_array(gsl_matrix_complex*A, int dimension);
 void print_vector(double *b, int dimension);
-void print_complex_vector(double complex *b, int dimension);
+void print_complex_vector(gsl_vector_complex *b, int dimension);
 void print_permutation(gsl_permutation *P);
 void free_mna_system(mna_system_t **mna, options_t *options);
 

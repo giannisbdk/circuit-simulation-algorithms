@@ -123,18 +123,25 @@ void set_vec_val(double *x, double val, int dimension) {
     }
 }
 
+/* Convert from polar to rectangular form */
 double complex pol_to_rect(double magnitude, double phase){
     double complex z = magnitude * cos(phase) + magnitude * sin(phase) * I;
     return z;
 }
 
-ac_t rect_to_polar(double complex z) {
+/* Converts the complex z into polar form */
+ac_t rect_to_polar(gsl_complex z) {
     ac_t ac;
-    ac.magnitude = sqrt(creal(z) * creal(z) + cimag(z) * cimag(z));
-    ac.phase = to_degrees(atan2(cimag(z), creal(z)));
+    double real = GSL_REAL(z);
+    double imag = GSL_IMAG(z);
+    ac.magnitude = sqrt(real * real + imag * imag);
+    ac.phase = to_degrees(atan2(imag, real));
     return ac;
 }
 
+/* Converts radians to degrees in the range of 0-360 */
 double to_degrees(double radians) {
-    return radians * (180.0 / M_PI);
+    double degrees = radians * (180.0 / M_PI);
+    degrees = fmod(degrees + 360.0, 360.0);
+    return degrees;
 }
