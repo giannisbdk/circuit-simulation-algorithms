@@ -19,10 +19,14 @@ typedef struct resp {
 /* Holds the dense representation of the MNA */
 typedef struct matrix {
 	double **A;
-	/*Complex matrix G*/
-	double complex **G_ac;
-	double complex *e_ac;
+	/* A_base is A before factorization */
+	double **A_base;
 	gsl_permutation *P;
+	/* Complex matrix G, for the AC Analysis */
+	// double complex **G_ac;
+	// double complex *e_ac;
+	gsl_matrix_complex *G_ac;
+	gsl_vector_complex *e_ac;
 	/* Matrices for the Transient Analysis */
 	double **hC;
 	/* aGhC = G + hC, G = A */
@@ -40,7 +44,6 @@ typedef struct sp_matrix {
 	cs *aGhC;
 	/* aGhC = G - hC, G = A */
 	cs *sGhC;
-
 	css *A_symbolic;
 	csn *A_numeric;
 } sp_matrix_t;
@@ -73,11 +76,11 @@ typedef struct mna_system {
 mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options, int nz);
 void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz);
 void init_dense_matrix(mna_system_t *mna, options_t *options);
-void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, double start_freq, int offset);
+void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
 void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset);
 void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset);
 void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
-void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega, bool initialized);
+void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega);
 void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
 void solve_mna_system(mna_system_t *mna, double **x, options_t *options);
 // void solve_lu(mna_system_t *mna, gsl_vector_view x);

@@ -21,7 +21,7 @@ parser_t *init_parser() {
     parser->options->TR     = true;
     parser->options->BE     = false;
     parser->options->TRAN   = false;
-    parser->options->AC   = false;
+    parser->options->AC     = false;
     parser->options->ITOL   = DEFAULT_ITOL;
 
     /* Initializes the netlist struct that holds info about the elements */

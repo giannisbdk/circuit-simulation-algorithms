@@ -81,8 +81,16 @@ void init_dense_matrix(mna_system_t *mna, options_t *options) {
 		}
 	}
 	if (options->AC) {
-		mna->matrix->G_ac = init_complex_array(mna->dimension, mna->dimension);
-		mna->matrix->e_ac = init_complex_vector(mna->dimension);
+		// mna->matrix->G_ac = init_complex_array(mna->dimension, mna->dimension);
+		// mna->matrix->e_ac = init_complex_vector(mna->dimension);
+		mna->matrix->G_ac = init_gsl_complex_array(mna->dimension, mna->dimension);
+		mna->matrix->e_ac = init_gsl_complex_vector(mna->dimension);
+	}
+	if (options->TRAN || options->AC) {
+		mna->matrix->A_base = init_array(mna->dimension, mna->dimension);
+	}
+	else {
+		mna->matrix->A_base = NULL;
 	}
 }
 
@@ -92,19 +100,19 @@ void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz) {
 	mna->sp_matrix = (sp_matrix_t *)malloc(sizeof(sp_matrix_t));
 	assert(mna->sp_matrix != NULL);
 	/* Allocate for every different matrix */
-	mna->sp_matrix->A = cs_spalloc(mna->dimension, mna->dimension, nz, 1 , 1);
+	mna->sp_matrix->A = cs_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
 	assert(mna->sp_matrix->A != NULL);
 	mna->sp_matrix->A->nz = 0;
 	mna->matrix = NULL;
 	if (options->TRAN) {
-		mna->sp_matrix->hC   = cs_spalloc(mna->dimension, mna->dimension, nz, 1 , 1);
-		mna->sp_matrix->aGhC = cs_spalloc(mna->dimension, mna->dimension, nz, 1 , 1);
+		mna->sp_matrix->hC   = cs_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
+		mna->sp_matrix->aGhC = cs_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
 		/* If method is not the default Trapezoidal, we dont need the sGhC matrix, we use hC insteed */
 		if (!options->TR) {
 			mna->sp_matrix->sGhC = NULL;
 		}
 		else {
-			mna->sp_matrix->sGhC = cs_spalloc(mna->dimension, mna->dimension, nz, 1 , 1);
+			mna->sp_matrix->sGhC = cs_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
 		}
 	}
 }
@@ -128,6 +136,16 @@ double *init_vector(int row) {
 	return vector;
 }
 
+/* Allocate memory for the complex gsl matrix of the MNA system */
+gsl_matrix_complex *init_gsl_complex_array(int row, int col) {
+	return gsl_matrix_complex_alloc(row, col);
+}
+
+/* Allocate memory for the complex gsl vector of the MNA system */
+gsl_vector_complex *init_gsl_complex_vector(int row) {
+	return gsl_vector_complex_alloc(row);
+}
+
 /* Allocate memory for the matrix of the MNA system */
 double complex **init_complex_array(int row, int col) {
 	double complex **array = (double complex **)malloc(row * sizeof(double complex *));
@@ -142,7 +160,7 @@ double complex **init_complex_array(int row, int col) {
 
 /* Allocate memory for the vector of the MNA system */
 double complex *init_complex_vector(int row) {
-	double complex *vector = (double complex *)calloc(row, sizeof(double complex));;
+	double complex *vector = (double complex *)calloc(row, sizeof(double complex));
 	assert(vector != NULL);
 	return vector;
 }
@@ -165,7 +183,7 @@ gsl_permutation *init_permutation(int dimension) {
 }
 
 /* Constructs the MNA system either sparse or dense */
-void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, double start_freq, int offset) {
+void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset) {
 	if (options->SPARSE) {
 		create_sparse_mna(mna, index, hash_table, options, offset);
 		if (options->TRAN) {
@@ -177,12 +195,8 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 		if (options->TRAN) {
 			create_dense_trans_mna(mna, index, hash_table, options, tr_step, offset);
 		}
-		if (options->AC) {
-			double omega = start_freq * 2 * M_PI;
-			create_dense_ac_mna(mna, index, hash_table, options, offset, omega, false);
-		}
 	}
-	printf("Creation of MNA system... OK\n");
+	printf("Creation of MNA system...OK\n");
 }
 
 /* Constructs the dense MNA system */
@@ -263,6 +277,13 @@ void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tabl
 		/* Compute the M preconditioner */
 		jacobi_precond(mna->M, mna->matrix->A, NULL, mna->dimension, options->SPARSE);
 	}
+
+	/* Copy the data from A to A_base before LU factorization to build matrices in AC and TRAN analysis */
+	if (options->TRAN || options->AC) {
+		for (int i = 0; i < mna->dimension; i++) {
+			memcpy(&mna->matrix->A_base[i], &mna->matrix->A[i], mna->dimension * sizeof(double));
+		}
+	}
 }
 
 void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset) {
@@ -276,7 +297,6 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 	else {
 		h = 1 / tr_step;
 	}
-
 	for (curr = index->head1; curr != NULL; curr = curr->next) {
 		int probe1_id = ht_get_id(hash_table, curr->probe1);
 		int probe2_id = ht_get_id(hash_table, curr->probe2);
@@ -342,9 +362,9 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 	/* Compute the matrices G + 1/h*C and G - 2/h*C */
 	for (int i = 0; i < mna->dimension; i++) {
 		for (int j = 0; j < mna->dimension; j++) {
-			mna->matrix->aGhC[i][j] = mna->matrix->A[i][j] + mna->matrix->hC[i][j];
+			mna->matrix->aGhC[i][j] = mna->matrix->A_base[i][j] + mna->matrix->hC[i][j];
 			if (options->TR) {
-				mna->matrix->sGhC[i][j] = mna->matrix->A[i][j] - mna->matrix->hC[i][j];
+				mna->matrix->sGhC[i][j] = mna->matrix->A_base[i][j] - mna->matrix->hC[i][j];
 			}
 		}
 	}
@@ -361,17 +381,17 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 }
 
 /* Constructs the dense MNA system */
-void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega, bool initialized) {
+void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega) {
 	list1_t *curr;
 	double complex value;
 	int volt_sources_cnt = 0;
 
-	if (!initialized) {
-		for (int i = 0; i < mna->dimension; i++) {
-			for (int j = 0; j < mna->dimension; j++) {
-				mna->matrix->G_ac[i][j] = mna->matrix->A[i][j];
-			}
+	/* Copy the base for the AC matrix and zero-out the vector for the next step */
+	for (int i = 0; i < mna->dimension; i++) {
+		for (int j = 0; j < mna->dimension; j++) {
+			mna->matrix->G_ac[i][j] = mna->matrix->A_base[i][j];
 		}
+		mna->matrix->e_ac[i] = 0.0 + I * 0.0;
 	}
 
 	for (curr = index->head1; curr != NULL; curr = curr->next) {
@@ -379,7 +399,6 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 		int probe2_id = ht_get_id(hash_table, curr->probe2);
 		int i = probe1_id - 1;
 		int j = probe2_id - 1;
-
 		if (curr->type == 'C' || curr->type == 'c') {
 			value = I * omega * curr->value;
 			if (probe1_id == 0) {
@@ -397,7 +416,7 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 		}
 		else if (curr->type == 'I' || curr->type == 'i') {
 			if (curr->ac == NULL) {
-				value = curr->value;
+				value = 0;
 			}
 			else {
 				value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
@@ -421,7 +440,7 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 		}
 		else if (curr->type == 'V' || curr->type == 'v') {
 			if (curr->ac == NULL) {
-				value = curr->value;
+				value = 0;
 			}
 			else {
 				value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
@@ -432,8 +451,6 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 			volt_sources_cnt++;
 		}
 	}
-
-
 
 	// if (options->ITER) {
 	// 	/* Compute the M preconditioner */
@@ -706,7 +723,7 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 			}
 		}
 	}
-	else {
+	else { /* Dense */
 		/* Pointer to set the appropriate matrix */
 		double **matrix_ptr;
 		double *M_precond;
@@ -751,7 +768,7 @@ void solve_mna_system(mna_system_t *mna, double **x, options_t *options) {
 	if (!mna->is_decomp) {
 		mna->is_decomp = true;
 		if (!options->TRAN) {
-    		printf("Solution of MNA system... OK\n");
+    		printf("Solution of MNA system...OK\n");
     	}
 	}
 }

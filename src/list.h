@@ -5,14 +5,10 @@
 
 #include "hash_table.h"
 #include "trans_spec.h"
+#include "ac_spec.h"
 
 #define SUCCESS	 1
 #define FAILURE	-1
-
-typedef struct ac {
-	double magnitude;
-	double phase;
-} ac_t;
 
 typedef struct list1 {
 	char type;

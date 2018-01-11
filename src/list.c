@@ -146,7 +146,7 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 					ac_index = 12;
 					break;
 				case SIN:
-					new_node->trans_spec->sin = (sin_t *)malloc(sizeof(sin_t));
+					new_node->trans_spec->sin  = (sin_t *)malloc(sizeof(sin_t));
 					new_node->trans_spec->type = type;
 					/* Strip parentheses of first token and last token */
 					sscanf(tokens[6],  "(%lf", &(new_node->trans_spec->sin->i1));
@@ -159,7 +159,7 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 					break;
 				case PULSE:
 					new_node->trans_spec->pulse = (pulse_t *)malloc(sizeof(pulse_t));
-					new_node->trans_spec->type = type;
+					new_node->trans_spec->type  = type;
 					/* Strip parentheses of first token and last token */
 					sscanf(tokens[6],  "(%lf", &(new_node->trans_spec->pulse->i1));
 					sscanf(tokens[7],  "%lf",  &(new_node->trans_spec->pulse->i2));
@@ -171,7 +171,7 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 					ac_index = 13;
 					break;
 				case PWL:
-					new_node->trans_spec->pwl = (pwl_t *)malloc(sizeof(pwl_t));
+					new_node->trans_spec->pwl  = (pwl_t *)malloc(sizeof(pwl_t));
 					new_node->trans_spec->type = type;
 					/* Start shows the index of trans_spec tokens */
 					int start = 6;

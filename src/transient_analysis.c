@@ -73,7 +73,7 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 	}
 	mna->tr_analysis_init = false;
 	if (parser->netlist->tr_counter) {
-		printf("Transient Analysis....... OK\n");
+		printf("Transient Analysis.......OK\n");
 	}
 }
 

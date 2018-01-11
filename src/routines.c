@@ -124,6 +124,17 @@ void set_vec_val(double *x, double val, int dimension) {
 }
 
 double complex pol_to_rect(double magnitude, double phase){
-    double complex x = magnitude * cos(phase) + magnitude * sin(phase) * I;
-    return x;
+    double complex z = magnitude * cos(phase) + magnitude * sin(phase) * I;
+    return z;
+}
+
+ac_t rect_to_polar(double complex z) {
+    ac_t ac;
+    ac.magnitude = sqrt(creal(z) * creal(z) + cimag(z) * cimag(z));
+    ac.phase = to_degrees(atan2(cimag(z), creal(z)));
+    return ac;
+}
+
+double to_degrees(double radians) {
+    return radians * (180.0 / M_PI);
 }
