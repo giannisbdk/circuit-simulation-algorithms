@@ -1,31 +1,31 @@
 # Compiler
 CC = gcc
+
 # Compiler flags
 CFLAGS = -g -Wall
+
 # Compile with -O3 optimization
 OPTFLAGS = -O3
+
 # GSL config paths
 GSLFLAGS = $(shell gsl-config --cflags --libs)
+
 # Directories
 SRC = src
 OBJ = obj
 NLS = netlists
 IBM_NLS = ibm_netlists
-PLS = plots
-
-#I = -I../Include -I../../SuiteSparse_config
-
-CS_LIB = cx_sparse/Lib/libcxsparse.a
-
-CSX_SRC = cx_sparse/Source
-
+PLT = plots
 PLT_SRC = plot.py
+
+CSX_LIB = cx_sparse/Lib/libcxsparse.a
+CSX_SRC = cx_sparse/Source
 
 SOURCES = $(wildcard $(SRC)/*.c)
 OBJECTS = $(patsubst $(SRC)/%.c,$(OBJ)/%.o,$(SOURCES))
 
 main: $(OBJECTS)
-	$(CC) $(CFLAGS) $^ $(GSLFLAGS) -o $@ $(DBGFLAGS) $(CS_LIB)
+	$(CC) $(CFLAGS) $^ $(GSLFLAGS) -o $@ $(DBGFLAGS) $(CSX_LIB)
 
 $(OBJ)/%.o: $(SRC)/%.c
 	$(CC) $(CFLAGS) -I$(SRC) -c $< $(GSLFLAGS) -o $@ $(DBGFLAGS)
@@ -132,7 +132,12 @@ clean:
 clean_ibm:
 	rm -rf ibm_netlists
 
+.PHONY: clean_plots
+# Clean the plots inside $(PLT) directory
+clean_plots:
+	$(RM) $(PLT)/*.png
+
 # Cleans the executable, the output files and the object files
 .PHONY: cleanall
 cleanall: clean
-	$(RM) main $(OBJECTS) -rf $(PLS)
+	$(RM) main $(OBJECTS) -rf $(PLT)
