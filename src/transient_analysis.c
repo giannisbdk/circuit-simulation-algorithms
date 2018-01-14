@@ -16,7 +16,9 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 	/* b is the RHS of the trapezoidal/backward euler */
 	double *prev_sol = init_vector(mna->dimension);
 	double *curr_response = init_vector(mna->dimension);
-	double *prev_response;
+	double *prev_response = NULL;
+
+	/* In case it is trapezoidal method previous response e(tkn-1) is required */
 	if (parser->options->TR) {
 		prev_response = init_vector(mna->dimension);
 	}
@@ -73,9 +75,17 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 		    fclose(files[j]);
 		}
 	}
+	/* Set flag to false to indicate that we're no longer inside TRANSIENT analysis */
 	mna->tr_analysis_init = false;
 	if (parser->netlist->tr_counter) {
 		printf("Transient Analysis.......OK\n");
+	}
+
+	/* Free everything we allocated */
+	free(prev_sol);
+	free(curr_response);
+	if (parser->options->TR) {
+		free(prev_response);
 	}
 }
 
@@ -98,6 +108,10 @@ void set_trapezoidal_rhs(mna_system_t *mna, double *curr_response, double *prev_
 	}
 	sub_vector(mna->b, response_add, sGhc_x, mna->dimension);
 	memcpy(prev_response, curr_response, mna->dimension * sizeof(double));
+
+	/* Free everything we allocated */
+	free(response_add);
+	free(sGhc_x);
 }
 
 /* Computes and returns the right hand side of the backward euler */
@@ -116,6 +130,9 @@ void set_backward_euler_rhs(mna_system_t *mna, double *curr_response, double *pr
 		mat_vec_mul(hC_x, mna->matrix->hC, prev_sol, mna->dimension);
 	}
 	add_vector(mna->b, curr_response, hC_x, mna->dimension);
+
+	/* Free everything we allocated */
+	free(hC_x);
 }
 
 /* Set the values of the e(tk) vector */

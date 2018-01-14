@@ -16,8 +16,8 @@ OBJ = obj
 NLS = netlists
 IBM_NLS = ibm_netlists
 PLT = plots
-PLT_SRC = plot.py
 
+PLT_SRC = plot.py
 CSX_LIB = cx_sparse/Lib/libcxsparse.a
 CSX_SRC = cx_sparse/Source
 
@@ -52,11 +52,23 @@ run_lu_tran_tr: main
 run_lu_tran_tr_iter: main
 	./main $(NLS)/lu_tran_tr_iter_netlist.txt
 
+run_lu_tran_tr_sparse: main
+	./main $(NLS)/lu_tran_tr_sparse_netlist.txt
+
+run_lu_tran_tr_iter_sparse: main
+	./main $(NLS)/lu_tran_tr_iter_sparse_netlist.txt
+
 run_lu_tran_be: main
 	./main $(NLS)/lu_tran_be_netlist.txt
 
 run_lu_tran_be_iter: main
 	./main $(NLS)/lu_tran_be_iter_netlist.txt
+
+run_lu_tran_be_sparse: main
+	./main $(NLS)/lu_tran_be_sparse_netlist.txt
+
+run_lu_tran_be_iter_sparse: main
+	./main $(NLS)/lu_tran_be_iter_sparse_netlist.txt
 
 run_chol: main
 	./main $(NLS)/cholesky_netlist.txt
@@ -82,6 +94,7 @@ run_chol_tran_be: main
 run_chol_tran_be_iter: main
 	./main $(NLS)/cholesky_tran_be_iter_netlist.txt
 
+# Netlist download targets
 run_ibm1: main
 	./main $(IBM_NLS)/ibmpg1.spice
 

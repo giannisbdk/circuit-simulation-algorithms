@@ -20,13 +20,18 @@ typedef struct resp {
 
 /* Holds the dense representation of the MNA */
 typedef struct matrix {
+	/* Main Matrix of the MNA for DC */
 	double **A;
 	/* A_base is A before factorization */
 	double **A_base;
+
+	/* Permutation for LU factorizations either complex or normal */
 	gsl_permutation *P;
-	/* Complex matrix G, for the AC Analysis */
+
+	/* Complex matrix G for the AC Analysis and RHS vector */
 	gsl_matrix_complex *G_ac;
 	gsl_vector_complex *e_ac;
+
 	/* Matrices for the Transient Analysis */
 	double **hC;
 	/* aGhC = G + hC, G = A */
@@ -37,13 +42,17 @@ typedef struct matrix {
 
 /* Holds the sparse representation of the MNA */
 typedef struct sp_matrix {
-	cs 	*A;
+	/* Main Matrix of the MNA for DC */
+	cs *A;
+
 	/* Matrices for the Transient Analysis */
 	cs *hC;
 	/* aGhC = G + hC, G = A */
 	cs *aGhC;
 	/* aGhC = G - hC, G = A */
 	cs *sGhC;
+
+	/* Hold the symbolic and numeric representation of the LU factorization */
 	css *A_symbolic;
 	csn *A_numeric;
 } sp_matrix_t;
@@ -57,19 +66,27 @@ typedef struct mna_system {
 	/* Pointers to the dense and sparse matrix of the MNA */
 	matrix_t 	*matrix;
 	sp_matrix_t *sp_matrix;
+
 	/* Pointer to the transient response and the nodes that contribute to it */
 	resp_t *resp;
+
 	/* Jacobi Preconditioner M, we only store the diagonal of A not zeros */
 	double *M;
 	double *M_trans;
+
 	/* Right hand side vector b for the Ax=b */
 	double *b;
+
+	/* General info about MNA */
 	bool is_decomp;
 	int dimension;
 	int num_nodes;
+
 	/* Keep some info about g2 elements */
 	int num_g2_elem;
 	g2_indx_t *g2_indx;
+
+	/* Flags that indicate in which analysis we're currently at */
 	bool tr_analysis_init;
 	bool ac_analysis_init;
 } mna_system_t;

@@ -34,10 +34,10 @@ parser_t *init_parser() {
     /* Initializes the dc_analysis array with a DC_ANALYSIS_NUM value that holds .DC options */
     parser->dc_analysis = (dc_analysis_t *)malloc(ANALYSIS_NUM * sizeof(dc_analysis_t));
     assert(parser->dc_analysis != NULL);
-    parser->dc_analysis->start      = 0.0;
-    parser->dc_analysis->end        = 0.0;
-    parser->dc_analysis->increment  = 0.0;
-    parser->dc_analysis->num_nodes  = 0;
+    parser->dc_analysis->start       = 0.0;
+    parser->dc_analysis->end         = 0.0;
+    parser->dc_analysis->increment   = 0.0;
+    parser->dc_analysis->num_nodes   = 0;
     parser->dc_analysis->volt_source = NULL;
     parser->dc_analysis->nodes = NULL;
 
@@ -56,7 +56,6 @@ parser_t *init_parser() {
     parser->ac_analysis->end_freq   = 0.0;
     parser->ac_analysis->num_nodes  = 0;
     parser->ac_analysis->nodes = NULL;
-
     return parser;
 }
 
@@ -169,6 +168,7 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
                         parser->options->TR = false;
                     }
                     else if(strcmp("METHOD=TR", &tokens[i][0]) == 0) {
+                        //TODO this needs to be changed, because in init_parser we set it to true anyways
                         parser->options->TR = true;
                     }
                 }
@@ -379,6 +379,8 @@ void print_ac_analysis_options(ac_analysis_t *ac_analysis, int ac_counter) {
 void free_parser(parser_t **parser) {
     /* Free options struct */
     free((*parser)->options);
+
+    /* Free everything allocated for DC analysis */
     if ((*parser)->netlist->dc_counter) {
         /* Free everything malloc'd in dc_analysis struct array */
         for (int i = 0; i < (*parser)->netlist->dc_counter; i++) {
@@ -391,8 +393,10 @@ void free_parser(parser_t **parser) {
         /* Free the dc_analysis struct */
         free((*parser)->dc_analysis);    
     }
+
+    /* Free everything allocated for TRANSIENT analyiss */
     if ((*parser)->netlist->tr_counter) {
-        /* Free everything malloc'd in dc_analysis struct array */
+        /* Free everything malloc'd in tr_analysis struct array */
         for (int i = 0; i < (*parser)->netlist->tr_counter; i++) {
             for (int j = 0; j < (*parser)->tr_analysis[i].num_nodes; j++) {
                 free((*parser)->tr_analysis[i].nodes[j]);
@@ -402,8 +406,10 @@ void free_parser(parser_t **parser) {
         /* Free the tr_analysis struct */
         free((*parser)->tr_analysis);    
     }
+
+    /* Free everything allocated for AC analysis */
     if ((*parser)->netlist->ac_counter) {
-        /* Free everything malloc'd in dc_analysis struct array */
+        /* Free everything malloc'd in ac_analysis struct array */
         for (int i = 0; i < (*parser)->netlist->ac_counter; i++) {
             for (int j = 0; j < (*parser)->ac_analysis[i].num_nodes; j++) {
                 free((*parser)->ac_analysis[i].nodes[j]);

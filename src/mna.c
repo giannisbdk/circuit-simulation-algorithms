@@ -11,6 +11,7 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	mna_system_t *mna = (mna_system_t *)malloc(sizeof(mna_system_t));
 	assert(mna != NULL);
 	mna->dimension = num_nodes + num_g2_elem;
+
 	if (options->SPARSE) {
 		init_sparse_matrix(mna, options, nz);
 	}
@@ -35,6 +36,8 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	}
 	/* In case netlists has .TRAN, allocate the resp_t struct that holds the transient response *
 	 * and the nodes that contribute to it. It's the same for dense and sparse matrix           */
+	//TODO SOS
+	//SOMETHING REALLY BAD HAS HAPPENED HERE REGARDING THE mna->resp->nodes bad allocation technique
 	if (options->TRAN) {
 		mna->resp = (resp_t *)malloc(sizeof(resp_t));
 		mna->resp->value = init_vector(mna->dimension);
@@ -48,7 +51,7 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	}
 	/* Allocate the rhs vector */
 	mna->b = init_vector(mna->dimension);
-	/* Init the other fields of the mna system*/
+	/* Initialize the other fields of the mna system */
 	mna->is_decomp = false;
 	mna->tr_analysis_init = false;
 	mna->ac_analysis_init = false;
@@ -57,7 +60,6 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	/* Allocate a vector that holds the names of g2 elements */
 	mna->g2_indx = (g2_indx_t *)malloc(num_g2_elem * sizeof(g2_indx_t));
 	assert(mna->g2_indx != NULL);
-
 	return mna;
 }
 
@@ -73,11 +75,11 @@ void init_dense_matrix(mna_system_t *mna, options_t *options) {
 	if (options->TRAN) {
 		mna->matrix->hC   = init_array(mna->dimension, mna->dimension);
 		mna->matrix->aGhC = init_array(mna->dimension, mna->dimension);
-		/* If method is not the default Trapezoidal, we dont need the sGhC matrix, we use hC insteed */
-		if (!options->TR) {
+		/* If method is Backward Euler we don't need sGhC matrix, we use hC instead */
+		if (options->BE) {
 			mna->matrix->sGhC = NULL;
 		}
-		else {
+		else { /* Trapezoidal method */
 			mna->matrix->sGhC = init_array(mna->dimension, mna->dimension);
 		}
 	}
@@ -106,11 +108,11 @@ void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz) {
 	if (options->TRAN) {
 		mna->sp_matrix->hC   = cs_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
 		mna->sp_matrix->aGhC = cs_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
-		/* If method is not the default Trapezoidal, we dont need the sGhC matrix, we use hC insteed */
-		if (!options->TR) {
+		/* If method is Backward Euler we don't need sGhC matrix, we use hC instead */
+		if (options->BE) {
 			mna->sp_matrix->sGhC = NULL;
 		}
-		else {
+		else { /* Trapezoidal method */
 			mna->sp_matrix->sGhC = cs_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
 		}
 	}
@@ -137,12 +139,16 @@ double *init_vector(int row) {
 
 /* Allocate memory for the complex gsl matrix of the MNA system */
 gsl_matrix_complex *init_gsl_complex_array(int row, int col) {
-	return gsl_matrix_complex_alloc(row, col);
+	gsl_matrix_complex *matrix = gsl_matrix_complex_alloc(row, col);
+	assert(matrix != NULL);
+	return matrix;
 }
 
 /* Allocate memory for the complex gsl vector of the MNA system */
 gsl_vector_complex *init_gsl_complex_vector(int row) {
-	return gsl_vector_complex_alloc(row);
+	gsl_vector_complex *vector = gsl_vector_complex_alloc(row);
+	assert(vector != NULL);
+	return vector;
 }
 
 /* Allocate memory for the new vector and set all values to val */
@@ -157,8 +163,7 @@ double *init_val_vector(int row, double val) {
 
 /* Allocate memory for the GSL permutation matrix of the MNA system */
 gsl_permutation *init_permutation(int dimension) {
-	gsl_permutation *P;
-	P = gsl_permutation_calloc(dimension);
+	gsl_permutation *P = gsl_permutation_calloc(dimension);
 	return P;
 }
 
@@ -353,7 +358,7 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 		jacobi_precond(mna->M_trans, mna->matrix->aGhC, NULL, mna->dimension, options->SPARSE);
 	}
 
-	/* Free what is no longer needed */
+	/* Free what is no longer needed, in case it's trapezoidal method */
 	if (options->TR) {
 		free(mna->matrix->hC);
 	}
@@ -738,6 +743,7 @@ void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_compl
 		double **matrix_ptr = NULL;
 		double *M_precond = NULL;
 		gsl_vector_view view_x;
+		/* Set general pointers for matrices, vectors to use for the solvers */
 		if (!mna->ac_analysis_init) {
 			if (mna->tr_analysis_init) {
 				matrix_ptr = mna->matrix->aGhC;
@@ -770,10 +776,18 @@ void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_compl
 			}
 		}
 		else {
+			//TODO perhaps add INLINE MACRO for these flags i.e. mna->ac_analysis_init, mna->tr_analysis_init
 			if (options->SPD) {
-				solve_cholesky(matrix_ptr, mna->b, view_x, mna->dimension, mna->is_decomp);
+				/* Check if AC analysis has started (complex), otherwise call ordinary solvers */
+				if (mna->ac_analysis_init) {
+					solve_complex_cholesky(mna->matrix->G_ac, mna->matrix->e_ac, x_complex, mna->dimension);
+				}
+				else {
+					solve_cholesky(matrix_ptr, mna->b, view_x, mna->dimension, mna->is_decomp);
+				}
 			}
 			else {
+				/* Check if AC analysis has started (complex), otherwise call ordinary solvers */
 				if (mna->ac_analysis_init) {
 					solve_complex_lu(mna->matrix->G_ac, mna->matrix->e_ac, x_complex, mna->matrix->P, mna->dimension);
 				}
@@ -983,15 +997,28 @@ void print_permutation(gsl_permutation *P) {
 
 /* Free all the memory allocated for the MNA system */
 void free_mna_system(mna_system_t **mna, options_t *options) {
-	/* Free everything we allocated for the MNA and GSL */
+	/* Free everything from dense */
 	if (!options->SPARSE) {
 		free((*mna)->matrix->A[0]);
 		free((*mna)->matrix->A);
 		gsl_permutation_free((*mna)->matrix->P);
+
+		/* In case there is an AC analysis in the netlist */
+		if (options->AC) {
+			/* Free all the allocated complex structures from GSL */
+			gsl_matrix_complex_free((*mna)->matrix->G_ac);
+			gsl_vector_complex_free((*mna)->matrix->e_ac);
+		}
+		/* Free the A_base in case it exists */
+		if (options->TRAN || options->AC) {
+			free((*mna)->matrix->A_base[0]);
+			free((*mna)->matrix->A_base);
+		}
+
 		/* Free the matrix struct */
 		free((*mna)->matrix);
 	}
-	else {
+	else { /* Free everything from sparse */
 		if (!options->ITER) {
 			cs_sfree((*mna)->sp_matrix->A_symbolic);
 			cs_nfree((*mna)->sp_matrix->A_numeric);
@@ -1001,16 +1028,31 @@ void free_mna_system(mna_system_t **mna, options_t *options) {
 		}
 		free((*mna)->sp_matrix);
 	}
+
+	/* Free the preconditioners for the iterative solvers */
 	if (options->ITER) {
 		free((*mna)->M);
+		if (options->TRAN) {
+			free((*mna)->M_trans);
+		}
 	}
+	/* Free b*/
 	free((*mna)->b);
+
 	/* Free every string allocated for the group2 elements */
 	for (int i = 0; i < (*mna)->num_g2_elem; i++) {
 		free((*mna)->g2_indx[i].element);
 	}
 	/* Free the g2 array */
 	free((*mna)->g2_indx);
+
+	/* Free the resp struct */
+	if (options->TRAN) {
+		free((*mna)->resp->value);
+		//TODO resp->nodes need to be free'd aswell but we've to first fix the allocation technique
+	}
+
+	/* Free the whole MNA struct */
 	free(*mna);
 	/* Set mna to NULL to limit further acesses */
 	*mna = NULL;
