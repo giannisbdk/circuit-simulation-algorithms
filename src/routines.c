@@ -26,11 +26,30 @@ void add_vector(double *dest, double *x, double *y, int n) {
 
 /* Computes the dot product of vectors x and y */
 double dot_product(double *x, double *y, int n) {
-    double sum = 0;
+    double sum = 0.0;
     for (int i = 0; i < n; i++) {
         sum += x[i] * y[i];
     }
     return sum;
+}
+
+/* Computes the complex dot product of complex vectors x and y */
+gsl_complex complex_dot_product(gsl_vector_complex *x, gsl_vector_complex *y, int n) {
+    gsl_complex z, xy, xi, yi;
+    /* Initialize to z = 0.0 + i0.0 */
+    GSL_SET_COMPLEX(&z, 0.0, 0.0);
+    for (int i = 0; i < n; i++) {
+        /* Get the current complex number from the vectors */
+        xi = gsl_vector_complex_get(x, i);
+        yi = gsl_vector_complex_get(y, i);
+        /* Get the conjugate of the first */
+        xi = gsl_complex_conjugate(xi);
+        /* Get their multiplication */
+        xy = gsl_complex_mul(xi, yi);
+        /* Get the sum */
+        z  = gsl_complex_add(z, xy);
+    }
+    return z;
 }
 
 /* Computes the euclidean norm of vector x */
@@ -121,12 +140,6 @@ void set_vec_val(double *x, double val, int dimension) {
     for (int i = 0; i < dimension; i++) {
         x[i] = val;
     }
-}
-
-/* Convert from polar to rectangular form */
-double complex pol_to_rect(double magnitude, double phase){
-    double complex z = magnitude * cos(phase) + magnitude * sin(phase) * I;
-    return z;
 }
 
 /* Converts the complex z into polar form */

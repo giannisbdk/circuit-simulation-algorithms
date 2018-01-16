@@ -11,7 +11,7 @@
 
 extern int errno;
 
-/* Struct to hold the different options for analysis */
+/* Struct to hold the different options for the analyses */
 typedef struct options {
 	bool SPD;
 	bool SPARSE;
@@ -23,9 +23,11 @@ typedef struct options {
 	double ITOL;
 } options_t;
 
-/* Struct to hold the information of netlists, such as  *
- * number of nodes, number of group2 elements and   	*
- * number of dc analysis targets                        */
+/*
+ * Struct to hold the information of netlists, such as
+ * number of nodes, number of group2 elements and
+ * number of dc analysis targets
+ */
 typedef struct netlist {
 	int num_nodes;
 	int num_g2_elem;
@@ -49,7 +51,7 @@ typedef struct dc_analysis {
 typedef struct tr_analysis {
 	double time_step;
 	double fin_time;
-	/* Plot / Print*/
+	/* Plot / Print */
 	char **nodes;
 	int num_nodes;
 } tr_analysis_t;
@@ -64,13 +66,15 @@ typedef struct ac_analysis {
 	double end_freq;
 	int points;
 	ac_sweep_t sweep;
-	/* Plot / Print*/
+	/* Plot / Print */
 	char **nodes;
 	int num_nodes;
 } ac_analysis_t;
 
-/* Struct to hold all the previous values, so that we are able *
- * to return all the information we read in the netlist        */
+/* 
+ * Struct to hold all the previous values, so that we are able
+ * to return all the information we read in the netlist
+ */
 typedef struct parser {
 	options_t 	  *options;
 	dc_analysis_t *dc_analysis;

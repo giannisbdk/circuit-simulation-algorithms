@@ -55,7 +55,6 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table);
 int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table);
 int get_nz();
 void set_nz(char element, char probe1, char probe2);
-// trans_type get_type(char *spec);
 bool is_transient(char *spec, trans_type *type);
 bool check_ac(char **tokens, int num_tokens);
 void free_index(index_t **index);

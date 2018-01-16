@@ -10,6 +10,8 @@
 #define MAX_ITER_THRESHOLD 	20
 
 int conj_grad(double **A, cs *C, double *x, double *b, double *M, int dimension, double itol, int maxiter, bool SPARSE);
+int complex_conj_grad();
 int bi_conj_grad(double **A, cs *C, double *x, double *b, double *M, int dimension, double itol, int maxiter, bool SPARSE);
+int complex_bi_conj_grad();
 
 #endif

@@ -7,7 +7,8 @@
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-/* Solve the SPD system with the iterative conjugate gradient method
+/* 
+ * Solve the SPD system with the iterative conjugate gradient method
  * store the result in vector x and also return the number of iterations
  */ 
 int conj_grad(double **A, cs *C, double *x, double *b, double *M, int dimension, double itol, int maxiter, bool SPARSE) {
@@ -80,7 +81,17 @@ int conj_grad(double **A, cs *C, double *x, double *b, double *M, int dimension,
 	return iter;
 }
 
-/* Solve the system with the iterative bi-conjugate gradient method
+/* 
+ * Solve the complex SPD system with the iterative conjugate gradient method
+ * store the result in vector x and also return the number of iterations
+ */ 
+int complex_conj_grad() {
+	int iter = 0;
+	return iter;
+}
+
+/* 
+ * Solve the system with the iterative bi-conjugate gradient method
  * store the result in vector x and also return the number of iterations
  * or FAILURE in case it fails
  */ 
@@ -188,5 +199,15 @@ int bi_conj_grad(double **A, cs *C, double *x, double *b, double *M, int dimensi
 	free(z_tilde);
 	free(p_tilde);
 	free(q_tilde);
+	return iter;
+}
+
+/* 
+ * Solve the complex system with the iterative bi-conjugate gradient method
+ * store the result in vector x and also return the number of iterations
+ * or FAILURE in case it fails
+ */ 
+int complex_bi_conj_grad() {
+	int iter = 0;
 	return iter;
 }
