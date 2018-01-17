@@ -18,6 +18,7 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	else {
 		init_dense_matrix(mna, options);
 	}
+
 	/* In case we will use iterative methods allocate memory for the prerequisites */
 	if (options->ITER) {
 		// TODO work in jacobi_precond to set 1.0 in one step with indexes and not here
@@ -34,19 +35,20 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 		mna->M = NULL;
 		mna->M_trans = NULL;
 	}
-	/* In case netlists has .TRAN, allocate the resp_t struct that holds the transient response *
-	 * and the nodes that contribute to it. It's the same for dense and sparse matrix           */
-	//TODO SOS
-	//SOMETHING REALLY BAD HAS HAPPENED HERE REGARDING THE mna->resp->nodes bad allocation technique
+	/* 
+	 * In case netlist has .TRAN, allocate the resp_t struct that holds the transient response or DC value
+	 * and the nodes that contribute to it. It's the same for dense and sparse matrices.
+	 */
 	if (options->TRAN) {
 		mna->resp = (resp_t *)malloc(sizeof(resp_t));
+		assert(mna->resp != NULL);
 		mna->resp->value = init_vector(mna->dimension);
+		/* Allocate enough memory to hold at max n pointers to elements */
 		mna->resp->nodes = (list1_t **)malloc(mna->dimension * sizeof(list1_t *));
 		assert(mna->resp->nodes != NULL);
-		mna->resp->nodes[0] = (list1_t *)malloc(mna->dimension * sizeof(list1_t));
-		assert(mna->resp->nodes[0] != NULL);
-		for (int i = 1; i < mna->dimension; i++) {
-			mna->resp->nodes[i] = mna->resp->nodes[i-1] + 1;
+		/* Initialize all the pointers to NULL, only those that contribute will have a non-NULL value at the end */
+		for (int i = 0; i < mna->dimension; i++) {
+			mna->resp->nodes[i] = NULL;
 		}
 	}
 	/* Allocate the rhs vector */
@@ -189,6 +191,7 @@ void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tabl
 	list1_t *curr;
 	double value;
 	int volt_sources_cnt = 0;
+
 	for (curr = index->head1; curr != NULL; curr = curr->next) {
 		int probe1_id = ht_get_id(hash_table, curr->probe1);
 		int probe2_id = ht_get_id(hash_table, curr->probe2);
@@ -258,10 +261,12 @@ void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tabl
 			volt_sources_cnt++;
 		}
 	}
+
 	if (options->ITER) {
 		/* Compute the M preconditioner */
 		jacobi_precond(mna->M, mna->matrix->A, NULL, mna->dimension, options->SPARSE);
 	}
+
 	/* Copy the data from A to A_base before LU factorization to build matrices in AC and TRAN analysis */
 	if (options->TRAN || options->AC) {
 		for (int i = 0; i < mna->dimension; i++) {
@@ -270,17 +275,20 @@ void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tabl
 	}
 }
 
+/* Constructs the dense transient MNA system */
 void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset) {
 	list1_t *curr;
 	double value, h;
 	int volt_sources_cnt = 0;
 
-	if (!options->BE) {
+	/* Set the sampling step h according to the specified method (TRAP or BE) */
+	if (options->TR) {
 		h = 2 / tr_step;
 	}
 	else {
 		h = 1 / tr_step;
 	}
+
 	for (curr = index->head1; curr != NULL; curr = curr->next) {
 		int probe1_id = ht_get_id(hash_table, curr->probe1);
 		int probe2_id = ht_get_id(hash_table, curr->probe2);
@@ -302,7 +310,7 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 			}
 		}
 		else if(curr->type == 'L' || curr->type == 'l') {
-			/* Set the L value in the diagonal of g2 area in matrices */
+			/* Set the L value in the diagonal of g2 area in matrix */
 			mna->matrix->hC[offset + volt_sources_cnt][offset + volt_sources_cnt] = -curr->value * h;
 			/* Keep track of how many voltage sources or inductors, we have already found */
 			volt_sources_cnt++;
@@ -364,7 +372,7 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 	}
 }
 
-/* Constructs the dense MNA system */
+/* Constructs the dense AC MNA system */
 void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega) {
 	list1_t *curr;
 	int volt_sources_cnt = 0;
@@ -380,6 +388,7 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 		// mna->matrix->e_ac[i] = 0.0 + I * 0.0;
 	}
 	gsl_vector_complex_set_zero(mna->matrix->e_ac);
+
 	for (curr = index->head1; curr != NULL; curr = curr->next) {
 		int probe1_id = ht_get_id(hash_table, curr->probe1);
 		int probe2_id = ht_get_id(hash_table, curr->probe2);
@@ -479,6 +488,7 @@ void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 	list1_t *curr;
 	double value;
 	int volt_sources_cnt = 0;
+
 	for (curr = index->head1; curr != NULL; curr = curr->next) {
 		int probe1_id = ht_get_id(hash_table, curr->probe1);
 		int probe2_id = ht_get_id(hash_table, curr->probe2);
@@ -548,10 +558,13 @@ void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 			volt_sources_cnt++;
 		}
 	}
+
+	/* Convert to compressed-column format (CCF) from triplet */
 	cs *C = cs_compress(mna->sp_matrix->A);
 	cs_spfree(mna->sp_matrix->A);
 	mna->sp_matrix->A = C;
 	cs_dupl(mna->sp_matrix->A);
+
 	if (options->ITER) {
 		/* Compute the M Jacobi Preconditioner */
 		jacobi_precond(mna->M, NULL, C, mna->dimension, options->SPARSE);
@@ -566,7 +579,8 @@ void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *ha
 	// memcpy(*mna->sp_matrix->G, *mna->sp_matrix->A, mna->dimension * mna->dimension * sizeof(double));
 	// assert(mna->sp_matrix->G != NULL);
 
-	if (!options->BE) {
+	/* Set the sampling step h according to the specified method (TRAP or BE) */
+	if (options->TR) {
 		h = 2 / tr_step;
 	}
 	else {
@@ -635,7 +649,7 @@ void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *ha
 		}
 	}
 
-	/* Compress the hC matrix */
+	/* Compress the hC matrix i.e. convert it to CCF from triplet */
 	cs *hC_comp = cs_compress(mna->sp_matrix->hC);
 	cs_spfree(mna->sp_matrix->hC);
 	mna->sp_matrix->hC = hC_comp;
@@ -646,7 +660,7 @@ void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *ha
 	mna->sp_matrix->aGhC = cs_add(mna->sp_matrix->A, mna->sp_matrix->hC, 1, 1);
 	assert(mna->sp_matrix->aGhC != NULL);
 
-	/* In case we have Trapezoidal method */
+	/* In case Trapezoidal method is specified */
 	if (options->TR) {
 		/* cs_add takes compressed column matrices, the result is also compressed column matrix */
 		mna->sp_matrix->sGhC = cs_add(mna->sp_matrix->A, mna->sp_matrix->hC, 1, -1);
@@ -664,7 +678,7 @@ void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *ha
 /* Gets the response value according to the transient spec */
 double get_response_value(list1_t *curr) {
 	if (curr->type == 'I' || curr-> type == 'i' || curr->type == 'V' || curr->type == 'v') {
-		if(curr->trans_spec != NULL) {
+		if (curr->trans_spec != NULL) {
 			switch (curr->trans_spec->type) {
 				case EXP:
 					return curr->trans_spec->exp->i1;
@@ -1049,7 +1063,7 @@ void free_mna_system(mna_system_t **mna, options_t *options) {
 	/* Free the resp struct */
 	if (options->TRAN) {
 		free((*mna)->resp->value);
-		//TODO resp->nodes need to be free'd aswell but we've to first fix the allocation technique
+		free((*mna)->resp->nodes);
 	}
 
 	/* Free the whole MNA struct */

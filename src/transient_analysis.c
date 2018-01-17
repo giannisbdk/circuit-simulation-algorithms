@@ -24,6 +24,7 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 	}
 
 	for (int i = 0; i < parser->netlist->tr_counter; i++) {
+		/* Store the initial values to the prev_ vectors */
 		memcpy(prev_sol, init_sol, mna->dimension * sizeof(double));
 		if (parser->options->TR) {
 			memcpy(prev_response, mna->resp->value, mna->dimension * sizeof(double));
@@ -75,6 +76,7 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 		    fclose(files[j]);
 		}
 	}
+
 	/* Set flag to false to indicate that we're no longer inside TRANSIENT analysis */
 	mna->tr_analysis_init = false;
 	if (parser->netlist->tr_counter) {
@@ -89,8 +91,10 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 	}
 }
 
-/* Computes and returns the right hand side of the trapezoidal */
-/* h is time_step and k is the iteration */
+/*
+ * Computes and stores the right hand side of the trapezoidal method at vector mna->b
+ * h: is time_step and k: is the current iteration
+ */ 
 void set_trapezoidal_rhs(mna_system_t *mna, double *curr_response, double *prev_response, double *prev_sol, double h, int k, bool SPARSE) {
 	/* curr_response is e(tk) and prev_response is e(tk-1) */
 	/* Set the values of the e(tk) vector */
@@ -107,6 +111,8 @@ void set_trapezoidal_rhs(mna_system_t *mna, double *curr_response, double *prev_
 		mat_vec_mul(sGhc_x, mna->matrix->sGhC, prev_sol, mna->dimension);
 	}
 	sub_vector(mna->b, response_add, sGhc_x, mna->dimension);
+
+	/* Copy the curr_response to prev_response to use for the next call */
 	memcpy(prev_response, curr_response, mna->dimension * sizeof(double));
 
 	/* Free everything we allocated */
@@ -114,14 +120,15 @@ void set_trapezoidal_rhs(mna_system_t *mna, double *curr_response, double *prev_
 	free(sGhc_x);
 }
 
-/* Computes and returns the right hand side of the backward euler */
-/* h is time_step and k is the iteration */
+/* 
+ * Computes and stores the right hand side of the backward euler method at vector mna->b
+ * h: is time_step and k: is the current iteration
+ */
 void set_backward_euler_rhs(mna_system_t *mna, double *curr_response, double *prev_sol, double h, int k, bool SPARSE) {
-	/* curr_response is e(tk) */
-	/* Set the values of the e(tk) vector */
+	/* Set the values of the curr_response e(tk) vector */
 	set_response_vector(curr_response, mna->resp, h * k, mna->dimension);
-	/* Compute: e(tk) + (1/h)C*x(tk-1) and save it to the provided b vector */
 	double *hC_x = init_vector(mna->dimension);
+	/* Compute: e(tk) + (1/h)C*x(tk-1) and save it to the mna->b vector */
 	if (SPARSE) {
 		cs_gaxpy(mna->sp_matrix->hC, prev_sol, hC_x);
 		// cs_mat_vec_mul(hC_x, mna->sp_matrix->hC, prev_sol);
@@ -137,27 +144,30 @@ void set_backward_euler_rhs(mna_system_t *mna, double *curr_response, double *pr
 
 /* Set the values of the e(tk) vector */
 void set_response_vector(double *response, resp_t *resp, double time, int dimension) {
+	list1_t *node;
 	for (int i = 0; i < dimension; i++) {
-		list1_t *node = resp->nodes[i];
-		if (node->trans_spec != NULL) {
-			switch (node->trans_spec->type) {
-				case EXP:
-					response[i] = eval_exp(node->trans_spec->exp, time);
-					break;
-				case SIN:
-					response[i] = eval_sin(node->trans_spec->sin, time);
-					break;
-				case PULSE:
-					response[i] = eval_pulse(node->trans_spec->pulse, time);
-					break;
-				case PWL:
-					response[i] = eval_pwl(node->trans_spec->pwl, time);
-					break;
+		node = resp->nodes[i];
+		if (node != NULL) {
+			if (node->trans_spec != NULL) {
+				switch (node->trans_spec->type) {
+					case EXP:
+						response[i] = eval_exp(node->trans_spec->exp, time);
+						break;
+					case SIN:
+						response[i] = eval_sin(node->trans_spec->sin, time);
+						break;
+					case PULSE:
+						response[i] = eval_pulse(node->trans_spec->pulse, time);
+						break;
+					case PWL:
+						response[i] = eval_pwl(node->trans_spec->pwl, time);
+						break;
+				}
 			}
-		}
-		else {
-			/* If transient spec is absent set the DC value */
-			response[i] = resp->value[i];
+			else {
+				/* If transient spec is absent set the DC value */
+				response[i] = resp->value[i];
+			}
 		}
 	}
 }
