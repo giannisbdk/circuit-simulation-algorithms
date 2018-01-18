@@ -984,7 +984,7 @@ void print_complex_array(gsl_matrix_complex *A, int dimension) {
 
 /* Print the vector */
 void print_vector(double *b, int dimension) {
-	for (int i = 0; i< dimension; i++) {
+	for (int i = 0; i < dimension; i++) {
 		printf("%lf\n", b[i]);
 	}
     printf("\n");
@@ -993,9 +993,9 @@ void print_vector(double *b, int dimension) {
 /* Print the complex vector */
 void print_complex_vector(gsl_vector_complex *b, int dimension) {
 	gsl_complex z;
-	for (int i = 0; i< dimension; i++) {
+	for (int i = 0; i < dimension; i++) {
 		z = gsl_vector_complex_get(b, i);
-		printf("(%lf, %lf)\n", GSL_REAL(z), GSL_IMAG(z));
+		printf("% lf %s %lfi\n", GSL_REAL(z), GSL_IMAG(z) >= 0 ? "+" : "-", ABS(GSL_IMAG(z)));
 	}
     printf("\n");
 }

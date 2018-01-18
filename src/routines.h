@@ -8,9 +8,14 @@
 #include "stdbool.h"
 #include "ac_spec.h"
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define ABS(x) ((x) < 0 ? (-(x)) : (x))
+
 double dot_product(double *x, double *y, int n);
 gsl_complex complex_dot_product(gsl_vector_complex *x, gsl_vector_complex *y, int n);
 double norm2(double *x, int n);
+double complex_norm2(gsl_vector_complex *x, int n);
 void axpy(double *dest, double a, double *x, double *y, int n);
 void mat_vec_mul(double *Ax, double **A, double *x, int n);
 void mat_vec_mul_trans(double *Ax, double **A, double *x, int n);

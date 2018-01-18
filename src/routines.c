@@ -2,8 +2,6 @@
 
 #include "routines.h"
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-
 /* Computes the dest = a*x + y , x and y are vectors and a is a constant */
 void axpy(double *dest, double a, double *x, double *y, int n) {
     for (int i = 0; i < n; i++)
@@ -55,6 +53,23 @@ gsl_complex complex_dot_product(gsl_vector_complex *x, gsl_vector_complex *y, in
 /* Computes the euclidean norm of vector x */
 double norm2(double *x, int n) {
 	return sqrt(dot_product(x, x, n));
+}
+
+/* Computes the euclidean norm of complex vector x */
+double complex_norm2(gsl_vector_complex *x, int n) {
+    /* 1. ||x|| = sqrt(Σ(xr^2 + xi^2)) for i...n */
+    /* 2. ||x|| = sqrt(Σ(z*z_conj)) for i...n */
+    /* Method 1 is used below */
+    gsl_complex z;
+    double z_real, z_imag, sum = 0.0;
+    for (int i = 0; i < n; i++) {
+        /* Get current complex number from vector */
+        z = gsl_vector_complex_get(x, i);
+        z_real = GSL_REAL(z) * GSL_REAL(z);
+        z_imag = GSL_IMAG(z) * GSL_IMAG(z);
+        sum += z_real + z_imag;
+    }
+    return sqrt(sum);
 }
 
 /* Multiplies matrix A with vector x and stores the reuslt in supplied vector Ax */

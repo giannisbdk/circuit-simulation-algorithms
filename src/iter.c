@@ -5,8 +5,6 @@
 
 #include "iter.h"
 
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
 /* 
  * Solve the SPD system with the iterative conjugate gradient method
  * store the result in vector x and also return the number of iterations
