@@ -19,22 +19,25 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 		init_dense_matrix(mna, options);
 	}
 
+	/* Set the preconditioner pointers to NULL */
+	mna->M 	  = mna->M_trans   = NULL; 
+	mna->M_ac = mna->M_ac_conj = NULL;
+
 	/* In case we will use iterative methods allocate memory for the prerequisites */
 	if (options->ITER) {
+		// TODO PERHAPS REMOVE THE BELOW and just allocate preconditioner sets by default to 1.0 in case it founds 0.0
 		// TODO work in jacobi_precond to set 1.0 in one step with indexes and not here
 		mna->M = init_val_vector(mna->dimension, 1.0);
-		if(options->TRAN) {
+		if (options->TRAN) {
 			// TODO work in jacobi_precond to set 1.0 in one step with indexes and not here
 			mna->M_trans = init_val_vector(mna->dimension, 1.0);
 		}
-		else {
-			mna->M_trans = NULL;
+		else if (options->AC) {
+			mna->M_ac		= init_gsl_complex_vector(mna->dimension);
+			mna->M_ac_conj	= init_gsl_complex_vector(mna->dimension);
 		}
 	}
-	else {
-		mna->M = NULL;
-		mna->M_trans = NULL;
-	}
+
 	/* 
 	 * In case netlist has .TRAN, allocate the resp_t struct that holds the transient response or DC value
 	 * and the nodes that contribute to it. It's the same for dense and sparse matrices.
@@ -118,55 +121,6 @@ void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz) {
 			mna->sp_matrix->sGhC = cs_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
 		}
 	}
-}
-
-/* Allocate memory for the matrix of the MNA system */
-double **init_array(int row, int col) {
-	double **array = (double **)malloc(row * sizeof(double *));
-	assert(array != NULL);
-	array[0] = (double *)calloc(row * col, sizeof(double));
-	assert(array[0] != NULL);
-	for (int i = 1; i < row; i++) {
-		array[i] = array[i-1] + col;
-	}
-	return array;
-}
-
-/* Allocate memory for the vector of the MNA system */
-double *init_vector(int row) {
-	double *vector = (double *)calloc(row, sizeof(double));;
-	assert(vector != NULL);
-	return vector;
-}
-
-/* Allocate memory for the complex gsl matrix of the MNA system */
-gsl_matrix_complex *init_gsl_complex_array(int row, int col) {
-	gsl_matrix_complex *matrix = gsl_matrix_complex_alloc(row, col);
-	assert(matrix != NULL);
-	return matrix;
-}
-
-/* Allocate memory for the complex gsl vector of the MNA system */
-gsl_vector_complex *init_gsl_complex_vector(int row) {
-	gsl_vector_complex *vector = gsl_vector_complex_alloc(row);
-	assert(vector != NULL);
-	return vector;
-}
-
-/* Allocate memory for the new vector and set all values to val */
-double *init_val_vector(int row, double val) {
-	double *vector = (double *)malloc(row * sizeof(double));
-	assert(vector != NULL);
-	for (int i = 0; i < row ; i++) {
-		vector[i] = val;
-	}
-	return vector;
-}
-
-/* Allocate memory for the GSL permutation matrix of the MNA system */
-gsl_permutation *init_permutation(int dimension) {
-	gsl_permutation *P = gsl_permutation_calloc(dimension);
-	return P;
 }
 
 /* Constructs the MNA system either sparse or dense */
@@ -476,10 +430,12 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 			volt_sources_cnt++;
 		}
 	}
-	// if (options->ITER) {
-	// 	/* Compute the M preconditioner */
-	// 	jacobi_precond(mna->M, mna->matrix->A, NULL, mna->dimension, options->SPARSE);
-	// }
+
+	if (options->ITER) {
+		/* Compute the M_ac M_ac_conj preconditioners */
+		complex_jacobi_precond(mna->M_ac, mna->matrix->G_ac, mna->dimension);
+		vector_conjugate(mna->M_ac_conj, mna->M_ac, mna->dimension);
+	}
 }
 
 
@@ -770,14 +726,32 @@ void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_compl
 			view_x = gsl_vector_view_array(*x, mna->dimension);
 		}
 		if (options->ITER) {
+			/* Convert x vector (which is the DC operating point) to a complex one in case we're in an AC analysis */
+			if (mna->ac_analysis_init) {
+				real_to_complex_vector(x_complex, *x, mna->dimension);
+			}
 			if (options->SPD) {
-			 	iterations = conj_grad(matrix_ptr, NULL, *x, mna->b, M_precond, mna->dimension,
-			 						   options->ITOL, maxiter, options->SPARSE);
+				/* Check if AC analysis has started (complex), otherwise call ordinary solvers */
+				if (mna->ac_analysis_init) {
+					iterations = complex_conj_grad(mna->matrix->G_ac, x_complex, mna->matrix->e_ac, mna->M_ac, 
+												   mna->dimension, options->ITOL, maxiter, options->SPARSE);
+				}
+				else {
+			 		iterations = conj_grad(matrix_ptr, NULL, *x, mna->b, M_precond, mna->dimension,
+			 							   options->ITOL, maxiter, options->SPARSE);
+				}
 				//printf("Conjugate gradient method did %d iterations.\n", iterations);
 			}
 			else {
-				iterations = bi_conj_grad(matrix_ptr, NULL, *x, mna->b, M_precond, mna->dimension, 
-										  options->ITOL, maxiter, options->SPARSE);
+				/* Check if AC analysis has started (complex), otherwise call ordinary solvers */
+				if (mna->ac_analysis_init) {
+					iterations = complex_bi_conj_grad(mna->matrix->G_ac, x_complex, mna->matrix->e_ac, mna->M_ac,
+												   	  mna->M_ac_conj, mna->dimension, options->ITOL, maxiter, options->SPARSE);
+				}
+				else {
+					iterations = bi_conj_grad(matrix_ptr, NULL, *x, mna->b, M_precond, mna->dimension, 
+											  options->ITOL, maxiter, options->SPARSE);
+				}
 				if (iterations == FAILURE) {
 					fprintf(stderr, "Bi-Conjugate gradient method failed.\n");
 					exit(EXIT_FAILURE);
@@ -790,7 +764,7 @@ void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_compl
 			}
 		}
 		else {
-			//TODO perhaps add INLINE MACRO for these flags i.e. mna->ac_analysis_init, mna->tr_analysis_init
+			// TODO perhaps add INLINE MACRO for these flags i.e. mna->ac_analysis_init, mna->tr_analysis_init
 			if (options->SPD) {
 				/* Check if AC analysis has started (complex), otherwise call ordinary solvers */
 				if (mna->ac_analysis_init) {
@@ -1048,6 +1022,10 @@ void free_mna_system(mna_system_t **mna, options_t *options) {
 		free((*mna)->M);
 		if (options->TRAN) {
 			free((*mna)->M_trans);
+		}
+		else if (options->AC) {
+			free((*mna)->M_ac);
+			free((*mna)->M_ac_conj);
 		}
 	}
 	/* Free b*/

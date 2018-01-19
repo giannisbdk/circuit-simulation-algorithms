@@ -6,7 +6,8 @@
 #include "ac_analysis.h"
 
 /* Do AC analysis */
-void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, gsl_vector_complex *sol_x) {
+void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser,
+				 double *dc_op, gsl_vector_complex *sol_x) {
 	/* Set the prefix name for the files */
 	char prefix[] = "ac_analysis_";
 	char file_name[MAX_FILE_NAME];
@@ -57,7 +58,7 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 			/* Create the AC MNA matrix for the AC analysis */
 			create_dense_ac_mna(mna, index, hash_table, parser->options, parser->netlist->num_nodes, omega);
 			/* Solve the system */
-			solve_mna_system(mna, NULL, sol_x, parser->options);
+			solve_mna_system(mna, &dc_op, sol_x, parser->options);
 			/* Print current solution to file */
 			for (int j = 0; j < parser->ac_analysis[i].num_nodes; j++) {
 				int offset = ht_get_id(hash_table, parser->ac_analysis[i].nodes[j]) - 1;

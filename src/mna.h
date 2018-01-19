@@ -71,8 +71,12 @@ typedef struct mna_system {
 	resp_t *resp;
 
 	/* Jacobi Preconditioner M, we only store the diagonal of A not zeros */
+	/* For DC and TRANSIENT analysis */
 	double *M;
 	double *M_trans;
+	/* For AC analysis */
+	gsl_vector_complex *M_ac;
+	gsl_vector_complex *M_ac_conj;
 
 	/* Right hand side vector b for the Ax=b */
 	double *b;
@@ -108,12 +112,6 @@ void solve_complex_cholesky(gsl_matrix_complex *A, gsl_vector_complex *b, gsl_ve
 void solve_sparse_lu(mna_system_t *mna, cs *A, double **x);
 void solve_sparse_cholesky(mna_system_t *mna, cs *A, double **x);
 int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *element);
-double **init_array(int row, int col);
-double *init_vector(int row);
-gsl_matrix_complex *init_gsl_complex_array(int row, int col);
-gsl_vector_complex *init_gsl_complex_vector(int row);
-double *init_val_vector(int row, double val);
-gsl_permutation *init_permutation(int dimension);
 double get_response_value(list1_t *curr);
 void print_mna_system(mna_system_t *mna, options_t *options);
 void print_array(double **A, int dimension);

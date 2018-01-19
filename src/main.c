@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
 
     /* Sol_x will hold the solution of the MNA system */
     double *sol_x = (double *)calloc(dimension, sizeof(double));
-    double *dc_op_sol_x = (double *)calloc(dimension, sizeof(double));
+    double *dc_op = (double *)calloc(dimension, sizeof(double));
 
     /* Solve the MNA system */
     solve_mna_system(mna, &sol_x, NULL, parser->options);
@@ -54,18 +54,18 @@ int main(int argc, char *argv[]) {
     /* DC Operating Point to file */
     dc_operating_point(hash_table, sol_x);
     
-    /* Hold dc op value for transient */
-    memcpy(dc_op_sol_x, sol_x, mna->dimension * sizeof(double));
+    /* Hold DC operating point values for transient and ac analyses */
+    memcpy(dc_op, sol_x, mna->dimension * sizeof(double));
 
     /* DC Sweep to file */
     dc_sweep(index->head1, hash_table, mna, parser, sol_x);
 
     /* Transient analysis */
-    tr_analysis(hash_table, mna, parser, dc_op_sol_x, sol_x);
+    tr_analysis(hash_table, mna, parser, dc_op, sol_x);
 
     /* AC analysis */
     gsl_vector_complex *x_complex = init_gsl_complex_vector(mna->dimension);
-    ac_analysis(index, hash_table, mna, parser, x_complex);
+    ac_analysis(index, hash_table, mna, parser, dc_op, x_complex);
 
     /* Free all the dynamic allocated memory */
     free_index(&index);
@@ -73,5 +73,6 @@ int main(int argc, char *argv[]) {
     free_parser(&parser);
     ht_free(&hash_table);
     free(sol_x);
+
 	return 0;
 }
