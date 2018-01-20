@@ -32,7 +32,7 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 			// TODO work in jacobi_precond to set 1.0 in one step with indexes and not here
 			mna->M_trans = init_val_vector(mna->dimension, 1.0);
 		}
-		else if (options->AC) {
+		if (options->AC) {
 			mna->M_ac		= init_gsl_complex_vector(mna->dimension);
 			mna->M_ac_conj	= init_gsl_complex_vector(mna->dimension);
 		}
@@ -1023,7 +1023,7 @@ void free_mna_system(mna_system_t **mna, options_t *options) {
 		if (options->TRAN) {
 			free((*mna)->M_trans);
 		}
-		else if (options->AC) {
+		if (options->AC) {
 			free((*mna)->M_ac);
 			free((*mna)->M_ac_conj);
 		}
