@@ -56,7 +56,7 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 			/* Find the current ω = 2πf */
 			double omega = 2 * M_PI * sweep_points_freq[step];
 			/* Create the AC MNA matrix for the AC analysis */
-			create_dense_ac_mna(mna, index, hash_table, parser->options, parser->netlist->num_nodes, omega);
+			create_ac_mna_system(mna, index, hash_table, parser->options, parser->netlist->num_nodes, omega);
 			/* Solve the system */
 			solve_mna_system(mna, &dc_op, sol_x, parser->options);
 			/* Print current solution to file */

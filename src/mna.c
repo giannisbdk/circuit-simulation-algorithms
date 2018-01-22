@@ -5,6 +5,7 @@
 
 #include "mna.h"
 
+//TODO set all pointers to NULL at start and not individually inside functions
 /* Allocate memory for the MNA system */
 mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options, int nz) {
 	/* Allocate for the whole struct */
@@ -73,10 +74,13 @@ void init_dense_matrix(mna_system_t *mna, options_t *options) {
 	/* Allocate for the matrices struct */
 	mna->matrix = (matrix_t *)malloc(sizeof(matrix_t));
 	assert(mna->matrix != NULL);
+
 	/* Allocate for every different matrix/vector */
 	mna->matrix->A = init_array(mna->dimension, mna->dimension);
 	mna->matrix->P = init_permutation(mna->dimension);
+
 	mna->sp_matrix = NULL;
+
 	if (options->TRAN) {
 		mna->matrix->hC   = init_array(mna->dimension, mna->dimension);
 		mna->matrix->aGhC = init_array(mna->dimension, mna->dimension);
@@ -88,10 +92,12 @@ void init_dense_matrix(mna_system_t *mna, options_t *options) {
 			mna->matrix->sGhC = init_array(mna->dimension, mna->dimension);
 		}
 	}
+
 	if (options->AC) {
 		mna->matrix->G_ac = init_gsl_complex_array(mna->dimension, mna->dimension);
 		mna->matrix->e_ac = init_gsl_complex_vector(mna->dimension);
 	}
+
 	if (options->TRAN || options->AC) {
 		mna->matrix->A_base = init_array(mna->dimension, mna->dimension);
 	}
@@ -105,25 +111,33 @@ void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz) {
 	/* Allocate for the matrices struct */
 	mna->sp_matrix = (sp_matrix_t *)malloc(sizeof(sp_matrix_t));
 	assert(mna->sp_matrix != NULL);
+
 	/* Allocate for every different matrix */
 	mna->sp_matrix->A = cs_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
 	assert(mna->sp_matrix->A != NULL);
+
 	mna->sp_matrix->A->nz = 0;
 	mna->matrix = NULL;
+
 	if (options->TRAN) {
-		mna->sp_matrix->hC   = cs_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
-		mna->sp_matrix->aGhC = cs_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
+		mna->sp_matrix->hC   = cs_di_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
+		mna->sp_matrix->aGhC = cs_di_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
 		/* If method is Backward Euler we don't need sGhC matrix, we use hC instead */
 		if (options->BE) {
 			mna->sp_matrix->sGhC = NULL;
 		}
 		else { /* Trapezoidal method */
-			mna->sp_matrix->sGhC = cs_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
+			mna->sp_matrix->sGhC = cs_di_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
 		}
+	}
+
+	if (options->AC) {
+		mna->sp_matrix->A_base = cs_di_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
+		mna->sp_matrix->G_ac   = cs_ci_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
 	}
 }
 
-/* Constructs the MNA system either sparse or dense */
+/* Constructs the MNA system either sparse or dense for DC or TRAN analysis */
 void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset) {
 	if (options->SPARSE) {
 		create_sparse_mna(mna, index, hash_table, options, offset);
@@ -138,6 +152,16 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 		}
 	}
 	printf("Creation of MNA system...OK\n");
+}
+
+/* Constructs the AC MNA system either sparse or dense for AC analysis */
+void create_ac_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega) {
+	if (options->SPARSE) {
+		create_sparse_ac_mna(mna, index, hash_table, options, offset, omega);
+	}
+	else {
+		create_dense_ac_mna(mna, index, hash_table, options, offset, omega);
+	}
 }
 
 /* Constructs the dense MNA system */
@@ -433,7 +457,7 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 
 	if (options->ITER) {
 		/* Compute the M_ac M_ac_conj preconditioners */
-		complex_jacobi_precond(mna->M_ac, mna->matrix->G_ac, mna->dimension);
+		complex_jacobi_precond(mna->M_ac, mna->matrix->G_ac, NULL, mna->dimension, options->SPARSE);
 		vector_conjugate(mna->M_ac_conj, mna->M_ac, mna->dimension);
 	}
 }
@@ -456,16 +480,16 @@ void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 		else if (curr->type == 'R' || curr->type == 'r') {
 			value = 1 / curr->value;
 			if (probe1_id == 0) {
-				cs_entry(mna->sp_matrix->A, j, j, value);
+				cs_di_entry(mna->sp_matrix->A, j, j, value);
 			}
 			else if (probe2_id == 0) {
-				cs_entry(mna->sp_matrix->A, i, i, value);
+				cs_di_entry(mna->sp_matrix->A, i, i, value);
 			}
 			else {
-				cs_entry(mna->sp_matrix->A, i, i,  value);
-				cs_entry(mna->sp_matrix->A, j, j,  value);
-				cs_entry(mna->sp_matrix->A, i, j, -value);
-				cs_entry(mna->sp_matrix->A, j, i, -value);
+				cs_di_entry(mna->sp_matrix->A, i, i,  value);
+				cs_di_entry(mna->sp_matrix->A, j, j,  value);
+				cs_di_entry(mna->sp_matrix->A, i, j, -value);
+				cs_di_entry(mna->sp_matrix->A, j, i, -value);
 			}
 		}
 		else if (curr->type == 'I' || curr->type == 'i') {
@@ -494,20 +518,20 @@ void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 			assert(mna->g2_indx[volt_sources_cnt].element != NULL);
 			strcpy(mna->g2_indx[volt_sources_cnt].element, curr->element);
 			if (probe1_id == 0) {
-				cs_entry(mna->sp_matrix->A, j, offset + volt_sources_cnt, -1.0);
-				cs_entry(mna->sp_matrix->A, offset + volt_sources_cnt, j, -1.0);
+				cs_di_entry(mna->sp_matrix->A, j, offset + volt_sources_cnt, -1.0);
+				cs_di_entry(mna->sp_matrix->A, offset + volt_sources_cnt, j, -1.0);
 				mna->b[offset + volt_sources_cnt] += value; 
 			}
 			else if (probe2_id == 0) {
-				cs_entry(mna->sp_matrix->A, i, offset + volt_sources_cnt,  1.0);
-				cs_entry(mna->sp_matrix->A, offset + volt_sources_cnt, i,  1.0);
+				cs_di_entry(mna->sp_matrix->A, i, offset + volt_sources_cnt,  1.0);
+				cs_di_entry(mna->sp_matrix->A, offset + volt_sources_cnt, i,  1.0);
 				mna->b[offset + volt_sources_cnt] += value;
 			}
 			else {
-				cs_entry(mna->sp_matrix->A, i, offset + volt_sources_cnt,  1.0);
-				cs_entry(mna->sp_matrix->A, j, offset + volt_sources_cnt, -1.0);
-				cs_entry(mna->sp_matrix->A, offset + volt_sources_cnt, i,  1.0);
-				cs_entry(mna->sp_matrix->A, offset + volt_sources_cnt, j, -1.0);
+				cs_di_entry(mna->sp_matrix->A, i, offset + volt_sources_cnt,  1.0);
+				cs_di_entry(mna->sp_matrix->A, j, offset + volt_sources_cnt, -1.0);
+				cs_di_entry(mna->sp_matrix->A, offset + volt_sources_cnt, i,  1.0);
+				cs_di_entry(mna->sp_matrix->A, offset + volt_sources_cnt, j, -1.0);
 				mna->b[offset + volt_sources_cnt] += value;
 			}
 			/* Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found */
@@ -515,11 +539,16 @@ void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 		}
 	}
 
+	/* Copy the data from A to A_base before LU factorization to build matrices in AC */
+	if (options->AC) {
+		mna->sp_matrix->A_base = _cs_di_copy(mna->sp_matrix->A);
+	}
+
 	/* Convert to compressed-column format (CCF) from triplet */
-	cs *C = cs_compress(mna->sp_matrix->A);
-	cs_spfree(mna->sp_matrix->A);
+	cs_di *C = cs_di_compress(mna->sp_matrix->A);
+	cs_di_spfree(mna->sp_matrix->A);
 	mna->sp_matrix->A = C;
-	cs_dupl(mna->sp_matrix->A);
+	cs_di_dupl(mna->sp_matrix->A);
 
 	if (options->ITER) {
 		/* Compute the M Jacobi Preconditioner */
@@ -551,21 +580,21 @@ void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *ha
 		if (curr->type == 'C' || curr->type == 'c') {
 			value = h * curr->value;
 			if (probe1_id == 0) {
-				cs_entry(mna->sp_matrix->hC, j, j, value);
+				cs_di_entry(mna->sp_matrix->hC, j, j, value);
 			}
 			else if (probe2_id == 0) {
-				cs_entry(mna->sp_matrix->hC, i, i, value);
+				cs_di_entry(mna->sp_matrix->hC, i, i, value);
 			}
 			else {
-				cs_entry(mna->sp_matrix->hC, i, i,  value);
-				cs_entry(mna->sp_matrix->hC, j, j,  value);
-				cs_entry(mna->sp_matrix->hC, i, j, -value);
-				cs_entry(mna->sp_matrix->hC, j, i, -value);
+				cs_di_entry(mna->sp_matrix->hC, i, i,  value);
+				cs_di_entry(mna->sp_matrix->hC, j, j,  value);
+				cs_di_entry(mna->sp_matrix->hC, i, j, -value);
+				cs_di_entry(mna->sp_matrix->hC, j, i, -value);
 			}
 		}
 		else if(curr->type == 'L' || curr->type == 'l') {
 			/* Set the L value in the diagonal of g2 area in matrices */
-			cs_entry(mna->sp_matrix->hC, offset + volt_sources_cnt, offset + volt_sources_cnt, -curr->value * h);
+			cs_di_entry(mna->sp_matrix->hC, offset + volt_sources_cnt, offset + volt_sources_cnt, -curr->value * h);
 			/* Keep track of how many voltage sources or inductors, we have already found */
 			volt_sources_cnt++;
 		}
@@ -628,6 +657,104 @@ void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *ha
 	if (options->ITER) {
 		/* Compute the M preconditioner */
 		jacobi_precond(mna->M_trans, NULL, mna->sp_matrix->aGhC, mna->dimension, options->SPARSE);
+	}
+}
+
+/* Constructs the sparse AC MNA system */
+void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega) {
+	list1_t *curr;
+	double value;
+	int volt_sources_cnt = 0;
+
+	
+	/* Copy the base for the AC matrix and zero-out the vector for the next step */
+	mna->sp_matrix->G_ac = cs_i_complex(mna->sp_matrix->A_base, 1);
+
+	//TODO create a function for the below
+	for (int i = 0; i < mna->dimension; i++) {
+		mna->sp_matrix->e_ac[i] = 0.0 + I * 0.0;
+	}
+
+	for (curr = index->head1; curr != NULL; curr = curr->next) {
+		int probe1_id = ht_get_id(hash_table, curr->probe1);
+		int probe2_id = ht_get_id(hash_table, curr->probe2);
+		int i = probe1_id - 1;
+		int j = probe2_id - 1;
+		cs_complex_t z;
+		if (curr->type == 'C' || curr->type == 'c') {
+			// value = I * omega * curr->value;
+			z = 0.0 + (omega * curr->value * I);
+			if (probe1_id == 0) {
+				// mna->matrix->G_ac[j][j] += value;
+				cs_ci_entry(mna->sp_matrix->G_ac, j, j, z);
+			}
+			else if (probe2_id == 0) {
+				// mna->matrix->G_ac[i][i] += value;
+				cs_ci_entry(mna->sp_matrix->G_ac, i, i, z);
+			}
+			else {
+				// mna->matrix->G_ac[i][i] += value;
+				cs_ci_entry(mna->sp_matrix->G_ac, i, i, z);
+				// mna->matrix->G_ac[j][j] += value;
+				cs_ci_entry(mna->sp_matrix->G_ac, j, j, z);
+				// mna->matrix->G_ac[i][j] -= value;
+				cs_ci_entry(mna->sp_matrix->G_ac, i, j, CS_COMPLEX_NEG(z));
+				// mna->matrix->G_ac[j][i] -= value;
+				cs_ci_entry(mna->sp_matrix->G_ac, j, i, CS_COMPLEX_NEG(z));
+			}
+		}
+		else if (curr->type == 'I' || curr->type == 'i') {
+			/* Check if ac spec exists for the current element */
+			if (curr->ac == NULL) {
+				z = 0.0 + 0.0 * I;
+			}
+			else {
+				value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+			}
+			if (probe1_id == 0) {
+				mna->sp_matrix->e_ac[j] += value;
+			}
+			else if (probe2_id == 0) {
+				mna->sp_matrix->e_ac[j] -= value;
+			}
+			else {
+				mna->sp_matrix->e_ac[i] -= value;
+				mna->sp_matrix->e_ac[j] += value;
+			}
+		}
+		else if (curr->type == 'L' || curr->type == 'l') {
+			/* Set the L value in the diagonal of g2 area in matrices */
+			// mna->matrix->G_ac[offset + volt_sources_cnt][offset + volt_sources_cnt] = - I * omega * curr->value;
+			z = 0.0 + (omega * curr->value * I);
+			cs_ci_entry(mna->sp_matrix->G_ac, offset + volt_sources_cnt, offset + volt_sources_cnt, z);
+			/* Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found */
+			volt_sources_cnt++;
+		}
+		else if (curr->type == 'V' || curr->type == 'v') {
+			/* Check if ac spec exists for the current element */
+			if (curr->ac == NULL) {
+				z = 0.0 + 0.0 * I;
+			}
+			else {
+				value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+			}
+			/* Keep track of how many voltage sources or inductors, we have already found */
+			mna->sp_matrix->e_ac[offset + volt_sources_cnt] += value;
+			/* Keep track of how many voltage sources or inductors, we have already found */
+			volt_sources_cnt++;
+		}
+	}
+
+	/* Convert to compressed-column format (CCF) from triplet */
+	cs_ci *C = cs_ci_compress(mna->sp_matrix->G_ac);
+	cs_ci_spfree(mna->sp_matrix->G_ac);
+	mna->sp_matrix->G_ac = C;
+	cs_ci_dupl(mna->sp_matrix->G_ac);
+
+	if (options->ITER) {
+		/* Compute the M Jacobi Preconditioner */
+		complex_jacobi_precond(mna->M_ac, NULL, C, mna->dimension, options->SPARSE);
+		vector_conjugate(mna->M_ac_conj, mna->M_ac, mna->dimension);
 	}
 }
 
@@ -981,6 +1108,27 @@ void print_permutation(gsl_permutation *P) {
 		printf("%zu ", gsl_permutation_get(P, i));
 	}
 	printf("\n\n");
+}
+
+/* Copy cs_di *A into a newly allocated struct */
+cs_di *_cs_di_copy (cs_di *A) {
+    cs_di *C ;
+    int n, triplet, nn, p, nz, *Ap, *Ai, *Cp, *Ci ;
+    double *Ax ;
+    double *Cx ;
+    if (!A || !A->x) return (NULL) ;    /* return if A NULL or pattern-only */
+    n = A->n ; Ap = A->p ; Ai = A->i ; Ax = A->x ;
+    triplet = (A->nz >= 0) ;            /* true if A is a triplet matrix */
+    nz = triplet ? A->nz : Ap [n] ;
+    C = cs_di_spalloc (A->m, n, A->nzmax, 1, triplet) ;
+    if (!C) return (NULL) ;
+    Cp = C->p ; Ci = C->i ; Cx = C->x ;
+    nn = triplet ? nz : (n+1) ;
+    for (p = 0 ; p < nz ; p++) Ci [p] = Ai [p];
+    for (p = 0 ; p < nn ; p++) Cp [p] = Ap [p];
+    for (p = 0 ; p < nz ; p++) Cx [p] = Ax [p];
+    if (triplet) C->nz = nz ;
+    return (C) ;
 }
 
 /* Free all the memory allocated for the MNA system */

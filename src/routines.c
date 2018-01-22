@@ -134,19 +134,7 @@ void cs_mat_vec_mul_trans(double *Ax, cs *A, double *x) {
 
 /* Creation of a Jacobi preconditioner and stores it in supplied vector M, zeros are not stored */
 void jacobi_precond(double *M, double **A, cs *C, int n, bool SPARSE) {
-	if (!SPARSE) {
-		for (int i = 0; i < n; i++) {
-			/* We don't want to add zeros, we replace them with 1 instead */
-			//TODO perhaps instead of 0 we check with EPSILON? CAUSE DOUBLE??
-			if (A[i][i] == 0.0) {
-				M[i] = 1.0;
-			}
-			else {
-				M[i] = 1 / A[i][i];
-			}
-		}
-	}
-	else {
+	if (SPARSE) {
 		for (int j = 0; j < C->n; j++) {
 			for (int p = C->p[j]; p < C->p[j+1]; p++) {
 				if (C->i[p] == j) {
@@ -155,19 +143,45 @@ void jacobi_precond(double *M, double **A, cs *C, int n, bool SPARSE) {
 			}
 		}
 	}
+	else {
+		for (int i = 0; i < n; i++) {
+			/* We don't want to add zeros, we replace them with 1 instead */
+			if (A[i][i] == 0.0) {
+				M[i] = 1.0;
+			}
+			else {
+				M[i] = 1 / A[i][i];
+			}
+		}
+	}
 }
 
 /* Creation of a complex Jacobi preconditioner and stores it in supplied vector M, zeros are not stored */
-void complex_jacobi_precond(gsl_vector_complex *M, gsl_matrix_complex *A, int n) {
+void complex_jacobi_precond(gsl_vector_complex *M, gsl_matrix_complex *A, cs_ci *C, int n, bool SPARSE) {
 	// TODO add sparse struct and flag
-	for (int i = 0; i < n; i++) {
-		/* We don't want to add zeros, we replace them with 1 + 0i instead */
-		if (IS_COMPLEX_ZERO(gsl_matrix_complex_get(A, i, i))) {
-			gsl_vector_complex_set(M, i, GSL_COMPLEX_ONE);
+	if (SPARSE) {
+		gsl_complex z;
+		for (int j = 0; j < C->n; j++) {
+			for (int p = C->p[j]; p < C->p[j+1]; p++) {
+				if (C->i[p] == j) {
+					/* Convert the cs_complex_t to gsl_complex */
+					z = gsl_complex_rect(creal(C->x[p]), cimag(C->x[p]));
+					// M[j] =  1 / C->x[p];
+					gsl_vector_complex_set(M, j, gsl_complex_div(GSL_COMPLEX_ONE, z));
+				}
+			}
 		}
-		else {
-			/* We set M to 1/A[i][i] */
-			gsl_vector_complex_set(M, i, gsl_complex_div(GSL_COMPLEX_ONE, gsl_matrix_complex_get(A, i, i)));
+	}
+	else {
+		for (int i = 0; i < n; i++) {
+			/* We don't want to add zeros, we replace them with 1 + 0i instead */
+			if (COMPLEX_ZERO(gsl_matrix_complex_get(A, i, i))) {
+				gsl_vector_complex_set(M, i, GSL_COMPLEX_ONE);
+			}
+			else {
+				/* We set M to 1/A[i][i] */
+				gsl_vector_complex_set(M, i, gsl_complex_div(GSL_COMPLEX_ONE, gsl_matrix_complex_get(A, i, i)));
+			}
 		}
 	}
 }
@@ -294,4 +308,24 @@ double *init_val_vector(int row, double val) {
 gsl_permutation *init_permutation(int dimension) {
 	gsl_permutation *P = gsl_permutation_calloc(dimension);
 	return P;
+}
+
+/* Convert gsl_vector_complex to cs_complex_t */
+void gsl_to_cs_complex(cs_complex_t *dst, gsl_vector_complex *src, int dimension) {
+	gsl_complex z;
+	cs_complex_t x;
+	for (int i = 0; i < dimension; i++) {
+		/* Get the current complex number from the vector */
+		z = gsl_vector_complex_get(src, i);
+		/* Create a complex number cs_complex_t */
+		x = GSL_REAL(z) + GSL_IMAG(z) * I;
+		/* Set the complex number to the cs_complex_t vector */
+		dst[i] = x;
+	}
+}
+
+/* Convert from polar to rectangular form */
+cs_complex_t pol_to_rect(double magnitude, double phase) {
+    cs_complex_t z = magnitude * cos(phase) + magnitude * sin(phase) * I;
+    return z;
 }

@@ -99,7 +99,6 @@ int complex_conj_grad(gsl_matrix_complex *A, gsl_vector_complex *x, gsl_vector_c
 	int iter = 0;
 
 	/* Compute A*x and store it to Ax, with Hermitian of A conjugate+transpose */
-	//TODO check if Conjugate Transpose is required
 	gsl_blas_zgemv(CblasNoTrans, GSL_COMPLEX_ONE, A, x, GSL_COMPLEX_ZERO, Ax);
 	
 	/* Compute r = b - Ax */

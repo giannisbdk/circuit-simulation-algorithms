@@ -28,22 +28,24 @@ typedef struct matrix {
 	/* Permutation for LU factorizations either complex or normal */
 	gsl_permutation *P;
 
-	/* Complex matrix G for the AC Analysis and RHS vector */
-	gsl_matrix_complex *G_ac;
-	gsl_vector_complex *e_ac;
-
 	/* Matrices for the Transient Analysis */
 	double **hC;
 	/* aGhC = G + hC, G = A */
 	double **aGhC;
 	/* aGhC = G - hC, G = A */
 	double **sGhC;
+
+	/* Complex matrix G for the AC Analysis and RHS vector */
+	gsl_matrix_complex *G_ac;
+	gsl_vector_complex *e_ac;
 } matrix_t;
 
 /* Holds the sparse representation of the MNA */
 typedef struct sp_matrix {
 	/* Main Matrix of the MNA for DC */
 	cs *A;
+	/* The A matrix before any modifications to use in AC analysis */
+	cs *A_base;
 
 	/* Matrices for the Transient Analysis */
 	cs *hC;
@@ -55,6 +57,16 @@ typedef struct sp_matrix {
 	/* Hold the symbolic and numeric representation of the LU factorization */
 	css *A_symbolic;
 	csn *A_numeric;
+
+	/* Sparse data structures for AC analysis */
+	cs_ci *G_ac;
+
+	/* This is necessary for the sparse routines, instead of using gsl complex */
+	cs_complex_t *e_ac;
+
+	/* Hold the symbolic and numeric representation of the LU factorization */
+	cs_cis *G_ac_symbolic;
+	cs_cln *G_ac_numeric;
 } sp_matrix_t;
 
 /* Keeps the indexing for the sources of group 2 */
@@ -99,10 +111,12 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz);
 void init_dense_matrix(mna_system_t *mna, options_t *options);
 void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
+void create_ac_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega);
 void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset);
 void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset);
 void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
 void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega);
+void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega);
 void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
 void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_complex, options_t *options);
 void solve_lu(double **A, double *b, gsl_vector_view x, gsl_permutation *P, int dimension, bool is_decomp);
@@ -119,6 +133,7 @@ void print_complex_array(gsl_matrix_complex*A, int dimension);
 void print_vector(double *b, int dimension);
 void print_complex_vector(gsl_vector_complex *b, int dimension);
 void print_permutation(gsl_permutation *P);
+cs_di *_cs_di_copy (cs_di *A);
 void free_mna_system(mna_system_t **mna, options_t *options);
 
 #endif

@@ -84,7 +84,7 @@ def plot_all(plot_path, out_path, prefix, a_type):
 def plot_transient_file(filename, ax1):
 	"""
 	Plot a single TRANSIENT output file into a figure containing
-	a signle subplot ax1.
+	a single subplot ax1.
 	"""
 
 	# Get the Node name from the output file
