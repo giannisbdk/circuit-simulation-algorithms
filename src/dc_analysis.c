@@ -7,16 +7,16 @@
 
 /* DC Operating Point Analysis and prints the output to a file */
 void dc_operating_point(hash_table_t *hash_table, double *sol_x) {
+    entry_t *curr;
+    double value;
+    int id;
     /* DC Operating Point file */
     FILE *file_out = fopen("dc_opearting_point.txt", "w");
     if (file_out == NULL) {
         fprintf(stderr, "Error opening file: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-    fprintf(file_out, "%-15s%-15s\n", "Node", "Value");
-    entry_t *curr;
-    double value;
-    int id;
+    fprintf(file_out, "%-30s%-30s\n", "Node", "Value (voltage)");
     for (int i = 0; i < hash_table->size; i++) {
         for (curr = hash_table->table[i]; curr != NULL; curr = curr->next) {
             /* Get node name */
@@ -30,7 +30,7 @@ void dc_operating_point(hash_table_t *hash_table, double *sol_x) {
             /* Get the corresponding cell of the solution vector */
             value = sol_x[id];
             /* Output to the file */
-            fprintf(file_out, "%-15s%-15lf\n", curr->key, value);
+            fprintf(file_out, "%-30s%-30lf\n", curr->key, value);
         }
     }
     fclose(file_out);
@@ -64,7 +64,7 @@ void dc_sweep(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, parser
                         fprintf(stderr, "Error opening file: %s\n", strerror(errno));
                         exit(EXIT_FAILURE);
                     }
-                    fprintf(files[j], "%-15s%-15s\n", "Step", "Value");
+                    fprintf(files[j], "%-30s%-30s\n", "Step (voltage)", "Value (voltage)");
                 }
                 /* Run the DC analysis with the step */
                 double val    = parser->dc_analysis[i].start;
@@ -99,7 +99,7 @@ void dc_sweep(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, parser
                     int offset;
                     for (int j = 0; j < parser->dc_analysis[i].num_nodes; j++) {
                         offset = ht_get_id(hash_table, parser->dc_analysis[i].nodes[j]) - 1;
-                        fprintf(files[j], "%-15lf%-15lf\n", val, sol_x[offset]);
+                        fprintf(files[j], "%-30lf%-30lf\n", val, sol_x[offset]);
                     }
                     val += parser->dc_analysis[i].increment;
                 }

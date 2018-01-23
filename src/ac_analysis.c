@@ -38,7 +38,7 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 				fprintf(stderr, "Error opening file: %s\n", strerror(errno));
 				exit(EXIT_FAILURE);
 			}
-			fprintf(files[j], "%-15s%-15s%-15s\n", "Frequency", "Magnitude", "Phase");
+			fprintf(files[j], "%-30s%-30s%-30s\n", "Frequency (hertz)", "Magnitude (voltage)", "Phase (degrees)");
 		}
 
 		/* Find how many steps are required */
@@ -64,7 +64,7 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 				int offset = ht_get_id(hash_table, parser->ac_analysis[i].nodes[j]) - 1;
 				/* Convert from complex to polar with magnitude and phase */
 				ac_t curr_ac = rect_to_polar(gsl_vector_complex_get(sol_x, offset));
-				fprintf(files[j], "%-15lf%-15lf%-15lf\n", sweep_points_freq[step], curr_ac.magnitude, curr_ac.phase);
+				fprintf(files[j], "%-30lf%-30lf%-30lf\n", sweep_points_freq[step], curr_ac.magnitude, curr_ac.phase);
 			}
 		}
 		/* Close the file descriptors for the current transient analysis */

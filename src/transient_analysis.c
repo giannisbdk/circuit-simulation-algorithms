@@ -51,7 +51,7 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 				exit(EXIT_FAILURE);
 			}
 			//TODO perhaps add fin_time and time_step inside file
-			fprintf(files[j], "%-15s%-15s\n", "Time", "Value");
+			fprintf(files[j], "%-30s%-30s\n", "Time (seconds)", "Value (voltage)");
 		}
 		/* Find how many steps are required */
 		int n_steps = parser->tr_analysis->fin_time / parser->tr_analysis->time_step;
@@ -66,7 +66,7 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 			solve_mna_system(mna, &sol_x, NULL, parser->options);
 			for (int j = 0; j < parser->tr_analysis[i].num_nodes; j++) {
 				int offset = ht_get_id(hash_table, parser->tr_analysis[i].nodes[j]) - 1;
-				fprintf(files[j], "%-15lf%-15lf\n", step * parser->tr_analysis->time_step, sol_x[offset]);
+				fprintf(files[j], "%-30lf%-30lf\n", step * parser->tr_analysis->time_step, sol_x[offset]);
 			}
 			/* Copy current solution to prev to use for next iteration */
 			memcpy(prev_sol, sol_x, mna->dimension * sizeof(double));
