@@ -55,9 +55,9 @@ void dc_sweep(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, parser
                     /* Construct the file name */
                     strcpy(file_name, prefix);
                     strcat(file_name, parser->dc_analysis[i].volt_source);
-                    strcat(file_name, "_");
+                    strcat(file_name, "_V(");
                     strcat(file_name, parser->dc_analysis[i].nodes[j]);
-                    strcat(file_name, ".txt");
+                    strcat(file_name, ").txt");
                     /* Open the output file */
                     files[j] = fopen(file_name, "w");
                     if (files[j] == NULL) {

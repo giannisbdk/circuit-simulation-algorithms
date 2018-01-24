@@ -9,7 +9,7 @@
 void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser,
 				 double *dc_op, gsl_vector_complex *sol_x) {
 	/* Set the prefix name for the files */
-	char prefix[] = "ac_analysis_";
+	char prefix[] = "ac_analysis_V(";
 	char file_name[MAX_FILE_NAME];
 
 	int ac_counter = parser->netlist->ac_counter;
@@ -25,12 +25,16 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 			/* Construct the file name */
 			strcpy(file_name, prefix);
 			strcat(file_name, parser->ac_analysis[i].nodes[j]);
-			strcat(file_name, "_");
+			strcat(file_name, ")_");
 			sprintf(name, "%g", parser->ac_analysis[i].start_freq);
 			strcat(file_name, name);
 			strcat(file_name, "_");
 			sprintf(name, "%g", parser->ac_analysis[i].end_freq);
 			strcat(file_name, name);
+			switch (parser->ac_analysis[i].sweep) {
+				case LIN: strcat(file_name, "_LIN"); break;
+				case LOG: strcat(file_name, "_LOG"); break;
+			}
 			strcat(file_name, ".txt");
 			/* Open the output file */
 			files[j] = fopen(file_name, "w");
@@ -113,10 +117,13 @@ void log_step(double *array, double start, double end, int points) {
 	if (points < 2) {
 		fprintf(stderr, "Error: Creating log step, points must be >=2.\n");
 	}
-	double step = (end - start) / (points - 1);
 	/* Logarithmic base of 10 */
 	double base = 10.0;
-	for (int i = 0; i < points; i++) {
-		array[i] = pow(base, start + i * step);
+	double step = (log10(end) - log10(start)) / (points - 1);
+	/* Set initial and last value to the start and end */
+	array[0] = start;
+	for (int i = 1; i < points - 1; i++) {
+		array[i] = pow(base, i * step);
 	}
+	array[points] = end;
 }

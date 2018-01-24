@@ -44,14 +44,14 @@ def plot_all(plot_path, out_path, prefix, a_type):
 
 	# Set the appropriate fields for the figure according to the analysis
 	if tran:
-		fig, ax1 = plt.subplots(nrows=1, figsize=(14, 8.5))
+		fig, ax1 = plt.subplots(nrows=1, figsize=(14, 9))
 		fig.suptitle("Transient Analysis")
 		ax1.set_xlabel("Time step (seconds)")
 		ax1.set_ylabel("Value (Voltage)")
 		ax1.grid(True)
 		fig_suffix = "_Transient_Analysis"
 	else:
-		fig, (ax2, ax1) = plt.subplots(nrows=2, figsize=(14, 8.5))
+		fig, (ax2, ax1) = plt.subplots(nrows=2, figsize=(14, 9))
 		fig.suptitle("AC Analysis")
 		ax1.set_xlabel("Frequency (Hz)")
 		ax1.set_ylabel("Phase (degrees)")
@@ -88,7 +88,7 @@ def plot_transient_file(filename, ax1):
 	"""
 
 	# Get the Node name from the output file
-	v_label = "V" + filename.split("_")[2]
+	v_label = filename.split("_")[2]
 	with open(filename, 'rb') as fd:
 		lines = [x.strip("\n") for x in fd.readlines()]
 
@@ -113,8 +113,11 @@ def plot_ac_file(filename, ax1, ax2):
 	two subplots ax1, ax2.
 	"""
 
-	# Get the Node name from the output file
-	v_label = "V" + filename.split("_")[2]
+	# Get the Node name and the sweep type from the output file
+	tokens  = filename.split("_")
+	v_label = tokens[2]
+	sweep   = tokens[len(tokens)-1][:3]
+
 	with open(filename, 'rb') as fd:
 		lines = [x.strip("\n") for x in fd.readlines()]
 
@@ -133,8 +136,14 @@ def plot_ac_file(filename, ax1, ax2):
 			magn_list.append(magn)
 			phase_list.append(phase)
 
-	ax1.plot(freq_list, magn_list, label=v_label)
-	ax2.plot(freq_list, phase_list, label=v_label)
+	if sweep == "LIN":
+		ax1.plot(freq_list, magn_list, label=v_label)
+		ax2.plot(freq_list, phase_list, label=v_label)
+	elif sweep == "LOG":
+		ax1.semilogx(freq_list, magn_list, label=v_label)
+		ax2.semilogx(freq_list, phase_list, label=v_label)
+	else:
+		sys.exit(0)
 
 
 def out_exist(out_path, prefix):

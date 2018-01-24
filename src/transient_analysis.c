@@ -6,7 +6,7 @@
 /* Do transient analysis */
 void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, double *init_sol, double *sol_x) {
 	/* Set the prefix name for the files */
-	char prefix[] = "tr_analysis_";
+	char prefix[] = "tr_analysis_V(";
 	char file_name[MAX_FILE_NAME];
 
 	/* Clear the decomposition flag for the mna system */
@@ -37,7 +37,7 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 			/* Construct the file name */
 			strcpy(file_name, prefix);
 			strcat(file_name, parser->tr_analysis[i].nodes[j]);
-			strcat(file_name, "_");
+			strcat(file_name, ")_");
 			sprintf(name, "%g", parser->tr_analysis[i].time_step);
 			strcat(file_name, name);
 			strcat(file_name, "_");

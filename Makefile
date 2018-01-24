@@ -94,6 +94,9 @@ run_chol_tran_be: main
 run_chol_tran_be_iter: main
 	./main $(NLS)/cholesky_tran_be_iter_netlist.txt
 
+run_ac: main
+	./main $(NLS)/ac_netlist.txt
+
 # Netlist download targets
 run_ibm1: main
 	./main $(IBM_NLS)/ibmpg1.spice
