@@ -132,6 +132,58 @@ void cs_mat_vec_mul_trans(double *Ax, cs *A, double *x) {
 	}
 }
 
+/* Multiplies complex matrix A with complex vector x and stores the reuslt in supplied vector Ax */
+void complex_cs_mat_vec_mul(gsl_vector_complex *Ax, cs_ci *A, gsl_vector_complex *x) {
+	cs_complex_t cs_xj, cs_axpxj;
+	gsl_complex gsl_xj, gsl_axip, gsl_axpxj;
+
+	gsl_vector_complex_set_zero(Ax);
+
+	/* Ax[A->i[p]] += A->x[p] * x[j] */
+	for (int j = 0; j < A->n; j++) {
+		/* Get the current complex number from the x */
+		gsl_xj = gsl_vector_complex_get(x, j);
+		/* Convert it to cs_complex_t */
+		cs_xj = GSL_REAL(gsl_xj) + GSL_IMAG(gsl_xj) * I;
+		for (int p = A->p[j]; p < A->p[j+1]; p++) {
+			/* Get the previous value */
+			gsl_axip = gsl_vector_complex_get(Ax, A->i[p]);
+			/* Both are cs_complex_t so the multiplications is okay */
+			cs_axpxj = A->x[p] * cs_xj;
+			/* Convert the multiplication result into a gsl complex */
+			gsl_axpxj = gsl_complex_rect(creal(cs_axpxj), cimag(cs_axpxj));
+			/* Set it to the gsl vector at A->i[p] */
+			gsl_vector_complex_set(Ax, A->i[p], gsl_complex_add(gsl_axip, gsl_axpxj));
+		}
+	}
+}
+
+/* Multiplies complex matrix A with complex vector x and stores the reuslt in supplied vector Ax */
+void complex_cs_mat_vec_mul_herm(gsl_vector_complex *Ax, cs_ci *A, gsl_vector_complex *x) {
+	cs_complex_t cs_axpxip, cs_xip;
+	gsl_complex gsl_xip, gsl_axj, gsl_axpxip;
+
+	gsl_vector_complex_set_zero(Ax);
+
+	/* Ax[j] += A->x[p] * x[A->i[p]] */
+	for (int j = 0; j < A->n; j++) {
+		for (int p = A->p[j]; p < A->p[j + 1]; p++) {
+			/* Get the current complex number from the x */
+			gsl_xip = gsl_vector_complex_get(x, A->i[p]);
+			/* Convert it to cs_complex_t */
+			cs_xip = GSL_REAL(gsl_xip) + GSL_IMAG(gsl_xip) * I;
+			/* Get the previous value */
+			gsl_axj = gsl_vector_complex_get(Ax, j);
+			/* Both are cs_complex_t so the multiplications is okay */
+			cs_axpxip = CS_COMPLEX_CONJ(A->x[p]) * cs_xip;
+			/* Convert the multiplication result into a gsl complex */
+			gsl_axpxip = gsl_complex_rect(creal(cs_axpxip), cimag(cs_axpxip));
+			/* Set it to the gsl vector at A->i[p] */
+			gsl_vector_complex_set(Ax, j, gsl_complex_add(gsl_axj, gsl_axpxip));
+		}
+	}
+}
+
 /* Creation of a Jacobi preconditioner and stores it in supplied vector M, zeros are not stored */
 void jacobi_precond(double *M, double **A, cs *C, int n, bool SPARSE) {
 	if (SPARSE) {
@@ -321,6 +373,20 @@ void gsl_to_cs_complex(cs_complex_t *dst, gsl_vector_complex *src, int dimension
 		x = GSL_REAL(z) + GSL_IMAG(z) * I;
 		/* Set the complex number to the cs_complex_t vector */
 		dst[i] = x;
+	}
+}
+
+/* Convert cs_complex_t vector to a gsl_vector_complex */
+void cs_complex_to_gsl(gsl_vector_complex *dst, cs_complex_t *src, int dimension) {
+	gsl_complex z;
+	cs_complex_t x;
+	for (int i = 0; i < dimension; i++) {
+		/* Get the current complex number from the vector */
+		x = src[i];
+		/* Create a gsl_complex from the x */
+		z = gsl_complex_rect(creal(x), cimag(x));
+		/* Set the gsl_complex into the gsl_vector_complex */
+		gsl_vector_complex_set(dst, i, z);
 	}
 }
 

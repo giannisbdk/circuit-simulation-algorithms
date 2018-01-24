@@ -5,6 +5,18 @@
 
 #include "iter.h"
 
+/* Print the complex vector */
+void _print_complex_vector(gsl_vector_complex *b, int dimension)
+{
+	gsl_complex z;
+	for (int i = 0; i < dimension; i++)
+	{
+		z = gsl_vector_complex_get(b, i);
+		printf("% 35.30lf %s %lfi\n", GSL_REAL(z), GSL_IMAG(z) >= 0 ? "+" : "-", ABS(GSL_IMAG(z)));
+	}
+	printf("\n");
+}
+
 /* 
  * Solve the SPD system with the iterative conjugate gradient method
  * store the result in vector x and also return the number of iterations
@@ -85,8 +97,8 @@ int conj_grad(double **A, cs *C, double *x, double *b, double *M, int dimension,
  * Solve the complex SPD system with the iterative conjugate gradient method
  * store the result in vector x and also return the number of iterations
  */ 
-int complex_conj_grad(gsl_matrix_complex *A, gsl_vector_complex *x, gsl_vector_complex *b, gsl_vector_complex *M,
-					  int dimension, double itol, int maxiter, bool SPARSE) {
+int complex_conj_grad(gsl_matrix_complex *A, cs_ci *C, gsl_vector_complex *x, gsl_vector_complex *b,
+ 					  gsl_vector_complex *M, int dimension, double itol, int maxiter, bool SPARSE) {
 	gsl_vector_complex *Ax = init_gsl_complex_vector(dimension);
 	/* Residual vector r */
 	gsl_vector_complex *r = init_gsl_complex_vector(dimension);
@@ -98,8 +110,13 @@ int complex_conj_grad(gsl_matrix_complex *A, gsl_vector_complex *x, gsl_vector_c
 	gsl_complex rho, rho1, alpha, beta;
 	int iter = 0;
 
-	/* Compute A*x and store it to Ax, with Hermitian of A conjugate+transpose */
-	gsl_blas_zgemv(CblasNoTrans, GSL_COMPLEX_ONE, A, x, GSL_COMPLEX_ZERO, Ax);
+	if (SPARSE) {
+		complex_cs_mat_vec_mul(Ax, C, x);
+	}
+	else {
+		/* Compute A*x and store it to Ax, with Hermitian of A conjugate+transpose */
+		gsl_blas_zgemv(CblasNoTrans, GSL_COMPLEX_ONE, A, x, GSL_COMPLEX_ZERO, Ax);
+	}
 	
 	/* Compute r = b - Ax */
 	/* Computes the y = ax + b, we want r = -Ax + b */
@@ -274,8 +291,9 @@ int bi_conj_grad(double **A, cs *C, double *x, double *b, double *M, int dimensi
  * store the result in vector x and also return the number of iterations
  * or FAILURE in case it fails
  */ 
-int complex_bi_conj_grad(gsl_matrix_complex *A, gsl_vector_complex *x, gsl_vector_complex *b, gsl_vector_complex *M,
-                         gsl_vector_complex *M_conj, int dimension, double itol, int maxiter, bool SPARSE) {
+int complex_bi_conj_grad(gsl_matrix_complex *A, cs_ci *C,  gsl_vector_complex *x, gsl_vector_complex *b,
+ 						 gsl_vector_complex *M, gsl_vector_complex *M_conj, int dimension, double itol,
+						 int maxiter, bool SPARSE) {
 	/* Set maxiter to our threshold in case the provided one is small for Bi-CG */
 	maxiter = MAX(maxiter, MAX_ITER_THRESHOLD);
 	/* Vector to store A*x */
@@ -296,13 +314,13 @@ int complex_bi_conj_grad(gsl_matrix_complex *A, gsl_vector_complex *x, gsl_vecto
 	gsl_complex rho, rho1, alpha, beta, omega;
 	int iter = 0;
 
-	if (!SPARSE) {
-		/* Compute A*x and store it to Ax */
-		gsl_blas_zgemv(CblasNoTrans, GSL_COMPLEX_ONE, A, x, GSL_COMPLEX_ZERO, Ax);
+	if (SPARSE) {
+		/* Compute A*x and store it ot Ax , C is CCF of A */
+		complex_cs_mat_vec_mul(Ax, C, x);
 	}
 	else {
-		/* Compute A*x and store it ot Ax , C is CCF of A */
-		//TODO add for sparse
+		/* Compute A*x and store it to Ax */
+		gsl_blas_zgemv(CblasNoTrans, GSL_COMPLEX_ONE, A, x, GSL_COMPLEX_ZERO, Ax);
 	}
 
 	/* Compute r = b - Ax */
@@ -323,7 +341,7 @@ int complex_bi_conj_grad(gsl_matrix_complex *A, gsl_vector_complex *x, gsl_vecto
 		/* Solution of the preconditioner Mz = r */
 		complex_precond_solve(z, M, r, dimension);
 		/* Solution of the preconditioner M'z_tilde = r_tilde, *
-		 * M' = M because is a diagonal matrix                 */
+		 * M_conj = M* because is a diagonal matrix                 */
 		complex_precond_solve(z_tilde, M_conj, r_tilde, dimension);
 		/* rho = r_tilde*z */
 		rho = complex_dot_product(r_tilde, z, dimension);
@@ -346,16 +364,17 @@ int complex_bi_conj_grad(gsl_matrix_complex *A, gsl_vector_complex *x, gsl_vecto
 			complex_axpy(p_tilde, gsl_complex_conjugate(beta), p_tilde, z_tilde, dimension);
 		}
 		rho1 = rho;
-		if (!SPARSE) {
+		if (SPARSE) {
+			/* q = A*p, C is CCF of A */
+			complex_cs_mat_vec_mul(q, C, p);
+			/* q_tilde = A^H*p_tilde, A^H = A*', C is CCF of A */
+			complex_cs_mat_vec_mul_herm(q_tilde, C, p_tilde);
+		}
+		else {
 			/* q = A*p */
 			gsl_blas_zgemv(CblasNoTrans, GSL_COMPLEX_ONE, A, p, GSL_COMPLEX_ZERO, q);
 			/* q_tilde = A^H*p_tilde */
 			gsl_blas_zgemv(CblasConjTrans, GSL_COMPLEX_ONE, A, p_tilde, GSL_COMPLEX_ZERO, q_tilde);
-		}
-		else {
-			//TODO add sparse
-			/* q = A*p, C is CCF of A */
-			/* q_tilde = A'*p_tilde, A' = A, C is CCF of A */
 		}
 		/* omega = p_tilde * q */
 		omega = complex_dot_product(p_tilde, q, dimension);
@@ -372,6 +391,12 @@ int complex_bi_conj_grad(gsl_matrix_complex *A, gsl_vector_complex *x, gsl_vecto
 		/* r_tilde = r_tilde - alpha_conj*q_tilde */
 		complex_axpy(r_tilde, gsl_complex_negative(gsl_complex_conjugate(alpha)), q_tilde, r_tilde, dimension);
 		r_norm = complex_norm2(r, dimension);
+		if (iter == 1) {
+			printf("%s\n", SPARSE ? "SPARSE" : "NON SPARSE");
+			_print_complex_vector(Ax, dimension);
+			_print_complex_vector(q, dimension);
+			_print_complex_vector(q_tilde, dimension);
+		}
 	}
 
 	/* Free all the memory we allocated */

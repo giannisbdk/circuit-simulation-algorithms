@@ -17,6 +17,7 @@
 #define ABS(x) ((x) < 0 ? (-(x)) : (x))
 #define COMPLEX_ZERO(z) ((GSL_REAL(z) == 0.0 && GSL_IMAG(z) == 0.0))
 #define CS_COMPLEX_NEG(z) (-(creal(z) + (cimag(z) * I)))
+#define CS_COMPLEX_CONJ(z) (creal(z) - (cimag(z) * I))
 
 double dot_product(double *x, double *y, int n);
 gsl_complex complex_dot_product(gsl_vector_complex *x, gsl_vector_complex *y, int n);
@@ -28,6 +29,8 @@ void mat_vec_mul(double *Ax, double **A, double *x, int n);
 void mat_vec_mul_trans(double *Ax, double **A, double *x, int n);
 void cs_mat_vec_mul(double *dest, cs *A, double *x);
 void cs_mat_vec_mul_trans(double *dest, cs *A, double *x);
+void complex_cs_mat_vec_mul(gsl_vector_complex *Ax, cs_ci *A, gsl_vector_complex *x);
+void complex_cs_mat_vec_mul_herm(gsl_vector_complex *Ax, cs_ci *A, gsl_vector_complex *x);
 void jacobi_precond(double *M, double **A, cs *C, int n, bool SPARSE);
 void complex_jacobi_precond(gsl_vector_complex *M, gsl_matrix_complex *A, cs_ci *C, int n, bool SPARSE);
 void precond_solve(double *M_fin, double *M, double *x, int n);
@@ -48,6 +51,7 @@ gsl_vector_complex *init_gsl_complex_vector(int row);
 double *init_val_vector(int row, double val);
 gsl_permutation *init_permutation(int dimension);
 void gsl_to_cs_complex(cs_complex_t *dst, gsl_vector_complex *src, int dimension);
+void cs_complex_to_gsl(gsl_vector_complex *dst, cs_complex_t *src, int dimension);
 cs_complex_t pol_to_rect(double magnitude, double phase);
 
 #endif

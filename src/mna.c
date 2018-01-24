@@ -132,8 +132,15 @@ void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz) {
 	}
 
 	if (options->AC) {
+		mna->sp_matrix->G_ac = cs_ci_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
+		mna->sp_matrix->e_ac = (cs_complex_t *)malloc(mna->dimension * sizeof(cs_complex_t));
+	}
+	
+	if (options->TRAN || options->AC) {
 		mna->sp_matrix->A_base = cs_di_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
-		mna->sp_matrix->G_ac   = cs_ci_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
+	}
+	else {
+		mna->sp_matrix->A_base = NULL;
 	}
 }
 
@@ -665,7 +672,6 @@ void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_
 	list1_t *curr;
 	double value;
 	int volt_sources_cnt = 0;
-
 	
 	/* Copy the base for the AC matrix and zero-out the vector for the next step */
 	mna->sp_matrix->G_ac = cs_i_complex(mna->sp_matrix->A_base, 1);
@@ -795,30 +801,58 @@ int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *eleme
  * (LU, Cholesky, Iterative Conj_Grad / Bi-Conj_Grad) and stores the solution on the supplied vector x
  */
 void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_complex, options_t *options) {
-	int iterations;
 	/* Set the maximum number of iterations CG/bi-CG */
-	int maxiter = mna->dimension;
+	int iterations, maxiter = mna->dimension;
+
 	if (options->SPARSE) {
 		/* Pointer to set the appropriate matrix */
-		cs *matrix_ptr;
-		double *M_precond;
-		if (mna->tr_analysis_init) {
-			matrix_ptr = mna->sp_matrix->aGhC;
-			M_precond  = mna->M_trans;
-		}
-		else {
-			matrix_ptr = mna->sp_matrix->A;
-			M_precond  = mna->M;
+		cs *matrix_ptr = NULL;
+		double *M_precond = NULL;;
+		gsl_vector_complex *gsl_e_ac = NULL;
+
+		/* In case we are not currently in an AC analysis */
+		if (!mna->ac_analysis_init) {
+			if (mna->tr_analysis_init) {
+				matrix_ptr = mna->sp_matrix->aGhC;
+				M_precond  = mna->M_trans;
+			}
+			/* We are in DC analysis */
+			else {
+				matrix_ptr = mna->sp_matrix->A;
+				M_precond  = mna->M;
+			}
 		}
 		if (options->ITER) {
+			if (mna->ac_analysis_init) {
+				/* Convert x vector (which is the DC operating point) to a complex one in case we're in an AC analysis */
+				real_to_complex_vector(x_complex, *x, mna->dimension);
+				/* Also conver cs_complex_t *e_ac into a gsl_vector for the iterative solvers */
+				gsl_e_ac = init_gsl_complex_vector(mna->dimension);
+				cs_complex_to_gsl(gsl_e_ac, mna->sp_matrix->e_ac, mna->dimension);
+			}
 			if (options->SPD) {
-			 	iterations = conj_grad(NULL, matrix_ptr, *x, mna->b, M_precond, mna->dimension,
-			 						   options->ITOL, maxiter, options->SPARSE);
+				/* Check if AC analysis has started (complex), otherwise call ordinary solvers */
+				if (mna->ac_analysis_init) {
+					iterations = complex_conj_grad(NULL, mna->sp_matrix->G_ac, x_complex, gsl_e_ac,
+					 							   mna->M_ac, mna->dimension, options->ITOL, maxiter, options->SPARSE);
+				}
+				else {
+					iterations = conj_grad(NULL, matrix_ptr, *x, mna->b, M_precond, mna->dimension,
+			 							   options->ITOL, maxiter, options->SPARSE);
+				}
 				//printf("Conjugate gradient method did %d iterations.\n", iterations);
 			}
 			else {
-				iterations = bi_conj_grad(NULL, matrix_ptr, *x, mna->b, M_precond, mna->dimension, 
-										  options->ITOL, maxiter, options->SPARSE);
+				/* Check if AC analysis has started (complex), otherwise call ordinary solvers */
+				if (mna->ac_analysis_init) {
+					iterations = complex_bi_conj_grad(NULL, mna->sp_matrix->G_ac, x_complex, gsl_e_ac,
+													  mna->M_ac, mna->M_ac_conj, mna->dimension, options->ITOL,
+													  maxiter, options->SPARSE);
+				}
+				else {
+					iterations = bi_conj_grad(NULL, matrix_ptr, *x, mna->b, M_precond, mna->dimension, 
+										  	  options->ITOL, maxiter, options->SPARSE);
+				}
 				if (iterations == FAILURE) {
 					fprintf(stderr, "Bi-Conjugate gradient method failed.\n");
 					exit(EXIT_FAILURE);
@@ -826,7 +860,7 @@ void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_compl
 				// printf("Bi-Conjugate gradient method did %d iterations.\n", iterations);
 			}
 		}
-		else {
+		else { /* Non iterative solvers */
 			if (options->SPD) {
 				solve_sparse_cholesky(mna, matrix_ptr, x);
 			}
@@ -838,7 +872,7 @@ void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_compl
 	else { /* Dense */
 		/* Pointer to set the appropriate matrix */
 		double **matrix_ptr = NULL;
-		double *M_precond = NULL;
+		double *M_precond   = NULL;
 		gsl_vector_view view_x;
 		/* Set general pointers for matrices, vectors to use for the solvers */
 		if (!mna->ac_analysis_init) {
@@ -860,7 +894,7 @@ void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_compl
 			if (options->SPD) {
 				/* Check if AC analysis has started (complex), otherwise call ordinary solvers */
 				if (mna->ac_analysis_init) {
-					iterations = complex_conj_grad(mna->matrix->G_ac, x_complex, mna->matrix->e_ac, mna->M_ac, 
+					iterations = complex_conj_grad(mna->matrix->G_ac, NULL, x_complex, mna->matrix->e_ac, mna->M_ac, 
 												   mna->dimension, options->ITOL, maxiter, options->SPARSE);
 				}
 				else {
@@ -872,7 +906,7 @@ void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_compl
 			else {
 				/* Check if AC analysis has started (complex), otherwise call ordinary solvers */
 				if (mna->ac_analysis_init) {
-					iterations = complex_bi_conj_grad(mna->matrix->G_ac, x_complex, mna->matrix->e_ac, mna->M_ac,
+					iterations = complex_bi_conj_grad(mna->matrix->G_ac, NULL, x_complex, mna->matrix->e_ac, mna->M_ac,
 												   	  mna->M_ac_conj, mna->dimension, options->ITOL, maxiter, options->SPARSE);
 				}
 				else {
@@ -1076,7 +1110,7 @@ void print_complex_array(gsl_matrix_complex *A, int dimension) {
 	for (int i = 0; i < rows; i++) {
 		for (int j = 0; j < cols; j++) {
 			z = gsl_matrix_complex_get(A, i, j);
-			printf("(%-8.4lf, %-8.4lf) ", GSL_REAL(z), GSL_IMAG(z));
+			printf("% 8.4lf %s %-8.4lfi ", GSL_REAL(z), GSL_IMAG(z) >= 0 ? "+" : "-", ABS(GSL_IMAG(z)));
 		}
 		printf("\n");
 	}

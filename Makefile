@@ -97,6 +97,15 @@ run_chol_tran_be_iter: main
 run_ac: main
 	./main $(NLS)/ac_netlist.txt
 
+run_ac_iter: main
+	./main $(NLS)/ac_iter_netlist.txt
+
+run_ac_sparse: main
+	./main $(NLS)/ac_sparse_netlist.txt
+
+run_ac_iter_sparse: main
+	./main $(NLS)/ac_iter_sparse_netlist.txt
+
 # Netlist download targets
 run_ibm1: main
 	./main $(IBM_NLS)/ibmpg1.spice
