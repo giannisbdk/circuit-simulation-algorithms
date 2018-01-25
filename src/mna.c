@@ -670,7 +670,6 @@ void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *ha
 /* Constructs the sparse AC MNA system */
 void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega) {
 	list1_t *curr;
-	double value;
 	int volt_sources_cnt = 0;
 	
 	/* Copy the base for the AC matrix and zero-out the vector for the next step */
@@ -715,17 +714,17 @@ void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_
 				z = 0.0 + 0.0 * I;
 			}
 			else {
-				value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+				z = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
 			}
 			if (probe1_id == 0) {
-				mna->sp_matrix->e_ac[j] += value;
+				mna->sp_matrix->e_ac[j] += z;
 			}
 			else if (probe2_id == 0) {
-				mna->sp_matrix->e_ac[j] -= value;
+				mna->sp_matrix->e_ac[j] -= z;
 			}
 			else {
-				mna->sp_matrix->e_ac[i] -= value;
-				mna->sp_matrix->e_ac[j] += value;
+				mna->sp_matrix->e_ac[i] -= z;
+				mna->sp_matrix->e_ac[j] += z;
 			}
 		}
 		else if (curr->type == 'L' || curr->type == 'l') {
@@ -742,10 +741,10 @@ void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_
 				z = 0.0 + 0.0 * I;
 			}
 			else {
-				value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+				z = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
 			}
 			/* Keep track of how many voltage sources or inductors, we have already found */
-			mna->sp_matrix->e_ac[offset + volt_sources_cnt] += value;
+			mna->sp_matrix->e_ac[offset + volt_sources_cnt] += z;
 			/* Keep track of how many voltage sources or inductors, we have already found */
 			volt_sources_cnt++;
 		}
