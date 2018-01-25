@@ -210,7 +210,6 @@ void jacobi_precond(double *M, double **A, cs *C, int n, bool SPARSE) {
 
 /* Creation of a complex Jacobi preconditioner and stores it in supplied vector M, zeros are not stored */
 void complex_jacobi_precond(gsl_vector_complex *M, gsl_matrix_complex *A, cs_ci *C, int n, bool SPARSE) {
-	// TODO add sparse struct and flag
 	if (SPARSE) {
 		gsl_complex z;
 		for (int j = 0; j < C->n; j++) {

@@ -22,6 +22,8 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 		for (int j = 0; j < parser->ac_analysis[i].num_nodes; j++) {
 			/* Temp buffer */
 			char name[10];
+			/* Will contain a string either Magnitude (voltage) or Magnitude (dB), according to the sweep type */
+			char magn_output[] = "Magnitude ";
 			/* Construct the file name */
 			strcpy(file_name, prefix);
 			strcat(file_name, parser->ac_analysis[i].nodes[j]);
@@ -31,9 +33,19 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 			strcat(file_name, "_");
 			sprintf(name, "%g", parser->ac_analysis[i].end_freq);
 			strcat(file_name, name);
+			/* Set the output string for the magnitude according to the sweep type */
 			switch (parser->ac_analysis[i].sweep) {
-				case LIN: strcat(file_name, "_LIN"); break;
-				case LOG: strcat(file_name, "_LOG"); break;
+				case LIN:
+					strcat(file_name, "_LIN");
+					strcat(magn_output, "(voltage)");
+					break;
+				case LOG:
+					strcat(file_name, "_LOG");
+					strcat(magn_output, "(dB)");
+					break;
+				default:
+					fprintf(stderr, "Wrong sweep type.\n");
+					exit(EXIT_FAILURE);
 			}
 			strcat(file_name, ".txt");
 			/* Open the output file */
@@ -42,7 +54,7 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 				fprintf(stderr, "Error opening file: %s\n", strerror(errno));
 				exit(EXIT_FAILURE);
 			}
-			fprintf(files[j], "%-30s%-30s%-30s\n", "Frequency (hertz)", "Magnitude (voltage)", "Phase (degrees)");
+			fprintf(files[j], "%-30s%-30s%-30s\n", "Frequency (hertz)", magn_output, "Phase (degrees)");
 		}
 
 		/* Find how many steps are required */
@@ -63,12 +75,24 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 			create_ac_mna_system(mna, index, hash_table, parser->options, parser->netlist->num_nodes, omega);
 			/* Solve the system */
 			solve_mna_system(mna, &dc_op, sol_x, parser->options);
+
 			/* Print current solution to file */
 			for (int j = 0; j < parser->ac_analysis[i].num_nodes; j++) {
 				int offset = ht_get_id(hash_table, parser->ac_analysis[i].nodes[j]) - 1;
 				/* Convert from complex to polar with magnitude and phase */
 				ac_t curr_ac = rect_to_polar(gsl_vector_complex_get(sol_x, offset));
-				fprintf(files[j], "%-30lf%-30lf%-30lf\n", sweep_points_freq[step], curr_ac.magnitude, curr_ac.phase);
+				/* In case it is a LOG sweep we need to output 20*log10(magnitude) */
+				switch (parser->ac_analysis[i].sweep) {
+					case LIN:
+						fprintf(files[j], "%-30lf%-30lf%-30lf\n", sweep_points_freq[step], curr_ac.magnitude, curr_ac.phase);
+						break;
+					case LOG:
+						fprintf(files[j], "%-30lf%-30lf%-30lf\n", sweep_points_freq[step], 20 * log10(curr_ac.magnitude), curr_ac.phase);
+						break;
+					default:
+						fprintf(stderr, "Wrong sweep type.\n");
+						exit(EXIT_FAILURE);
+				}
 			}
 		}
 		/* Close the file descriptors for the current transient analysis */
@@ -78,6 +102,7 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 		/* Free sweep points matrix because in next AC analysis number of points might differ, we've to allocate again */
 		free(sweep_points_freq);
 	}
+	/* Indicate that we stopped the AC analysis */
 	mna->ac_analysis_init = false;
 	if (parser->netlist->ac_counter) {
 		printf("AC Analysis..............OK\n");
@@ -88,10 +113,10 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 void get_sweep_points(double *array, ac_analysis_t ac_analysis) {
 	switch (ac_analysis.sweep) {
 		case LIN:
-			lin_step(array, ac_analysis.start_freq, ac_analysis.end_freq, ac_analysis.points);
+			lin_sweep(array, ac_analysis.start_freq, ac_analysis.end_freq, ac_analysis.points);
 			return;
 		case LOG:
-			log_step(array, ac_analysis.start_freq, ac_analysis.end_freq, ac_analysis.points);
+			log_sweep(array, log10(ac_analysis.start_freq), log10(ac_analysis.end_freq), ac_analysis.points);
 			return;
 		default:
 			fprintf(stderr, "Error: Wrong sweep type.\n");
@@ -100,7 +125,7 @@ void get_sweep_points(double *array, ac_analysis_t ac_analysis) {
 }
 
 /* Fills the array with the linear steps, for a linear sweep between start-end freq with n points */
-void lin_step(double *array, double start, double end, int points) {
+void lin_sweep(double *array, double start, double end, int points) {
 	/* Check for valid points */
 	if (points < 2) {
 		fprintf(stderr, "Error: Creating linear step, points must be >= 2.\n");
@@ -111,19 +136,20 @@ void lin_step(double *array, double start, double end, int points) {
 	}
 }
 
-/* Fills the array with the log steps, for a log sweep between start-end freq with n points */
-void log_step(double *array, double start, double end, int points) {
+/*
+ * Fills the array with the log steps, for a log sweep between start-end freq with n points
+ * Common usage is to supply the function with arguments in log scale as log10(start), log10(end).
+ */
+void log_sweep(double *array, double start, double end, int points) {
 	/* Check for valid points */
 	if (points < 2) {
-		fprintf(stderr, "Error: Creating log step, points must be >=2.\n");
+		fprintf(stderr, "Error: Creating log step, points must be >= 2.\n");
 	}
 	/* Logarithmic base of 10 */
 	double base = 10.0;
-	double step = (log10(end) - log10(start)) / (points - 1);
+	double step = (end - start) / (points - 1);
 	/* Set initial and last value to the start and end */
-	array[0] = start;
-	for (int i = 1; i < points - 1; i++) {
-		array[i] = pow(base, i * step);
+	for (int i = 0; i < points; i++) {
+		array[i] = pow(base, start + i * step);
 	}
-	array[points] = end;
 }

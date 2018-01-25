@@ -18,7 +18,7 @@ parser_t *init_parser() {
     parser->options->SPD    = false;
     parser->options->ITER   = false;
     parser->options->SPARSE = false;
-    parser->options->TR     = true;
+    parser->options->TR     = false;
     parser->options->BE     = false;
     parser->options->TRAN   = false;
     parser->options->AC     = false;
@@ -135,18 +135,17 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
     bool tran = false, ac = false;
     char **tokens = NULL, *line = NULL;
 
-    printf("\nInput file is: %s\n", file_name);
+    printf("\nInput file: %s\n", file_name);
     file_input = fopen(file_name, "rb");
     if (file_input == NULL) {
         fprintf(stderr, "Error: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
+
     /* Read line by line the netlist */
     while ((read = getline(&line, &len, file_input)) != -1) {
         tokens = tokenizer(line);
-        if (tokens == NULL) {
-            continue;
-        }
+        if (tokens == NULL) continue;
         sscanf(tokens[0], "%d", &num_tokens);
         if (tokens[1][0] == '.') {
             if (strcmp(".OPTIONS", &tokens[1][0]) == 0) {
@@ -165,10 +164,8 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
                     }
                     if (strcmp("METHOD=BE", &tokens[i][0]) == 0) {
                         parser->options->BE = true;
-                        parser->options->TR = false;
                     }
                     else if(strcmp("METHOD=TR", &tokens[i][0]) == 0) {
-                        //TODO this needs to be changed, because in init_parser we set it to true anyways
                         parser->options->TR = true;
                     }
                 }
@@ -257,7 +254,8 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
         else {
             if (add_to_list(index, tokens, hash_table) == FAILURE) {
                 exit(EXIT_FAILURE);
-            } 
+            }
+            /* Keep track of how many group 2 elements there are in the nelist */
             if (tokens[1][0] == 'V' || tokens[1][0] == 'v' || tokens[1][0] == 'L' || tokens[1][0] == 'l') {
                 parser->netlist->num_g2_elem++;
             }
@@ -273,13 +271,14 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
     }
     fclose(file_input);
 
-    /* DC counter holds the number of .DC we found in the netlist */
+    /* dc,tr,ac counters holds the number of .DC/TRAN/AC we found in the netlist */
     parser->netlist->nz = get_nz();
     parser->netlist->dc_counter = dc_counter;
     parser->netlist->tr_counter = tr_counter;
     parser->netlist->ac_counter = ac_counter;
     parser->netlist->num_nodes  = hash_table->seq - 1;
 
+    /* Set the appropriate flags according to the counters */
     if (parser->netlist->tr_counter) {
         parser->options->TRAN = true;
     }
@@ -287,12 +286,17 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
         parser->options->AC = true;
     }
 
+    /* In case there exists a .TRAN analysis and METHOD field is absent we set it to Trapezoidal as default */
+    if (parser->options->TRAN && !parser->options->BE && !parser->options->TR) {
+        parser->options->TR = true;
+    }
+
 #ifdef DEBUGL
     printf("Printing the lists\n");
     print_lists(index, hash_table);
 #endif
 
-    printf("Finished parsing %d circuit elements.\n", index->size1 + index->size2);
+    printf("\nFinished parsing %d circuit elements.\n", index->size1 + index->size2);
     print_options(parser->options);
     print_netlist_info(parser->netlist);
     print_dc_analysis_options(parser->dc_analysis, dc_counter, tr_counter, ac_counter);
@@ -302,7 +306,7 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
 
 /* Print all the specified options from the netlist */
 void print_options(options_t *options) {
-	printf("\nNetlist Specified Options:\n");
+	printf("\n--- Netlist Specified Options ---\n");
 	printf("SPD:\t%s\n",    options->SPD    ? "true" : "false");
 	printf("ITER:\t%s\n",   options->ITER   ? "true" : "false");
 	printf("SPARSE:\t%s\n", options->SPARSE ? "true" : "false");
@@ -310,27 +314,29 @@ void print_options(options_t *options) {
     printf("TR:\t%s\n",     options->TR     ? "true" : "false");
     printf("BE:\t%s\n",     options->BE     ? "true" : "false");
     printf("AC:\t%s\n",     options->AC     ? "true" : "false");
-    printf("ITOL:\t%lf\n",  options->ITOL);
+    printf("ITOL:\t%g\n",   options->ITOL);
 }
 
 /* Print the number of the different netlist elements info */
 void print_netlist_info(netlist_t *netlist) {
-    printf("\nNetlist Elements:\n");
-    printf("Number of nodes without ground:\t%d\n", netlist->num_nodes);
-    printf("Number of group 2 elements:\t%d\n",     netlist->num_g2_elem);
-    printf("Number of dc analysis targets:\t%d\n",  netlist->dc_counter);
+    printf("\n--- Netlist Elements and Analyses Summary ---\n");
+    printf("Number of nodes without ground:       %d\n", netlist->num_nodes);
+    printf("Number of group 2 elements:           %d\n", netlist->num_g2_elem);
+    printf("Number of dc analysis targets:        %d\n", netlist->dc_counter);
+    printf("Number of transient analysis targets: %d\n", netlist->tr_counter);
+    printf("Number of ac analysis targets:        %d\n", netlist->ac_counter);
 }
 
 /* Prints the dc analysis options */
 void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter, int tr_counter, int ac_counter) {
     if (dc_counter <= 0) return;
-    printf("\nDC Analysis Summary:");
+    printf("\n--- DC Analysis Summary ---\n");
     for (int i = 0; i < dc_counter; i++) {
-        printf("\nVolt_source: %s\n", dc_analysis[i].volt_source);
-        printf("Start:     %lf\n",    dc_analysis[i].start);
-        printf("End:       %lf\n",    dc_analysis[i].end);
-        printf("Increment: %lf\n",    dc_analysis[i].increment);
-        printf("Node: ");
+        printf("Voltage source: %s\n",  dc_analysis[i].volt_source);
+        printf("Start:          %lf\n", dc_analysis[i].start);
+        printf("End:            %lf\n", dc_analysis[i].end);
+        printf("Increment:      %lf\n", dc_analysis[i].increment);
+        printf("Nodes:          ");
         for (int j = 0; j < dc_analysis[i].num_nodes; j++) {
             printf("%s ", dc_analysis[i].nodes[j]);
         }
@@ -344,11 +350,11 @@ void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter, int t
 /* Prints the transient analysis options */
 void print_tr_analysis_options(tr_analysis_t *tr_analysis, int tr_counter) {
     if (tr_counter <= 0) return;
-    printf("\nTRANSIENT Analysis Summary:");
+    printf("\n--- TRANSIENT Analysis Summary ---\n");
     for (int i = 0; i < tr_counter; i++) {
-        printf("\nTime Step:  %lf\n",  tr_analysis[i].time_step);
-        printf("Final Time: %lf\n",    tr_analysis[i].fin_time);
-        printf("Node: ");
+        printf("Time Step:  %lf\n", tr_analysis[i].time_step);
+        printf("Final Time: %lf\n", tr_analysis[i].fin_time);
+        printf("Nodes:      ");
         for (int j = 0; j < tr_analysis[i].num_nodes; j++) {
             printf("%s ", tr_analysis[i].nodes[j]);
         }
@@ -360,13 +366,13 @@ void print_tr_analysis_options(tr_analysis_t *tr_analysis, int tr_counter) {
 /* Prints the dc analysis options */
 void print_ac_analysis_options(ac_analysis_t *ac_analysis, int ac_counter) {
     if (ac_counter <= 0) return;
-    printf("\nAC Analysis Summary:");
+    printf("\n--- AC Analysis Summary ---\n");
     for (int i = 0; i < ac_counter; i++) {
-        printf("\nSweep:  %s\n",    ac_analysis[i].sweep ? "LOG" : "LIN");
-        printf("Points: %d\n",      ac_analysis[i].points);
-        printf("Start freq: %lf\n", ac_analysis[i].start_freq);
-        printf("End freq: %lf\n",   ac_analysis[i].end_freq);
-        printf("Node: ");
+        printf("Sweep:      %s\n",  ac_analysis[i].sweep ? "LOG" : "LIN");
+        printf("Points:     %d\n",  ac_analysis[i].points);
+        printf("Start freq: %g\n", ac_analysis[i].start_freq);
+        printf("End freq:   %g\n", ac_analysis[i].end_freq);
+        printf("Nodes:      ");
         for (int j = 0; j < ac_analysis[i].num_nodes; j++) {
             printf("%s ", ac_analysis[i].nodes[j]);
         }
@@ -419,10 +425,13 @@ void free_parser(parser_t **parser) {
         /* Free the tr_analysis struct */
         free((*parser)->ac_analysis);    
     }
+
     /* Free netlist struct */
     free((*parser)->netlist);
+
     /* Free the parser */
     free((*parser));
+
     /* Set to NULL to limit further accesses */
     *parser = NULL;
 }

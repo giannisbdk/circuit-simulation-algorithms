@@ -74,7 +74,7 @@ def plot_all(plot_path, out_path, prefix, a_type):
 	# Get handles and labels from one of the subplots
 	handles, labels = ax1.get_legend_handles_labels()
 	fig.legend(handles, labels, loc='center right', shadow=True)
-	fig.subplots_adjust(right=0.9)
+	fig.subplots_adjust(right=0.89)
 
 	# Save figure with a lower resolution to fit in sublime when someone opens it through it
 	plt.savefig(fig_path, dpi=85)
@@ -124,7 +124,7 @@ def plot_ac_file(filename, ax1, ax2):
 	freq_list  = []
 	magn_list  = []
 	phase_list = []
-	pat = r"([0-9]+\.?[0-9]+)\s+([0-9]+\.?[0-9]+)\s+(-?[0-9]+\.?[0-9]+)"
+	pat = r"([0-9]+\.?[0-9]+)\s+(-?[0-9]+\.?[0-9]+)\s+(-?[0-9]+\.?[0-9]+)"
 
 	for line in lines[1:]:
 		match = re.search(pat, line)

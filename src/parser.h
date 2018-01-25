@@ -16,9 +16,9 @@ typedef struct options {
 	bool SPD;
 	bool SPARSE;
 	bool ITER;
+	bool TRAN;
 	bool TR;
 	bool BE;
-	bool TRAN;
 	bool AC;
 	double ITOL;
 } options_t;
