@@ -5,10 +5,6 @@
 
 /* Do transient analysis */
 void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, double *init_sol, double *sol_x) {
-	/* Set the prefix name for the files */
-	char prefix[] = "tr_analysis_V(";
-	char file_name[MAX_FILE_NAME];
-
 	/* Clear the decomposition flag for the mna system */
 	mna->is_decomp = false;
 	mna->tr_analysis_init = true;
@@ -24,37 +20,19 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 	}
 
 	for (int i = 0; i < parser->netlist->tr_counter; i++) {
+		/* Create an array with files for every node and create/open them */
+		FILE *files[parser->tr_analysis[i].num_nodes];
+		create_tr_out_files(files, parser->tr_analysis[i]);
+
 		/* Store the initial values to the prev_ vectors */
 		memcpy(prev_sol, init_sol, mna->dimension * sizeof(double));
 		if (parser->options->TR) {
 			memcpy(prev_response, mna->resp->value, mna->dimension * sizeof(double));
 		}
-		FILE *files[parser->tr_analysis[i].num_nodes];
-		/* Open different files for each node in plot/print array */
-		for (int j = 0; j < parser->tr_analysis[i].num_nodes; j++) {
-			/* Temp buffer */
-			char name[10];
-			/* Construct the file name */
-			strcpy(file_name, prefix);
-			strcat(file_name, parser->tr_analysis[i].nodes[j]);
-			strcat(file_name, ")_");
-			sprintf(name, "%g", parser->tr_analysis[i].time_step);
-			strcat(file_name, name);
-			strcat(file_name, "_");
-			sprintf(name, "%g", parser->tr_analysis[i].fin_time);
-			strcat(file_name, name);
-			strcat(file_name, ".txt");
-			/* Open the output file */
-			files[j] = fopen(file_name, "w");
-			if (files[j] == NULL) {
-				fprintf(stderr, "Error opening file: %s\n", strerror(errno));
-				exit(EXIT_FAILURE);
-			}
-			//TODO perhaps add fin_time and time_step inside file
-			fprintf(files[j], "%-30s%-30s\n", "Time (seconds)", "Value (voltage)");
-		}
+
 		/* Find how many steps are required */
 		int n_steps = parser->tr_analysis->fin_time / parser->tr_analysis->time_step;
+
 		for (int step = 0; step <= n_steps; step++) {
 			if (parser->options->TR) {
 				set_trapezoidal_rhs(mna, curr_response, prev_response, prev_sol, parser->tr_analysis->time_step, step, parser->options->SPARSE);
@@ -64,10 +42,8 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 			}
 			/* Solve the system */
 			solve_mna_system(mna, &sol_x, NULL, parser->options);
-			for (int j = 0; j < parser->tr_analysis[i].num_nodes; j++) {
-				int offset = ht_get_id(hash_table, parser->tr_analysis[i].nodes[j]) - 1;
-				fprintf(files[j], "%-30lf%-30lf\n", step * parser->tr_analysis->time_step, sol_x[offset]);
-			}
+			/* Print the output to files */
+			write_tr_out_files(files, parser->tr_analysis[i], hash_table, sol_x, step);
 			/* Copy current solution to prev to use for next iteration */
 			memcpy(prev_sol, sol_x, mna->dimension * sizeof(double));
 		}
@@ -237,5 +213,43 @@ double eval_pwl(pwl_t *pwl, double t) {
 		}
 		/* tn < fin_time, tn <= t <= fin_time */
 		return pwl->i[pwl->n];
+	}
+}
+
+/* Creates and opens output files for every node included in the current TRAN analysis */
+void create_tr_out_files(FILE *files[], tr_analysis_t tr_analysis) {
+	/* Set the prefix name for the files */
+	char prefix[] = "tr_analysis_V(";
+	char file_name[MAX_FILE_NAME];
+
+	/* Open different files for each node in plot/print array */
+	for (int j = 0; j < tr_analysis.num_nodes; j++) {
+		/* Temp buffer */
+		char name[10];
+		/* Construct the file name */
+		strcpy(file_name, prefix);
+		strcat(file_name, tr_analysis.nodes[j]);
+		strcat(file_name, ")_");
+		sprintf(name, "%g", tr_analysis.time_step);
+		strcat(file_name, name);
+		strcat(file_name, "_");
+		sprintf(name, "%g", tr_analysis.fin_time);
+		strcat(file_name, name);
+		strcat(file_name, ".txt");
+		/* Open the output file */
+		files[j] = fopen(file_name, "w");
+		if (files[j] == NULL) {
+			fprintf(stderr, "Error opening file: %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		fprintf(files[j], "%-30s%-30s\n", "Time (seconds)", "Value (voltage)");
+	}
+}
+
+/* Writes the output of the current step of the TRAN analysis to the output files */
+void write_tr_out_files(FILE *files[], tr_analysis_t tr_analysis, hash_table_t *hash_table, double *sol_x, int step) {
+	for (int j = 0; j < tr_analysis.num_nodes; j++) {
+		int offset = ht_get_id(hash_table, tr_analysis.nodes[j]) - 1;
+		fprintf(files[j], "%-30lf%-30lf\n", step * tr_analysis.time_step, sol_x[offset]);
 	}
 }

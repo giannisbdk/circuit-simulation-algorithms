@@ -8,54 +8,15 @@
 /* Do AC analysis */
 void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser,
 				 double *dc_op, gsl_vector_complex *sol_x) {
-	/* Set the prefix name for the files */
-	char prefix[] = "ac_analysis_V(";
-	char file_name[MAX_FILE_NAME];
-
+	/* Set the flag that we're currently on an AC analysis */
 	int ac_counter = parser->netlist->ac_counter;
 	mna->ac_analysis_init = true;
 
 	/* Run all the AC analysis according to the ac_counter */
 	for (int i = 0; i < ac_counter; i++) {
+		/* Create an array with files for every node and create/open them */
 		FILE *files[parser->ac_analysis[i].num_nodes];
-		/* Open different files for each node in plot/print array */
-		for (int j = 0; j < parser->ac_analysis[i].num_nodes; j++) {
-			/* Temp buffer */
-			char name[10];
-			/* Will contain a string either Magnitude (voltage) or Magnitude (dB), according to the sweep type */
-			char magn_output[] = "Magnitude ";
-			/* Construct the file name */
-			strcpy(file_name, prefix);
-			strcat(file_name, parser->ac_analysis[i].nodes[j]);
-			strcat(file_name, ")_");
-			sprintf(name, "%g", parser->ac_analysis[i].start_freq);
-			strcat(file_name, name);
-			strcat(file_name, "_");
-			sprintf(name, "%g", parser->ac_analysis[i].end_freq);
-			strcat(file_name, name);
-			/* Set the output string for the magnitude according to the sweep type */
-			switch (parser->ac_analysis[i].sweep) {
-				case LIN:
-					strcat(file_name, "_LIN");
-					strcat(magn_output, "(voltage)");
-					break;
-				case LOG:
-					strcat(file_name, "_LOG");
-					strcat(magn_output, "(dB)");
-					break;
-				default:
-					fprintf(stderr, "Wrong sweep type.\n");
-					exit(EXIT_FAILURE);
-			}
-			strcat(file_name, ".txt");
-			/* Open the output file */
-			files[j] = fopen(file_name, "w");
-			if (files[j] == NULL) {
-				fprintf(stderr, "Error opening file: %s\n", strerror(errno));
-				exit(EXIT_FAILURE);
-			}
-			fprintf(files[j], "%-30s%-30s%-30s\n", "Frequency (hertz)", magn_output, "Phase (degrees)");
-		}
+		create_ac_out_files(files, parser->ac_analysis[i]);;
 
 		/* Find how many steps are required */
 		int n_steps = parser->ac_analysis[i].points;
@@ -75,25 +36,8 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 			create_ac_mna_system(mna, index, hash_table, parser->options, parser->netlist->num_nodes, omega);
 			/* Solve the system */
 			solve_mna_system(mna, &dc_op, sol_x, parser->options);
-
-			/* Print current solution to file */
-			for (int j = 0; j < parser->ac_analysis[i].num_nodes; j++) {
-				int offset = ht_get_id(hash_table, parser->ac_analysis[i].nodes[j]) - 1;
-				/* Convert from complex to polar with magnitude and phase */
-				ac_t curr_ac = rect_to_polar(gsl_vector_complex_get(sol_x, offset));
-				/* In case it is a LOG sweep we need to output 20*log10(magnitude) */
-				switch (parser->ac_analysis[i].sweep) {
-					case LIN:
-						fprintf(files[j], "%-30lf%-30lf%-30lf\n", sweep_points_freq[step], curr_ac.magnitude, curr_ac.phase);
-						break;
-					case LOG:
-						fprintf(files[j], "%-30lf%-30lf%-30lf\n", sweep_points_freq[step], 20 * log10(curr_ac.magnitude), curr_ac.phase);
-						break;
-					default:
-						fprintf(stderr, "Wrong sweep type.\n");
-						exit(EXIT_FAILURE);
-				}
-			}
+			/* Print the output to files */
+			write_ac_out_files(files, parser->ac_analysis[i], hash_table, sol_x, sweep_points_freq[step]);
 		}
 		/* Close the file descriptors for the current transient analysis */
 		for (int j = 0; j < parser->dc_analysis[i].num_nodes; j++) {
@@ -151,5 +95,73 @@ void log_sweep(double *array, double start, double end, int points) {
 	/* Set initial and last value to the start and end */
 	for (int i = 0; i < points; i++) {
 		array[i] = pow(base, start + i * step);
+	}
+}
+
+/* Creates and opens output files for every node included in the current AC analysis */
+void create_ac_out_files(FILE *files[], ac_analysis_t ac_analysis) {
+	/* Set the prefix name for the files */
+	char prefix[] = "ac_analysis_V(";
+	char file_name[MAX_FILE_NAME];
+
+	/* Open different files for each node in plot/print array */
+	for (int j = 0; j < ac_analysis.num_nodes; j++) {
+		/* Temp buffer */
+		char name[10];
+		/* Will contain a string either Magnitude (voltage) or Magnitude (dB), according to the sweep type */
+		char magn_output[] = "Magnitude ";
+		/* Construct the file name */
+		strcpy(file_name, prefix);
+		strcat(file_name, ac_analysis.nodes[j]);
+		strcat(file_name, ")_");
+		sprintf(name, "%g", ac_analysis.start_freq);
+		strcat(file_name, name);
+		strcat(file_name, "_");
+		sprintf(name, "%g", ac_analysis.end_freq);
+		strcat(file_name, name);
+		/* Set the output string for the magnitude according to the sweep type */
+		switch (ac_analysis.sweep) {
+			case LIN:
+				strcat(file_name, "_LIN");
+				strcat(magn_output, "(voltage)");
+				break;
+			case LOG:
+				strcat(file_name, "_LOG");
+				strcat(magn_output, "(dB)");
+				break;
+			default:
+				fprintf(stderr, "Wrong sweep type.\n");
+				exit(EXIT_FAILURE);
+		}
+		strcat(file_name, ".txt");
+		/* Open the output file */
+		files[j] = fopen(file_name, "w");
+		if (files[j] == NULL) {
+			fprintf(stderr, "Error opening file: %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		fprintf(files[j], "%-30s%-30s%-30s\n", "Frequency (hertz)", magn_output, "Phase (degrees)");
+	}
+}
+
+/* Writes the output of the current step of the AC analysis to the output files */
+void write_ac_out_files(FILE *files[], ac_analysis_t ac_analysis, hash_table_t *hash_table, gsl_vector_complex *sol_x, double freq_step) {
+	/* Print current solution to file */
+	for (int j = 0; j < ac_analysis.num_nodes; j++) {
+		int offset = ht_get_id(hash_table, ac_analysis.nodes[j]) - 1;
+		/* Convert from complex to polar with magnitude and phase */
+		ac_t curr_ac = rect_to_polar(gsl_vector_complex_get(sol_x, offset));
+		/* In case it is a LOG sweep we need to output 20*log10(magnitude) */
+		switch (ac_analysis.sweep) {
+			case LIN:
+				fprintf(files[j], "%-30lf%-30lf%-30lf\n", freq_step, curr_ac.magnitude, curr_ac.phase);
+				break;
+			case LOG:
+				fprintf(files[j], "%-30lf%-30lf%-30lf\n", freq_step, 20 * log10(curr_ac.magnitude), curr_ac.phase);
+				break;
+			default:
+				fprintf(stderr, "Wrong sweep type.\n");
+				exit(EXIT_FAILURE);
+		}
 	}
 }

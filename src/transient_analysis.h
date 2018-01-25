@@ -15,5 +15,7 @@ double eval_exp(exp_t *expon, double t);
 double eval_sin(sin_t *sinus, double t);
 double eval_pulse(pulse_t *pulse, double t);
 double eval_pwl(pwl_t *pwl, double t);
+void create_tr_out_files(FILE *files[], tr_analysis_t tr_analysis);
+void write_tr_out_files(FILE *files[], tr_analysis_t tr_analysis, hash_table_t *hash_table, double *sol_x, int step);
 
 #endif

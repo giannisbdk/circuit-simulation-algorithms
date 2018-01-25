@@ -116,7 +116,7 @@ def plot_ac_file(filename, ax1, ax2):
 	# Get the Node name and the sweep type from the output file
 	tokens  = filename.split("_")
 	v_label = tokens[2]
-	sweep   = tokens[len(tokens)-1][:3]
+	sweep   = tokens[len(tokens)-1].split(".")[0]
 
 	with open(filename, 'rb') as fd:
 		lines = [x.strip("\n") for x in fd.readlines()]
@@ -140,9 +140,11 @@ def plot_ac_file(filename, ax1, ax2):
 		ax1.plot(freq_list, magn_list, label=v_label)
 		ax2.plot(freq_list, phase_list, label=v_label)
 	elif sweep == "LOG":
-		ax1.semilogx(freq_list, magn_list, label=v_label)
-		ax2.semilogx(freq_list, phase_list, label=v_label)
+		ax1.semilogx(freq_list, phase_list, label=v_label)
+		ax2.semilogx(freq_list, magn_list, label=v_label)
 	else:
+		print "Error: Sweep type '{}' from output file is wrong.".format(sweep)
+		print "Valid options (LIN, LOG)."
 		sys.exit(0)
 
 

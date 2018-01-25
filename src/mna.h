@@ -102,6 +102,7 @@ typedef struct mna_system {
 	int num_g2_elem;
 	g2_indx_t *g2_indx;
 
+	//TODO change the below flag names or create a new enum called current state? or something
 	/* Flags that indicate in which analysis we're currently at */
 	bool tr_analysis_init;
 	bool ac_analysis_init;
