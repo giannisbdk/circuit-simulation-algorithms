@@ -425,12 +425,12 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 			else if (probe2_id == 0) {
 				// mna->matrix->e_ac[i] -= value;
 				z_prev = gsl_vector_complex_get(mna->matrix->e_ac, i);
-				gsl_vector_complex_set(mna->matrix->e_ac, i, gsl_complex_add(z_prev, z));
+				gsl_vector_complex_set(mna->matrix->e_ac, i, gsl_complex_sub(z_prev, z));
 			}
 			else {
 				// mna->matrix->e_ac[i] -= value;
 				z_prev = gsl_vector_complex_get(mna->matrix->e_ac, i);
-				gsl_vector_complex_set(mna->matrix->e_ac, i, gsl_complex_add(z_prev, z));
+				gsl_vector_complex_set(mna->matrix->e_ac, i, gsl_complex_sub(z_prev, z));
 				// mna->matrix->e_ac[j] += value;
 				z_prev = gsl_vector_complex_get(mna->matrix->e_ac, j);
 				gsl_vector_complex_set(mna->matrix->e_ac, j, gsl_complex_add(z_prev, z));
@@ -947,7 +947,7 @@ void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_compl
 	}
 	if (!mna->is_decomp) {
 		mna->is_decomp = true;
-		if (!options->TRAN) {
+		if (!mna->ac_analysis_init && !mna->tr_analysis_init) {
     		printf("Solution of MNA system...OK\n");
     	}
 	}

@@ -391,12 +391,12 @@ int complex_bi_conj_grad(gsl_matrix_complex *A, cs_ci *C,  gsl_vector_complex *x
 		/* r_tilde = r_tilde - alpha_conj*q_tilde */
 		complex_axpy(r_tilde, gsl_complex_negative(gsl_complex_conjugate(alpha)), q_tilde, r_tilde, dimension);
 		r_norm = complex_norm2(r, dimension);
-		if (iter == 1) {
-			printf("%s\n", SPARSE ? "SPARSE" : "NON SPARSE");
-			_print_complex_vector(Ax, dimension);
-			_print_complex_vector(q, dimension);
-			_print_complex_vector(q_tilde, dimension);
-		}
+		// if (iter == 1) {
+		// 	printf("%s\n", SPARSE ? "SPARSE" : "NON SPARSE");
+		// 	_print_complex_vector(Ax, dimension);
+		// 	_print_complex_vector(q, dimension);
+		// 	_print_complex_vector(q_tilde, dimension);
+		// }
 	}
 
 	/* Free all the memory we allocated */
