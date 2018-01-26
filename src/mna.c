@@ -440,7 +440,7 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 			/* Set the L value in the diagonal of g2 area in matrices */
 			// mna->matrix->G_ac[offset + volt_sources_cnt][offset + volt_sources_cnt] = - I * omega * curr->value;
 			z = gsl_complex_rect(0.0, omega * curr->value);
-			gsl_matrix_complex_set(mna->matrix->G_ac, offset + volt_sources_cnt, offset + volt_sources_cnt, z);
+			gsl_matrix_complex_set(mna->matrix->G_ac, offset + volt_sources_cnt, offset + volt_sources_cnt, gsl_complex_negative(z));
 			/* Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found */
 			volt_sources_cnt++;
 		}
@@ -731,7 +731,7 @@ void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_
 			/* Set the L value in the diagonal of g2 area in matrices */
 			// mna->matrix->G_ac[offset + volt_sources_cnt][offset + volt_sources_cnt] = - I * omega * curr->value;
 			z = 0.0 + (omega * curr->value * I);
-			cs_ci_entry(mna->sp_matrix->G_ac, offset + volt_sources_cnt, offset + volt_sources_cnt, z);
+			cs_ci_entry(mna->sp_matrix->G_ac, offset + volt_sources_cnt, offset + volt_sources_cnt, CS_COMPLEX_NEG(z));
 			/* Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found */
 			volt_sources_cnt++;
 		}
