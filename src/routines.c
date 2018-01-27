@@ -57,7 +57,7 @@ gsl_complex complex_dot_product(gsl_vector_complex *x, gsl_vector_complex *y, in
 		xi = gsl_vector_complex_get(x, i);
 		yi = gsl_vector_complex_get(y, i);
 		/* Get the conjugate of the first */
-		xi = gsl_complex_conjugate(xi);
+		xi = __gsl_complex_conj(xi);
 		/* Get their multiplication */
 		xy = gsl_complex_mul(xi, yi);
 		/* Get the sum */
@@ -137,8 +137,6 @@ void complex_cs_mat_vec_mul(gsl_vector_complex *Ax, cs_ci *A, gsl_vector_complex
 	cs_complex_t cs_xj, cs_axpxj;
 	gsl_complex gsl_xj, gsl_axip, gsl_axpxj;
 
-	gsl_vector_complex_set_zero(Ax);
-
 	/* Ax[A->i[p]] += A->x[p] * x[j] */
 	for (int j = 0; j < A->n; j++) {
 		/* Get the current complex number from the x */
@@ -162,8 +160,6 @@ void complex_cs_mat_vec_mul(gsl_vector_complex *Ax, cs_ci *A, gsl_vector_complex
 void complex_cs_mat_vec_mul_herm(gsl_vector_complex *Ax, cs_ci *A, gsl_vector_complex *x) {
 	cs_complex_t cs_axpxip, cs_xip;
 	gsl_complex gsl_xip, gsl_axj, gsl_axpxip;
-
-	gsl_vector_complex_set_zero(Ax);
 
 	/* Ax[j] += A->x[p] * x[A->i[p]] */
 	for (int j = 0; j < A->n; j++) {
@@ -308,7 +304,7 @@ void vector_conjugate(gsl_vector_complex *M_conj, gsl_vector_complex *M, int dim
 		/* Get the current complex number from the vector */
 		z = gsl_vector_complex_get(M, i);
 		/* Save its conjugate to vector M_conj */
-		gsl_vector_complex_set(M_conj, i, gsl_complex_conjugate(z));
+		gsl_vector_complex_set(M_conj, i, __gsl_complex_conj(z));
 	}
 }
 
@@ -333,14 +329,14 @@ double *init_vector(int row) {
 
 /* Allocate memory for the complex gsl matrix of the MNA system */
 gsl_matrix_complex *init_gsl_complex_array(int row, int col) {
-	gsl_matrix_complex *matrix = gsl_matrix_complex_alloc(row, col);
+	gsl_matrix_complex *matrix = gsl_matrix_complex_calloc(row, col);
 	assert(matrix != NULL);
 	return matrix;
 }
 
 /* Allocate memory for the complex gsl vector of the MNA system */
 gsl_vector_complex *init_gsl_complex_vector(int row) {
-	gsl_vector_complex *vector = gsl_vector_complex_alloc(row);
+	gsl_vector_complex *vector = gsl_vector_complex_calloc(row);
 	assert(vector != NULL);
 	return vector;
 }
@@ -387,6 +383,64 @@ void cs_complex_to_gsl(gsl_vector_complex *dst, cs_complex_t *src, int dimension
 		/* Set the gsl_complex into the gsl_vector_complex */
 		gsl_vector_complex_set(dst, i, z);
 	}
+}
+
+/* 
+ * Returns the complex conjugate of the gsl complex number x without
+ * putting a negative sign in case there is 0 in imaginary part.
+ */
+gsl_complex __gsl_complex_conj(gsl_complex x) {
+	gsl_complex z;
+	GSL_SET_REAL(&z, GSL_REAL(x));
+	if (GSL_IMAG(x) == 0.0) {
+		GSL_SET_IMAG(&z, GSL_IMAG(x));
+	}
+	else {
+		GSL_SET_IMAG(&z, -GSL_IMAG(x));
+	}
+	return z;
+}
+
+/* 
+ * Returns the complex negative of the gsl complex number x without
+ * putting a negative sign in case there is 0 in imaginary part.
+ */
+gsl_complex __gsl_complex_neg(gsl_complex x) {
+	gsl_complex z;
+	if (GSL_REAL(x) == 0.0) {
+		GSL_SET_REAL(&z, 0.0);
+	}
+	else {
+		GSL_SET_REAL(&z, -GSL_REAL(x));
+	}
+	if (GSL_IMAG(x) == 0.0) {
+		GSL_SET_IMAG(&z, GSL_IMAG(x));
+	}
+	else {
+		GSL_SET_IMAG(&z, -GSL_IMAG(x));
+	}
+	return z;
+}
+
+/* Returns the negative of the cs_complex_t x considering the 0.0 case */
+cs_complex_t __cs_complex_neg(cs_complex_t x) {
+	cs_complex_t z = 0.0 + 0.0 * I;
+	if (creal(x) != 0.0) {
+		z -= creal(x);
+	}
+	if (cimag(x) != 0.0) {
+		z -= cimag(x) * I;
+	}
+	return z;
+}
+
+/* Returns the conjugate of the cs_complex_t x considering the 0.0 case */
+cs_complex_t __cs_complex_conj(cs_complex_t x) {
+	cs_complex_t z = creal(x) + 0.0 * I;
+	if (cimag(x) != 0.0) {
+		z -= cimag(x) * I;
+	}
+	return z;
 }
 
 /* Convert from polar to rectangular form */

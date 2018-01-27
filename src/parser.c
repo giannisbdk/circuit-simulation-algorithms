@@ -396,9 +396,9 @@ void free_parser(parser_t **parser) {
             }
             free((*parser)->dc_analysis[i].nodes);
         }
-        /* Free the dc_analysis struct */
-        free((*parser)->dc_analysis);    
     }
+    /* Free the dc_analysis struct */
+    free((*parser)->dc_analysis);
 
     /* Free everything allocated for TRANSIENT analyiss */
     if ((*parser)->netlist->tr_counter) {
@@ -409,9 +409,9 @@ void free_parser(parser_t **parser) {
             }
             free((*parser)->tr_analysis[i].nodes);
         }
-        /* Free the tr_analysis struct */
-        free((*parser)->tr_analysis);    
     }
+    /* Free the tr_analysis struct */
+    free((*parser)->tr_analysis);  
 
     /* Free everything allocated for AC analysis */
     if ((*parser)->netlist->ac_counter) {
@@ -422,9 +422,9 @@ void free_parser(parser_t **parser) {
             }
             free((*parser)->ac_analysis[i].nodes);
         }
-        /* Free the tr_analysis struct */
-        free((*parser)->ac_analysis);    
     }
+    /* Free the tr_analysis struct */
+    free((*parser)->ac_analysis); 
 
     /* Free netlist struct */
     free((*parser)->netlist);

@@ -157,7 +157,7 @@ int complex_conj_grad(gsl_matrix_complex *A, cs_ci *C, gsl_vector_complex *x, gs
 		/* x = x + alpha*p */
 		complex_axpy(x, alpha, p, x, dimension);
 		/* r = r - alpha*q */
-		complex_axpy(r, gsl_complex_negative(alpha), q, r, dimension);
+		complex_axpy(r, __gsl_complex_neg(alpha), q, r, dimension);
 		r_norm = complex_norm2(r, dimension);
 	}
 
@@ -361,7 +361,7 @@ int complex_bi_conj_grad(gsl_matrix_complex *A, cs_ci *C,  gsl_vector_complex *x
 			/* p = z + beta*p */
 			complex_axpy(p, beta, p, z, dimension);
 			/* p_tilde = z_tilde + beta_conj*p_tilde */
-			complex_axpy(p_tilde, gsl_complex_conjugate(beta), p_tilde, z_tilde, dimension);
+			complex_axpy(p_tilde, __gsl_complex_conj(beta), p_tilde, z_tilde, dimension);
 		}
 		rho1 = rho;
 		if (SPARSE) {
@@ -379,6 +379,7 @@ int complex_bi_conj_grad(gsl_matrix_complex *A, cs_ci *C,  gsl_vector_complex *x
 		/* omega = p_tilde * q */
 		omega = complex_dot_product(p_tilde, q, dimension);
 		/* Check for Algorithm Failure */
+		// printf("omega: %lf, %lf\n", GSL_REAL(omega), GSL_IMAG(omega));
 		if (complex_abs(omega) < EPSILON) {
 			return -1;
 		}
@@ -387,9 +388,9 @@ int complex_bi_conj_grad(gsl_matrix_complex *A, cs_ci *C,  gsl_vector_complex *x
 		/* x = x + alpha*p */
 		complex_axpy(x, alpha, p, x, dimension);
 		/* r = r - alpha*q */
-		complex_axpy(r, gsl_complex_negative(alpha), q, r, dimension);
+		complex_axpy(r, __gsl_complex_neg(alpha), q, r, dimension);
 		/* r_tilde = r_tilde - alpha_conj*q_tilde */
-		complex_axpy(r_tilde, gsl_complex_negative(gsl_complex_conjugate(alpha)), q_tilde, r_tilde, dimension);
+		complex_axpy(r_tilde, __gsl_complex_neg(__gsl_complex_conj(alpha)), q_tilde, r_tilde, dimension);
 		r_norm = complex_norm2(r, dimension);
 		// if (iter == 1) {
 		// 	printf("%s\n", SPARSE ? "SPARSE" : "NON SPARSE");

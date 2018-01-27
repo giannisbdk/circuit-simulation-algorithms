@@ -72,7 +72,9 @@ int main(int argc, char *argv[]) {
     free_mna_system(&mna, parser->options);
     free_parser(&parser);
     ht_free(&hash_table);
+    gsl_vector_complex_free(x_complex);
     free(sol_x);
+    free(dc_op);
 
 	return 0;
 }

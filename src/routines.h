@@ -14,10 +14,11 @@
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define ABS(x) ((x) < 0 ? (-(x)) : (x))
-#define COMPLEX_ZERO(z) ((GSL_REAL(z) == 0.0 && GSL_IMAG(z) == 0.0))
-#define CS_COMPLEX_NEG(z) (-(creal(z) + (cimag(z) * I)))
-#define CS_COMPLEX_CONJ(z) (creal(z) - (cimag(z) * I))
+#define ABS(x)    ((x) < 0.0 ? (-x) : (x))
+
+#define COMPLEX_ZERO(z)    ((GSL_REAL(z) == 0.0 && GSL_IMAG(z) == 0.0))
+#define CS_COMPLEX_NEG(z)  __cs_complex_neg(z)
+#define CS_COMPLEX_CONJ(z) __cs_complex_conj(z)
 
 double dot_product(double *x, double *y, int n);
 gsl_complex complex_dot_product(gsl_vector_complex *x, gsl_vector_complex *y, int n);
@@ -53,5 +54,9 @@ gsl_permutation *init_permutation(int dimension);
 void gsl_to_cs_complex(cs_complex_t *dst, gsl_vector_complex *src, int dimension);
 void cs_complex_to_gsl(gsl_vector_complex *dst, cs_complex_t *src, int dimension);
 cs_complex_t pol_to_rect(double magnitude, double phase);
+gsl_complex __gsl_complex_conj(gsl_complex x);
+gsl_complex __gsl_complex_neg(gsl_complex x);
+cs_complex_t __cs_complex_neg(cs_complex_t x);
+cs_complex_t __cs_complex_conj(cs_complex_t x);
 
 #endif

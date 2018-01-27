@@ -40,7 +40,7 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 			write_ac_out_files(files, parser->ac_analysis[i], hash_table, sol_x, sweep_points_freq[step]);
 		}
 		/* Close the file descriptors for the current transient analysis */
-		for (int j = 0; j < parser->dc_analysis[i].num_nodes; j++) {
+		for (int j = 0; j < parser->ac_analysis[i].num_nodes; j++) {
 			fclose(files[j]);
 		}
 		/* Free sweep points matrix because in next AC analysis number of points might differ, we've to allocate again */

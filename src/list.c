@@ -116,10 +116,15 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 	ht_set(hash_table, &tokens[2][0]);
 	ht_set(hash_table, &tokens[3][0]);
 	sscanf(tokens[4], "%Lf", &new_node->value);
-	/* Initialize to null */
+
+	/* Initialize to null both */
 	new_node->trans_spec = NULL;
-	/* Set the transient spec if exists */
+	new_node->ac         = NULL;
+
+	/* Get the total number of tokens */
 	int num_tokens = atoi(tokens[0]);
+
+	//TODO create function to set the transient and ac specs
 	/* Check if transient or ac spec exists */
 	if (num_tokens > 4) {
 		trans_type type;
@@ -175,7 +180,7 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 					new_node->trans_spec->type = type;
 					/* Start shows the index of trans_spec tokens */
 					int start = 6;
-					/* Get the number of states in the pwl */
+					/* Get the number of states in the pwl, this differ whether AC exists or not, because of num_tokens */
 					if (AC) {
 						new_node->trans_spec->pwl->n = ((num_tokens - 3) - (start -1)) / 2;
 					}
@@ -195,13 +200,11 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 					exit(EXIT_FAILURE);
 			}
 		}
+		/* Set AC struct in case it exists in the tokens */
 		if (AC) {
 			new_node->ac = (ac_t *)malloc(sizeof(ac_t));
 			sscanf(tokens[ac_index + 1], "%lf",  &(new_node->ac->magnitude));
 			sscanf(tokens[ac_index + 2], "%lf",  &(new_node->ac->phase));
-		}
-		else {
-			new_node->ac = NULL;
 		}
 	}
 	return SUCCESS;
@@ -358,6 +361,31 @@ void free_list1(list1_t **head, list1_t **tail) {
 		free(curr->element);
 		free(curr->probe1);
 		free(curr->probe2);
+
+		/* Remove the transient spec in case it exists */
+		if (curr->trans_spec != NULL) {
+			switch (curr->trans_spec->type) {
+				case EXP:
+					free(curr->trans_spec->exp);
+					break;
+				case SIN:
+					free(curr->trans_spec->sin);
+					break;
+				case PULSE:
+					free(curr->trans_spec->pulse);
+					break;
+				case PWL:
+					free(curr->trans_spec->pwl->t);
+					free(curr->trans_spec->pwl->i);
+					free(curr->trans_spec->pwl);
+					break;
+			}
+			free(curr->trans_spec);
+		}
+		/* Remove AC struct in case it exists */
+		if (curr->ac != NULL) {
+			free(curr->ac);
+		}
 		free(curr);
 		curr = next;
 	}

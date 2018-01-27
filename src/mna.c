@@ -20,6 +20,7 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 		init_dense_matrix(mna, options);
 	}
 
+	mna->resp = NULL;
 	/* Set the preconditioner pointers to NULL */
 	mna->M 	  = mna->M_trans   = NULL; 
 	mna->M_ac = mna->M_ac_conj = NULL;
@@ -116,31 +117,20 @@ void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz) {
 	mna->sp_matrix->A = cs_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
 	assert(mna->sp_matrix->A != NULL);
 
-	mna->sp_matrix->A->nz = 0;
+	mna->sp_matrix->A->nz  = 0;
+	mna->sp_matrix->aGhC   = NULL;
+	mna->sp_matrix->sGhC   = NULL;
+	mna->sp_matrix->A_base = NULL;
+	mna->sp_matrix->G_ac   = NULL;
+
 	mna->matrix = NULL;
 
 	if (options->TRAN) {
-		mna->sp_matrix->hC   = cs_di_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
-		mna->sp_matrix->aGhC = cs_di_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
-		/* If method is Backward Euler we don't need sGhC matrix, we use hC instead */
-		if (options->BE) {
-			mna->sp_matrix->sGhC = NULL;
-		}
-		else { /* Trapezoidal method */
-			mna->sp_matrix->sGhC = cs_di_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
-		}
+		mna->sp_matrix->hC = cs_di_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
 	}
 
 	if (options->AC) {
-		mna->sp_matrix->G_ac = cs_ci_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
 		mna->sp_matrix->e_ac = (cs_complex_t *)malloc(mna->dimension * sizeof(cs_complex_t));
-	}
-	
-	if (options->TRAN || options->AC) {
-		mna->sp_matrix->A_base = cs_di_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
-	}
-	else {
-		mna->sp_matrix->A_base = NULL;
 	}
 }
 
@@ -222,9 +212,10 @@ void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tabl
 				value = curr->value;
 			}
 			/* Save the g2 element source you find, keep indexing */
-			mna->g2_indx[volt_sources_cnt].element = (char *)malloc(strlen(curr->element) * sizeof(char));
+			mna->g2_indx[volt_sources_cnt].element = (char *)malloc((strlen(curr->element) + 1) * sizeof(char));
 			assert(mna->g2_indx[volt_sources_cnt].element != NULL);
 			strcpy(mna->g2_indx[volt_sources_cnt].element, curr->element);
+
 			if (probe1_id == 0) {
 				mna->matrix->A[j][offset + volt_sources_cnt] = -1.0;
 				mna->matrix->A[offset + volt_sources_cnt][j] = -1.0;
@@ -273,7 +264,6 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 	else {
 		h = 1 / tr_step;
 	}
-
 	for (curr = index->head1; curr != NULL; curr = curr->next) {
 		int probe1_id = ht_get_id(hash_table, curr->probe1);
 		int probe2_id = ht_get_id(hash_table, curr->probe2);
@@ -353,6 +343,7 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 
 	/* Free what is no longer needed, in case it's trapezoidal method */
 	if (options->TR) {
+		free(mna->matrix->hC[0]);
 		free(mna->matrix->hC);
 	}
 }
@@ -439,8 +430,8 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 		else if (curr->type == 'L' || curr->type == 'l') {
 			/* Set the L value in the diagonal of g2 area in matrices */
 			// mna->matrix->G_ac[offset + volt_sources_cnt][offset + volt_sources_cnt] = - I * omega * curr->value;
-			z = gsl_complex_rect(0.0, omega * curr->value);
-			gsl_matrix_complex_set(mna->matrix->G_ac, offset + volt_sources_cnt, offset + volt_sources_cnt, gsl_complex_negative(z));
+			z = gsl_complex_rect(0.0, -omega * curr->value);
+			gsl_matrix_complex_set(mna->matrix->G_ac, offset + volt_sources_cnt, offset + volt_sources_cnt, z);
 			/* Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found */
 			volt_sources_cnt++;
 		}
@@ -521,7 +512,7 @@ void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 				value = curr->value;
 			}
 			/* Save the g2 element source you find, keep indexing */
-			mna->g2_indx[volt_sources_cnt].element = (char *)malloc(strlen(curr->element) * sizeof(char));
+			mna->g2_indx[volt_sources_cnt].element = (char *)malloc((strlen(curr->element) + 1) * sizeof(char));
 			assert(mna->g2_indx[volt_sources_cnt].element != NULL);
 			strcpy(mna->g2_indx[volt_sources_cnt].element, curr->element);
 			if (probe1_id == 0) {
@@ -672,6 +663,14 @@ void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_
 	list1_t *curr;
 	int volt_sources_cnt = 0;
 	
+	/*
+	 * We need to free everytime the G_ac matrix because in every sweep step we convert the A_base
+	 * into a complex sparse matrix G_ac. Thus, every time the last pointer value would be lost.
+	 */
+	if (mna->sp_matrix->G_ac != NULL) {
+		cs_ci_spfree(mna->sp_matrix->G_ac);
+	}
+
 	/* Copy the base for the AC matrix and zero-out the vector for the next step */
 	mna->sp_matrix->G_ac = cs_i_complex(mna->sp_matrix->A_base, 1);
 
@@ -730,8 +729,8 @@ void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_
 		else if (curr->type == 'L' || curr->type == 'l') {
 			/* Set the L value in the diagonal of g2 area in matrices */
 			// mna->matrix->G_ac[offset + volt_sources_cnt][offset + volt_sources_cnt] = - I * omega * curr->value;
-			z = 0.0 + (omega * curr->value * I);
-			cs_ci_entry(mna->sp_matrix->G_ac, offset + volt_sources_cnt, offset + volt_sources_cnt, CS_COMPLEX_NEG(z));
+			z = 0.0 - (omega * curr->value * I);
+			cs_ci_entry(mna->sp_matrix->G_ac, offset + volt_sources_cnt, offset + volt_sources_cnt, z);
 			/* Keep track of how many voltage sources or inductors (which are treated like voltages with 0), we have already found */
 			volt_sources_cnt++;
 		}
@@ -758,7 +757,7 @@ void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_
 
 	if (options->ITER) {
 		/* Compute the M Jacobi Preconditioner */
-		complex_jacobi_precond(mna->M_ac, NULL, C, mna->dimension, options->SPARSE);
+		complex_jacobi_precond(mna->M_ac, NULL, mna->sp_matrix->G_ac, mna->dimension, options->SPARSE);
 		vector_conjugate(mna->M_ac_conj, mna->M_ac, mna->dimension);
 	}
 }
@@ -866,6 +865,10 @@ void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_compl
 			else {
 				solve_sparse_lu(mna, matrix_ptr, x);
 			}
+		}
+		/* Free the converted e_ac to gsl in case it was allocated for AC analysis */
+		if (mna->ac_analysis_init) {
+			gsl_vector_complex_free(gsl_e_ac);
 		}
 	}
 	else { /* Dense */
@@ -1129,7 +1132,7 @@ void print_complex_vector(gsl_vector_complex *b, int dimension) {
 	gsl_complex z;
 	for (int i = 0; i < dimension; i++) {
 		z = gsl_vector_complex_get(b, i);
-		printf("% lf %s %lfi\n", GSL_REAL(z), GSL_IMAG(z) >= 0 ? "+" : "-", ABS(GSL_IMAG(z)));
+		printf("% lf %s %lfi\n", GSL_REAL(z), GSL_IMAG(z) >= 0.0 ? "+" : "-", ABS(GSL_IMAG(z)));
 	}
     printf("\n");
 }
@@ -1167,10 +1170,67 @@ cs_di *_cs_di_copy (cs_di *A) {
 /* Free all the memory allocated for the MNA system */
 void free_mna_system(mna_system_t **mna, options_t *options) {
 	/* Free everything from dense */
-	if (!options->SPARSE) {
+	if (options->SPARSE) {
+		if (options->ITER) {
+			/* This is only needed in case we have iterative solvers otherwise it is free'd inside direct methods */
+			cs_di_spfree((*mna)->sp_matrix->A);
+			if (options->AC) {
+				cs_ci_spfree((*mna)->sp_matrix->G_ac);
+			}
+			if (options->TRAN) {
+				cs_di_spfree((*mna)->sp_matrix->aGhC);
+			}
+		}
+		else { /* Direct Methods */
+			cs_di_sfree((*mna)->sp_matrix->A_symbolic);
+			cs_di_nfree((*mna)->sp_matrix->A_numeric);
+			if (options->AC) {
+				cs_ci_sfree((*mna)->sp_matrix->G_ac_symbolic);
+				cs_ci_nfree((*mna)->sp_matrix->G_ac_numeric);
+			}
+		}
+		/* In case there is an TRAN analysis in the netlist */
+		if (options->TRAN) {
+			/* sGhC only exists in Trapezoidal method */
+			if (options->TR) {
+				cs_di_spfree((*mna)->sp_matrix->sGhC);
+			}
+			/* This is free'd in the creation of the MNA in case it is Trapezoidal */
+			if (options->BE) {
+				cs_di_spfree((*mna)->sp_matrix->hC);
+			}
+		}
+		/* Free the A_base in case it exists */
+		if (options->TRAN || options->AC) {
+			cs_di_spfree((*mna)->sp_matrix->A_base);
+		}
+		/* Free the complex struct for the cs routines */
+		if (options->AC) {
+			free((*mna)->sp_matrix->e_ac);
+		}
+		/* Free the whole sp matrix struct */
+		free((*mna)->sp_matrix);
+	}
+	else { /* Free everything from sparse */
 		free((*mna)->matrix->A[0]);
 		free((*mna)->matrix->A);
 		gsl_permutation_free((*mna)->matrix->P);
+
+		/* In case there is an TRAN analysis in the netlist */
+		if (options->TRAN) {
+			free((*mna)->matrix->aGhC[0]);
+			free((*mna)->matrix->aGhC);
+			/* sGhC only exists in Trapezoidal method */
+			if (options->TR) {
+				free((*mna)->matrix->sGhC[0]);
+				free((*mna)->matrix->sGhC);
+			}
+			/* This is free'd in the creation of the MNA in case it is Trapezoidal */
+			if (options->BE) {
+				free((*mna)->matrix->hC[0]);
+				free((*mna)->matrix->hC);
+			}
+		}
 
 		/* In case there is an AC analysis in the netlist */
 		if (options->AC) {
@@ -1178,6 +1238,7 @@ void free_mna_system(mna_system_t **mna, options_t *options) {
 			gsl_matrix_complex_free((*mna)->matrix->G_ac);
 			gsl_vector_complex_free((*mna)->matrix->e_ac);
 		}
+		
 		/* Free the A_base in case it exists */
 		if (options->TRAN || options->AC) {
 			free((*mna)->matrix->A_base[0]);
@@ -1187,16 +1248,6 @@ void free_mna_system(mna_system_t **mna, options_t *options) {
 		/* Free the matrix struct */
 		free((*mna)->matrix);
 	}
-	else { /* Free everything from sparse */
-		if (!options->ITER) {
-			cs_sfree((*mna)->sp_matrix->A_symbolic);
-			cs_nfree((*mna)->sp_matrix->A_numeric);
-		}
-		else {
-			cs_spfree((*mna)->sp_matrix->A);
-		}
-		free((*mna)->sp_matrix);
-	}
 
 	/* Free the preconditioners for the iterative solvers */
 	if (options->ITER) {
@@ -1205,8 +1256,8 @@ void free_mna_system(mna_system_t **mna, options_t *options) {
 			free((*mna)->M_trans);
 		}
 		if (options->AC) {
-			free((*mna)->M_ac);
-			free((*mna)->M_ac_conj);
+			gsl_vector_complex_free((*mna)->M_ac);
+			gsl_vector_complex_free((*mna)->M_ac_conj);
 		}
 	}
 	/* Free b*/
@@ -1223,6 +1274,7 @@ void free_mna_system(mna_system_t **mna, options_t *options) {
 	if (options->TRAN) {
 		free((*mna)->resp->value);
 		free((*mna)->resp->nodes);
+		free((*mna)->resp);
 	}
 
 	/* Free the whole MNA struct */

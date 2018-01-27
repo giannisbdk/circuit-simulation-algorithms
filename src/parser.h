@@ -7,7 +7,7 @@
 #include "hash_table.h"
 
 #define DEFAULT_ITOL    0.001
-#define ANALYSIS_NUM 	25
+#define ANALYSIS_NUM 	5
 
 extern int errno;
 

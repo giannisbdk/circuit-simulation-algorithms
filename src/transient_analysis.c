@@ -48,7 +48,7 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 			memcpy(prev_sol, sol_x, mna->dimension * sizeof(double));
 		}
 		/* Close the file descriptors for the current transient analysis */
-		for (int j = 0; j < parser->dc_analysis[i].num_nodes; j++) {
+		for (int j = 0; j < parser->tr_analysis[i].num_nodes; j++) {
 		    fclose(files[j]);
 		}
 	}
@@ -212,7 +212,7 @@ double eval_pwl(pwl_t *pwl, double t) {
 			}
 		}
 		/* tn < fin_time, tn <= t <= fin_time */
-		return pwl->i[pwl->n];
+		return pwl->i[pwl->n - 1];
 	}
 }
 

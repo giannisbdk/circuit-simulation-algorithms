@@ -66,7 +66,7 @@ typedef struct sp_matrix {
 
 	/* Hold the symbolic and numeric representation of the LU factorization */
 	cs_cis *G_ac_symbolic;
-	cs_cln *G_ac_numeric;
+	cs_cin *G_ac_numeric;
 } sp_matrix_t;
 
 /* Keeps the indexing for the sources of group 2 */
