@@ -285,8 +285,8 @@ double to_degrees(double radians) {
 	return degrees;
 }
 
-/* Converts a real vector x to a complex one with 0 imaginary parts */
-void real_to_complex_vector(gsl_vector_complex *x_complex, double *x, int dimension) {
+/* Converts a real vector x to a gsl complex one with 0 imaginary parts */
+void real_to_gsl_complex_vector(gsl_vector_complex *x_complex, double *x, int dimension) {
 	/* Set a zero complex number 0 + 0i */
 	gsl_complex z = GSL_COMPLEX_ZERO;
 	for (int i = 0; i < dimension; i++) {
@@ -294,6 +294,14 @@ void real_to_complex_vector(gsl_vector_complex *x_complex, double *x, int dimens
 		GSL_SET_REAL(&z, x[i]);
 		/* Set z to v[i] */
 		gsl_vector_complex_set(x_complex, i, z);
+	}
+}
+
+/* Converts a real vector x to a complex one with 0 imaginary parts */
+void real_to_cs_complex_vector(cs_complex_t *x_complex, double *x, int dimension) {
+	for (int i = 0; i < dimension; i++) {
+		/* Set the imaginary part of x[i] to 0.0 */
+		x_complex[i] = x[i] + 0.0 * I;
 	}
 }
 

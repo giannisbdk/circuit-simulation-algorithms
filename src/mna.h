@@ -122,10 +122,12 @@ void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *ha
 void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_complex, options_t *options);
 void solve_lu(double **A, double *b, gsl_vector_view x, gsl_permutation *P, int dimension, bool is_decomp);
 void solve_complex_lu(gsl_matrix_complex *A, gsl_vector_complex *b, gsl_vector_complex *x, gsl_permutation *P, int dimension);
+void solve_sparse_lu(mna_system_t *mna, cs *A, double **x);
+void solve_complex_sparse_lu(mna_system_t *mna, cs_complex_t *x);
 void solve_cholesky(double **A, double *b, gsl_vector_view x, int dimension, bool is_decomp);
 void solve_complex_cholesky(gsl_matrix_complex *A, gsl_vector_complex *b, gsl_vector_complex *x, int dimension);
-void solve_sparse_lu(mna_system_t *mna, cs *A, double **x);
 void solve_sparse_cholesky(mna_system_t *mna, cs *A, double **x);
+void solve_complex_sparse_cholesky(mna_system_t *mna, cs_complex_t *x);
 int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *element);
 double get_response_value(list1_t *curr);
 void print_mna_system(mna_system_t *mna, options_t *options);
