@@ -35,8 +35,8 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 			mna->M_trans = init_val_vector(mna->dimension, 1.0);
 		}
 		if (options->AC) {
-			mna->M_ac		= init_gsl_complex_vector(mna->dimension);
-			mna->M_ac_conj	= init_gsl_complex_vector(mna->dimension);
+			mna->M_ac      = init_gsl_complex_vector(mna->dimension);
+			mna->M_ac_conj = init_gsl_complex_vector(mna->dimension);
 		}
 	}
 
@@ -757,6 +757,7 @@ void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_
 
 	if (options->ITER) {
 		/* Compute the M Jacobi Preconditioner */
+		gsl_vector_complex_set_all(mna->M_ac, GSL_COMPLEX_ONE);
 		complex_jacobi_precond(mna->M_ac, NULL, mna->sp_matrix->G_ac, mna->dimension, options->SPARSE);
 		vector_conjugate(mna->M_ac_conj, mna->M_ac, mna->dimension);
 	}
