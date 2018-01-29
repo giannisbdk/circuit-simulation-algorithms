@@ -104,7 +104,7 @@ void create_ac_out_files(FILE *files[], ac_analysis_t ac_analysis) {
 	/* Set the prefix name for the files */
 	char prefix[] = "ac_analysis_V(";
 	/* Will contain a string either Magnitude (voltage) or Magnitude (dB), according to the sweep type */
-	char magn_output[20] = "Magnitude ";
+	char magn_output[20];
 
 	/* Open different files for each node in plot/print array */
 	for (int j = 0; j < ac_analysis.num_nodes; j++) {
@@ -123,11 +123,11 @@ void create_ac_out_files(FILE *files[], ac_analysis_t ac_analysis) {
 		switch (ac_analysis.sweep) {
 			case LIN:
 				strcat(file_name, "_LIN");
-				strcat(magn_output, "(voltage)");
+				strcpy(magn_output, "Magnitude (voltage)");
 				break;
 			case LOG:
 				strcat(file_name, "_LOG");
-				strcat(magn_output, "(dB)");
+				strcpy(magn_output, "Magnitude (dB)");
 				break;
 			default:
 				fprintf(stderr, "Wrong sweep type.\n");
