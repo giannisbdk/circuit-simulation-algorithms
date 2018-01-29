@@ -218,9 +218,9 @@ double eval_pwl(pwl_t *pwl, double t) {
 
 /* Creates and opens output files for every node included in the current TRAN analysis */
 void create_tr_out_files(FILE *files[], tr_analysis_t tr_analysis) {
+	char file_name[MAX_FILE_NAME];
 	/* Set the prefix name for the files */
 	char prefix[] = "tr_analysis_V(";
-	char file_name[MAX_FILE_NAME];
 
 	/* Open different files for each node in plot/print array */
 	for (int j = 0; j < tr_analysis.num_nodes; j++) {

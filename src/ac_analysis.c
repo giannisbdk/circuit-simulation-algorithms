@@ -100,16 +100,16 @@ void log_sweep(double *array, double start, double end, int points) {
 
 /* Creates and opens output files for every node included in the current AC analysis */
 void create_ac_out_files(FILE *files[], ac_analysis_t ac_analysis) {
+	char file_name[MAX_FILE_NAME];
 	/* Set the prefix name for the files */
 	char prefix[] = "ac_analysis_V(";
-	char file_name[MAX_FILE_NAME];
+	/* Will contain a string either Magnitude (voltage) or Magnitude (dB), according to the sweep type */
+	char magn_output[20] = "Magnitude ";
 
 	/* Open different files for each node in plot/print array */
 	for (int j = 0; j < ac_analysis.num_nodes; j++) {
 		/* Temp buffer */
 		char name[10];
-		/* Will contain a string either Magnitude (voltage) or Magnitude (dB), according to the sweep type */
-		char magn_output[] = "Magnitude ";
 		/* Construct the file name */
 		strcpy(file_name, prefix);
 		strcat(file_name, ac_analysis.nodes[j]);

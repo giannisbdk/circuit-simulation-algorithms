@@ -104,7 +104,7 @@ def plot_transient_file(filename, ax1):
 			step_list.append(step)
 			val_list.append(val)
 
-	ax1.plot(step_list, val_list, label=v_label)
+	ax1.plot(step_list, val_list, label=v_label, linewidth=1.5)
 
 
 def plot_ac_file(filename, ax1, ax2):
@@ -137,11 +137,11 @@ def plot_ac_file(filename, ax1, ax2):
 			phase_list.append(phase)
 
 	if sweep == "LIN":
-		ax1.plot(freq_list, magn_list, label=v_label)
-		ax2.plot(freq_list, phase_list, label=v_label)
+		ax1.plot(freq_list, magn_list, label=v_label, linewidth=1.5)
+		ax2.plot(freq_list, phase_list, label=v_label, linewidth=1.5)
 	elif sweep == "LOG":
-		ax1.semilogx(freq_list, phase_list, label=v_label)
-		ax2.semilogx(freq_list, magn_list, label=v_label)
+		ax1.semilogx(freq_list, phase_list, label=v_label, linewidth=1.5)
+		ax2.semilogx(freq_list, magn_list, label=v_label, linewidth=1.5)
 	else:
 		print "Error: Sweep type '{}' from output file is wrong.".format(sweep)
 		print "Valid options (LIN, LOG)."

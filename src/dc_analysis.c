@@ -100,9 +100,10 @@ void dc_sweep(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, parser
 
 /* Creates and opens output files for every node included in the current DC sweep analysis */
 void create_dc_out_files(FILE *files[], dc_analysis_t dc_analysis) {
+    char file_name[MAX_FILE_NAME];
     /* Set the prefix name for the files */
     char prefix[] = "dc_analysis_";
-    char file_name[MAX_FILE_NAME];
+
     /* Open different files for each node in plot/print array */
     for (int j = 0; j < dc_analysis.num_nodes; j++) {
         /* Construct the file name */
