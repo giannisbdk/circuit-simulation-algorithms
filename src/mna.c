@@ -977,134 +977,141 @@ void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_compl
 	}
 }
 
-/* Solve the MNA system using LU decomposition */
+/* Solve the MNA system using LU decomposition and store the result in vector x */
 void solve_lu(double **A, double *b, gsl_vector_view x, gsl_permutation *P, int dimension, bool is_decomp) {
 	/* The sign of the permutation matrix */
 	int signum;
-	/* Allocate memory for the solution vector */
 	gsl_matrix_view view_A = gsl_matrix_view_array(A[0], dimension, dimension);
 	gsl_vector_view view_b = gsl_vector_view_array(b, dimension);
 	if (!is_decomp) {
 		/* LU decomposition on A, PA = LU */
 		gsl_linalg_LU_decomp(&view_A.matrix, P, &signum);
-		// printf("LU Matrix:\n\n");
-		// print_array(mna->matrix->A, mna->dimension);
-		// printf("Permutation Vector:\n\n");
-		// print_permutation(mna->matrix->P);
 	}
-	/* Solve the LU system */
 	gsl_linalg_LU_solve(&view_A.matrix, P, &view_b.vector, &x.vector);
 }
 
-/* Solve the MNA system using complex LU decomposition */
+/* Solve the MNA system using complex LU decomposition and store the result in vector x */
 void solve_complex_lu(gsl_matrix_complex *A, gsl_vector_complex *b, gsl_vector_complex *x, gsl_permutation *P, int dimension) {
 	/* The sign of the permutation matrix */
 	int signum;
 	/* LU decomposition on A, PA = LU */
 	gsl_linalg_complex_LU_decomp(A, P, &signum);
-	// printf("LU Matrix:\n\n");
-	// print_array(mna->matrix->A, mna->dimension);
-	// printf("Permutation Vector:\n\n");
-	// print_permutation(mna->matrix->P);
-	/* Solve the LU system */
 	gsl_linalg_complex_LU_solve(A, P, b, x);
 }
 
-/* Solves the sparse mna system with LU factorization */
+/* Solves the sparse mna system with LU factorization and store the result in vector x */
 void solve_sparse_lu(mna_system_t *mna, cs *A, double **x) {
 	double *temp_b = (double *)malloc(mna->dimension * sizeof(double));
 	memcpy(temp_b, mna->b, mna->dimension * sizeof(double));
+
 	if (!mna->is_decomp) {
 		mna->sp_matrix->A_symbolic = cs_sqr(2, A, 0);
-		mna->sp_matrix->A_numeric = cs_lu(A, mna->sp_matrix->A_symbolic, 1);
+		mna->sp_matrix->A_numeric  = cs_lu(A, mna->sp_matrix->A_symbolic, 1);
 		cs_spfree(A);
 	}
+
 	cs_ipvec(mna->sp_matrix->A_numeric->pinv, temp_b, *x, mna->dimension);
 	cs_lsolve(mna->sp_matrix->A_numeric->L, *x);
 	cs_usolve(mna->sp_matrix->A_numeric->U, *x);
 	cs_ipvec(mna->sp_matrix->A_symbolic->q, *x, temp_b, mna->dimension);
+
 	memcpy(*x, temp_b, mna->dimension * sizeof(double));
 	free(temp_b);
 }
 
-/* Solves the sparse mna system with LU factorization */
+/* Solves the sparse mna system with LU factorization and store the result in vector x */
 void solve_complex_sparse_lu(mna_system_t *mna, cs_complex_t *x) {
 	cs_complex_t *temp_b = (cs_complex_t *)malloc(mna->dimension * sizeof(cs_complex_t));
 	memcpy(temp_b, mna->sp_matrix->e_ac, mna->dimension * sizeof(cs_complex_t));
+
 	mna->sp_matrix->G_ac_symbolic = cs_ci_sqr(2, mna->sp_matrix->G_ac, 0);
-	mna->sp_matrix->G_ac_numeric = cs_ci_lu(mna->sp_matrix->G_ac, mna->sp_matrix->G_ac_symbolic, 1);
+	mna->sp_matrix->G_ac_numeric  = cs_ci_lu(mna->sp_matrix->G_ac, mna->sp_matrix->G_ac_symbolic, 1);
+
 	cs_ci_ipvec(mna->sp_matrix->G_ac_numeric->pinv, temp_b, x, mna->dimension);
 	cs_ci_lsolve(mna->sp_matrix->G_ac_numeric->L, x);
 	cs_ci_usolve(mna->sp_matrix->G_ac_numeric->U, x);
 	cs_ci_ipvec(mna->sp_matrix->G_ac_symbolic->q, x, temp_b, mna->dimension);
+
 	memcpy(x, temp_b, mna->dimension * sizeof(cs_complex_t));
 	free(temp_b);
+
+	/*
+	 * Symbolic and Numeric factorizations have to be freed in every step
+	 * because in the next step/factorization the pointers will be lost otherwise
+	 */
+	cs_ci_sfree(mna->sp_matrix->G_ac_symbolic);
+	cs_ci_nfree(mna->sp_matrix->G_ac_numeric);
 }
 
-/* Solve the MNA system using cholesky decomposition */
+/* Solve the MNA system using cholesky decomposition and store the result in vector x */
 void solve_cholesky(double **A, double *b, gsl_vector_view x, int dimension, bool is_decomp) {
-	/* Allocate memory for the solution vector */
 	gsl_matrix_view view_A = gsl_matrix_view_array(A[0], dimension, dimension);
 	gsl_vector_view view_b = gsl_vector_view_array(b, dimension);
 	if (!is_decomp) {
 		/* Cholesky decomposition A = LL^T*/
 		gsl_linalg_cholesky_decomp(&view_A.matrix);
-		// printf("Cholesky Matrix:\n\n");
-		// print_array(mna->matrix->A, mna->dimension);
-		// printf("\n\n");
 	}
-	/* Solve the cholesky system */
 	gsl_linalg_cholesky_solve(&view_A.matrix, &view_b.vector, &x.vector);
 }
 
-/* Solve the MNA system using complex cholesky decomposition */
+/* Solve the MNA system using complex cholesky decomposition and store the result in vector x */
 void solve_complex_cholesky(gsl_matrix_complex *A, gsl_vector_complex *b, gsl_vector_complex *x, int dimension) {
 	/* Cholesky decomposition A = LL^T*/
 	gsl_linalg_complex_cholesky_decomp(A);
-	// printf("Cholesky Matrix:\n\n");
-	// print_array(mna->matrix->A, mna->dimension);
-	// printf("\n\n");;
-	/* Solve the cholesky system */
 	gsl_linalg_complex_cholesky_solve(A, b, x);
 }
 
-/* Solves the sparse mna system with Cholesky factorization */
+/* Solves the sparse mna system with Cholesky factorization and store the result in vector x */
 void solve_sparse_cholesky(mna_system_t *mna, cs *A, double **x) {
 	double *temp_b = (double *)malloc(mna->dimension * sizeof(double));
 	memcpy(temp_b, mna->b, mna->dimension * sizeof(double));
+
 	if (!mna->is_decomp) {
 		mna->sp_matrix->A_symbolic = cs_schol(1, A);
-		mna->sp_matrix->A_numeric = cs_chol(A, mna->sp_matrix->A_symbolic);
+		mna->sp_matrix->A_numeric  = cs_chol(A, mna->sp_matrix->A_symbolic);
 		if (mna->sp_matrix->A_numeric == NULL || mna->sp_matrix->A_symbolic == NULL) {
 			fprintf(stderr, "\nCholesky method failed...non SPD matrix\n");
 			exit(EXIT_FAILURE);
 		}
 		cs_spfree(A);
 	}
+
 	cs_ipvec(mna->sp_matrix->A_symbolic->pinv, temp_b, *x, mna->dimension);
 	cs_lsolve(mna->sp_matrix->A_numeric->L, *x);
 	cs_ltsolve(mna->sp_matrix->A_numeric->L, *x);
 	cs_pvec(mna->sp_matrix->A_symbolic->pinv, *x, temp_b, mna->dimension);
+
 	memcpy(*x, temp_b, mna->dimension * sizeof(double));
 	free(temp_b);
 }
 
-/* Solves the sparse mna system with Cholesky factorization */
+/* Solves the sparse mna system with Cholesky factorization and store the result in vector x */
 void solve_complex_sparse_cholesky(mna_system_t *mna, cs_complex_t *x) {
 	cs_complex_t *temp_b = (cs_complex_t *)malloc(mna->dimension * sizeof(cs_complex_t));
 	memcpy(temp_b, mna->sp_matrix->e_ac, mna->dimension * sizeof(cs_complex_t));
+
 	mna->sp_matrix->G_ac_symbolic = cs_ci_schol(1, mna->sp_matrix->G_ac);
-	mna->sp_matrix->G_ac_numeric = cs_ci_chol(mna->sp_matrix->G_ac, mna->sp_matrix->G_ac_symbolic);
+	mna->sp_matrix->G_ac_numeric  = cs_ci_chol(mna->sp_matrix->G_ac, mna->sp_matrix->G_ac_symbolic);
+
 	if (mna->sp_matrix->G_ac_numeric == NULL || mna->sp_matrix->G_ac_symbolic == NULL) {
 		fprintf(stderr, "\nCholesky method failed...non SPD matrix\n");
 		exit(EXIT_FAILURE);
 	}
+
 	cs_ci_ipvec(mna->sp_matrix->G_ac_symbolic->pinv, temp_b, x, mna->dimension);
 	cs_ci_lsolve(mna->sp_matrix->G_ac_numeric->L, x);
 	cs_ci_ltsolve(mna->sp_matrix->G_ac_numeric->L, x);
 	cs_ci_pvec(mna->sp_matrix->G_ac_symbolic->pinv, x, temp_b, mna->dimension);
+
 	memcpy(x, temp_b, mna->dimension * sizeof(cs_complex_t));
 	free(temp_b);
+
+	/*
+	 * Symbolic and Numeric factorizations have to be freed in every step
+	 * because in the next step/factorization the pointers will be lost otherwise
+	 */
+	cs_ci_sfree(mna->sp_matrix->G_ac_symbolic);
+	cs_ci_nfree(mna->sp_matrix->G_ac_numeric);
 }
 
 /* Print the MNA system */
@@ -1200,29 +1207,27 @@ void print_permutation(gsl_permutation *P) {
 }
 
 /* Copy cs_di *A into a newly allocated struct */
-cs_di *_cs_di_copy (cs_di *A) {
+cs_di *_cs_di_copy(cs_di *A) {
     cs_di *C ;
     int n, triplet, nn, p, nz, *Ap, *Ai, *Cp, *Ci ;
-    double *Ax ;
-    double *Cx ;
-    if (!A || !A->x) return (NULL) ;    /* return if A NULL or pattern-only */
-    n = A->n ; Ap = A->p ; Ai = A->i ; Ax = A->x ;
-    triplet = (A->nz >= 0) ;            /* true if A is a triplet matrix */
-    nz = triplet ? A->nz : Ap [n] ;
-    C = cs_di_spalloc (A->m, n, A->nzmax, 1, triplet) ;
-    if (!C) return (NULL) ;
-    Cp = C->p ; Ci = C->i ; Cx = C->x ;
-    nn = triplet ? nz : (n+1) ;
+    double *Ax, *Cx;
+    if (!A || !A->x) return NULL;    /* return if A NULL or pattern-only */
+    n = A->n; Ap = A->p; Ai = A->i; Ax = A->x;
+    triplet = (A->nz >= 0);            /* true if A is a triplet matrix */
+    nz = triplet ? A->nz : Ap [n];
+    C = cs_di_spalloc(A->m, n, A->nzmax, 1, triplet);
+    if (!C) return NULL;
+    Cp = C->p; Ci = C->i; Cx = C->x;
+    nn = triplet ? nz : (n+1);
     for (p = 0 ; p < nz ; p++) Ci [p] = Ai [p];
     for (p = 0 ; p < nn ; p++) Cp [p] = Ap [p];
     for (p = 0 ; p < nz ; p++) Cx [p] = Ax [p];
-    if (triplet) C->nz = nz ;
-    return (C) ;
+    if (triplet) C->nz = nz;
+    return C;
 }
 
 /* Free all the memory allocated for the MNA system */
 void free_mna_system(mna_system_t **mna, options_t *options) {
-	/* Free everything from dense */
 	if (options->SPARSE) {
 		if (options->ITER) {
 			/* This is only needed in case we have iterative solvers otherwise it is free'd inside direct methods */
@@ -1235,12 +1240,15 @@ void free_mna_system(mna_system_t **mna, options_t *options) {
 			}
 		}
 		else { /* Direct Methods */
+			/*
+			 * Notice that the equivalent symbolic,numeric for complex AC are being freed inside the solvers,
+			 * because every time we're going to solve the AC MNA, we're gonna get new symbolic and numeric
+			 * factorizations. Thus, it's required to free them inside the functions/solvers.
+			 */
 			cs_di_sfree((*mna)->sp_matrix->A_symbolic);
 			cs_di_nfree((*mna)->sp_matrix->A_numeric);
 			if (options->AC) {
-				cs_ci_sfree((*mna)->sp_matrix->G_ac_symbolic);
-				cs_ci_nfree((*mna)->sp_matrix->G_ac_numeric);
-				/* Free G_ac for the last step, this is freed by create_sparse_ac_mna func in the prev steps */
+				/* Free G_ac for the last step, this is freed by create_sparse_ac_mna function in the previous steps */
 				cs_ci_spfree((*mna)->sp_matrix->G_ac);
 			}
 		}

@@ -137,6 +137,9 @@ void complex_cs_mat_vec_mul(gsl_vector_complex *Ax, cs_ci *A, gsl_vector_complex
 	cs_complex_t cs_xj, cs_axpxj;
 	gsl_complex gsl_xj, gsl_axip, gsl_axpxj;
 
+	/* Set zero to the Ax vector to avoid adding previous values */
+	gsl_vector_complex_set_zero(Ax);
+
 	/* Ax[A->i[p]] += A->x[p] * x[j] */
 	for (int j = 0; j < A->n; j++) {
 		/* Get the current complex number from the x */
@@ -160,6 +163,9 @@ void complex_cs_mat_vec_mul(gsl_vector_complex *Ax, cs_ci *A, gsl_vector_complex
 void complex_cs_mat_vec_mul_herm(gsl_vector_complex *Ax, cs_ci *A, gsl_vector_complex *x) {
 	cs_complex_t cs_axpxip, cs_xip;
 	gsl_complex gsl_xip, gsl_axj, gsl_axpxip;
+
+	/* Set zero to the Ax vector to avoid adding previous values */
+	gsl_vector_complex_set_zero(Ax);
 
 	/* Ax[j] += A->x[p] * x[A->i[p]] */
 	for (int j = 0; j < A->n; j++) {
