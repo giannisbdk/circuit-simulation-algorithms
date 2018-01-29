@@ -322,7 +322,12 @@ int complex_bi_conj_grad(gsl_matrix_complex *A, cs_ci *C,  gsl_vector_complex *x
 		/* Compute A*x and store it to Ax */
 		gsl_blas_zgemv(CblasNoTrans, GSL_COMPLEX_ONE, A, x, GSL_COMPLEX_ZERO, Ax);
 	}
-
+	
+	// printf("NEW SYSTEM %s\n", SPARSE ? "SPARSE" : "NON SPARSE");
+	// printf("b is:\n");
+	// _print_complex_vector(b, dimension);
+	// printf("Ax is:\n");
+	// _print_complex_vector(Ax, dimension);
 	/* Compute r = b - Ax */
 	/* Computes the y = ax + b, we want r = -Ax + b */
 	complex_axpy(r, GSL_COMPLEX_NEGONE, Ax, b, dimension);
@@ -335,7 +340,6 @@ int complex_bi_conj_grad(gsl_matrix_complex *A, cs_ci *C,  gsl_vector_complex *x
 	b_norm = complex_norm2(b, dimension);
 	/* Set b_norm = 1 in case it's zero to avoid seg fault */
 	b_norm = b_norm == 0.0 ? 1.0 : b_norm;
-	
 	while (iter < maxiter && (r_norm / b_norm) > itol) {
 		iter++;
 		/* Solution of the preconditioner Mz = r */
@@ -378,8 +382,8 @@ int complex_bi_conj_grad(gsl_matrix_complex *A, cs_ci *C,  gsl_vector_complex *x
 		}
 		/* omega = p_tilde * q */
 		omega = complex_dot_product(p_tilde, q, dimension);
+		
 		/* Check for Algorithm Failure */
-		// printf("omega: %lf, %lf\n", GSL_REAL(omega), GSL_IMAG(omega));
 		if (complex_abs(omega) < EPSILON) {
 			return -1;
 		}
@@ -392,12 +396,20 @@ int complex_bi_conj_grad(gsl_matrix_complex *A, cs_ci *C,  gsl_vector_complex *x
 		/* r_tilde = r_tilde - alpha_conj*q_tilde */
 		complex_axpy(r_tilde, __gsl_complex_neg(__gsl_complex_conj(alpha)), q_tilde, r_tilde, dimension);
 		r_norm = complex_norm2(r, dimension);
-		// if (iter == 1) {
-		// 	printf("%s\n", SPARSE ? "SPARSE" : "NON SPARSE");
-		// 	_print_complex_vector(Ax, dimension);
-		// 	_print_complex_vector(q, dimension);
-		// 	_print_complex_vector(q_tilde, dimension);
-		// }
+		// printf("q is:\n");
+		// _print_complex_vector(q, dimension);
+		// printf("p is:\n");
+		// _print_complex_vector(p, dimension);
+		// printf("p_tilde is:\n");
+		// _print_complex_vector(p_tilde, dimension);
+		// printf("omega (p_tilde * q) is\n");
+		// printf("%lf, %lf\n", GSL_REAL(omega), GSL_IMAG(omega));
+		// printf("q_tilde is:\n");
+		// _print_complex_vector(q_tilde, dimension);
+		
+		/* Set zero to the vectors q, q_tilde to avoid adding the prev values on the next step */
+	 	gsl_vector_complex_set_zero(q);
+		gsl_vector_complex_set_zero(q_tilde);
 	}
 
 	/* Free all the memory we allocated */
