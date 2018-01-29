@@ -5,12 +5,13 @@
 
 #include "mna.h"
 
-//TODO set all pointers to NULL at start and not individually inside functions
 /* Allocate memory for the MNA system */
 mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options, int nz) {
 	/* Allocate for the whole struct */
 	mna_system_t *mna = (mna_system_t *)malloc(sizeof(mna_system_t));
 	assert(mna != NULL);
+
+	/* Dimension will be (n-1) + m2 */
 	mna->dimension = num_nodes + num_g2_elem;
 
 	if (options->SPARSE) {
@@ -28,10 +29,8 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	/* In case we will use iterative methods allocate memory for the prerequisites */
 	if (options->ITER) {
 		// TODO PERHAPS REMOVE THE BELOW and just allocate preconditioner sets by default to 1.0 in case it founds 0.0
-		// TODO work in jacobi_precond to set 1.0 in one step with indexes and not here
 		mna->M = init_val_vector(mna->dimension, 1.0);
 		if (options->TRAN) {
-			// TODO work in jacobi_precond to set 1.0 in one step with indexes and not here
 			mna->M_trans = init_val_vector(mna->dimension, 1.0);
 		}
 		if (options->AC) {
@@ -58,15 +57,18 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 	}
 	/* Allocate the rhs vector */
 	mna->b = init_vector(mna->dimension);
+
 	/* Initialize the other fields of the mna system */
-	mna->is_decomp = false;
+	mna->is_decomp        = false;
 	mna->tr_analysis_init = false;
 	mna->ac_analysis_init = false;
-	mna->num_nodes = num_nodes;
-	mna->num_g2_elem = num_g2_elem;
+	mna->num_nodes        = num_nodes;
+	mna->num_g2_elem      = num_g2_elem;
+
 	/* Allocate a vector that holds the names of g2 elements */
 	mna->g2_indx = (g2_indx_t *)malloc(num_g2_elem * sizeof(g2_indx_t));
 	assert(mna->g2_indx != NULL);
+
 	return mna;
 }
 
@@ -76,9 +78,16 @@ void init_dense_matrix(mna_system_t *mna, options_t *options) {
 	mna->matrix = (matrix_t *)malloc(sizeof(matrix_t));
 	assert(mna->matrix != NULL);
 
-	/* Allocate for every different matrix/vector */
 	mna->matrix->A = init_array(mna->dimension, mna->dimension);
 	mna->matrix->P = init_permutation(mna->dimension);
+
+	/* Initialize to NULL everything */
+	mna->matrix->hC     = NULL;
+	mna->matrix->aGhC   = NULL;
+	mna->matrix->sGhC   = NULL;
+	mna->matrix->G_ac   = NULL;
+	mna->matrix->e_ac   = NULL;
+	mna->matrix->A_base = NULL;
 
 	mna->sp_matrix = NULL;
 
@@ -86,10 +95,7 @@ void init_dense_matrix(mna_system_t *mna, options_t *options) {
 		mna->matrix->hC   = init_array(mna->dimension, mna->dimension);
 		mna->matrix->aGhC = init_array(mna->dimension, mna->dimension);
 		/* If method is Backward Euler we don't need sGhC matrix, we use hC instead */
-		if (options->BE) {
-			mna->matrix->sGhC = NULL;
-		}
-		else { /* Trapezoidal method */
+		if (options->TR) {
 			mna->matrix->sGhC = init_array(mna->dimension, mna->dimension);
 		}
 	}
@@ -102,9 +108,6 @@ void init_dense_matrix(mna_system_t *mna, options_t *options) {
 	if (options->TRAN || options->AC) {
 		mna->matrix->A_base = init_array(mna->dimension, mna->dimension);
 	}
-	else {
-		mna->matrix->A_base = NULL;
-	}
 }
 
 /* Allocate memory for a sparse representation of MNA */
@@ -113,15 +116,17 @@ void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz) {
 	mna->sp_matrix = (sp_matrix_t *)malloc(sizeof(sp_matrix_t));
 	assert(mna->sp_matrix != NULL);
 
-	/* Allocate for every different matrix */
 	mna->sp_matrix->A = cs_spalloc(mna->dimension, mna->dimension, nz, 1, 1);
 	assert(mna->sp_matrix->A != NULL);
 
+	/* Initialize to NULL everything */
 	mna->sp_matrix->A->nz  = 0;
+	mna->sp_matrix->hC     = NULL;
 	mna->sp_matrix->aGhC   = NULL;
 	mna->sp_matrix->sGhC   = NULL;
-	mna->sp_matrix->A_base = NULL;
 	mna->sp_matrix->G_ac   = NULL;
+	mna->sp_matrix->e_ac   = NULL;
+	mna->sp_matrix->A_base = NULL;
 
 	mna->matrix = NULL;
 
@@ -1213,15 +1218,15 @@ cs_di *_cs_di_copy(cs_di *A) {
     double *Ax, *Cx;
     if (!A || !A->x) return NULL;    /* return if A NULL or pattern-only */
     n = A->n; Ap = A->p; Ai = A->i; Ax = A->x;
-    triplet = (A->nz >= 0);            /* true if A is a triplet matrix */
-    nz = triplet ? A->nz : Ap [n];
+    triplet = (A->nz >= 0);          /* true if A is a triplet matrix */
+    nz = triplet ? A->nz : Ap[n];
     C = cs_di_spalloc(A->m, n, A->nzmax, 1, triplet);
     if (!C) return NULL;
     Cp = C->p; Ci = C->i; Cx = C->x;
-    nn = triplet ? nz : (n+1);
-    for (p = 0 ; p < nz ; p++) Ci [p] = Ai [p];
-    for (p = 0 ; p < nn ; p++) Cp [p] = Ap [p];
-    for (p = 0 ; p < nz ; p++) Cx [p] = Ax [p];
+    nn = triplet ? nz : (n + 1);
+    for (p = 0; p < nz; p++) Ci[p] = Ai[p];
+    for (p = 0; p < nn; p++) Cp[p] = Ap[p];
+    for (p = 0; p < nz; p++) Cx[p] = Ax[p];
     if (triplet) C->nz = nz;
     return C;
 }
