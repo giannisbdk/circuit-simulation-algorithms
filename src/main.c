@@ -48,8 +48,6 @@ int main(int argc, char *argv[]) {
 
     /* Solve the MNA system */
     solve_mna_system(mna, &sol_x, NULL, parser->options);
-    printf("\nSolution of the MNA system:\n\n");
-    print_vector(sol_x, dimension);
 
     /* DC Operating Point to file */
     dc_operating_point(hash_table, sol_x);
