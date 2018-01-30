@@ -106,6 +106,9 @@ run_ac_sparse: main
 run_ac_iter_sparse: main
 	./main $(NLS)/ac_iter_sparse_netlist.txt
 
+run_all: main
+	./main $(NLS)/all_analyses_netlist.txt
+
 # Netlist download targets
 run_ibm1: main
 	./main $(IBM_NLS)/ibmpg1.spice

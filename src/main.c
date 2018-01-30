@@ -57,13 +57,13 @@ int main(int argc, char *argv[]) {
     /* Hold DC operating point values for transient and ac analyses */
     memcpy(dc_op, sol_x, mna->dimension * sizeof(double));
 
-    /* DC Sweep to file */
-    dc_sweep(index->head1, hash_table, mna, parser, sol_x);
+    /* DC Sweep analysis to file */
+    dc_analysis(index->head1, hash_table, mna, parser, sol_x);
 
-    /* Transient analysis */
+    /* Transient analysis to file */
     tr_analysis(hash_table, mna, parser, dc_op, sol_x);
 
-    /* AC analysis */
+    /* AC analysis to file */
     gsl_vector_complex *x_complex = init_gsl_complex_vector(mna->dimension);
     ac_analysis(index, hash_table, mna, parser, dc_op, x_complex);
 

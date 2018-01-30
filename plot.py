@@ -4,96 +4,29 @@ import os
 import sys
 
 plots_path  = "./plots"
+dc_out_path = "./"
 tr_out_path = "./"
 ac_out_path = "./"
 
 
-def create_plots_dirs(plot_path):
+def plot_dc_or_transient_file(filename, ax_tr):
 	"""
-	Creates the required directories to save the plots.
-	"""
-	try:
-		if not os.path.exists(plot_path):
-			os.makedirs(plot_path)
-	except OSError as e:
-		if e.errno != errno.EEXIST:
-			raise
-
-
-def plot_all(plot_path, out_path, prefix, a_type):
-	"""
-	Plots the output files into a single figure.
-
-	plot_path: contains the path to the figures either plots/TRAN or plots/AC
-	out_path:  contains the path to the folder which the output files reside
-	prefix:    contains the prefix of the output files either transient or ac
-	a_type:    contains the type of the analysis either transient or ac
-	"""
-
-	tran = True if a_type == "transient" else False
-
-	# Create an id from the number of figures in plots directory
-	fig_id = len([fig for fig in os.listdir(plot_path) if fig.endswith(".png")]) + 1
-
-	filenames = []
-	files = os.listdir(out_path)
-
-	for file in files:
-		if prefix in file:
-			filenames.append(file)
-
-	# Set the appropriate fields for the figure according to the analysis
-	if tran:
-		fig, ax1 = plt.subplots(nrows=1, figsize=(14, 9))
-		fig.suptitle("Transient Analysis")
-		ax1.set_xlabel("Time step (seconds)")
-		ax1.set_ylabel("Value (Voltage)")
-		ax1.grid(True)
-		fig_suffix = "_Transient_Analysis"
-	else:
-		fig, (ax2, ax1) = plt.subplots(nrows=2, figsize=(14, 9))
-		fig.suptitle("AC Analysis")
-		ax1.set_xlabel("Frequency (Hz)")
-		ax1.set_ylabel("Phase (degrees)")
-		ax2.set_xlabel("Frequency (Hz)")
-		ax2.set_ylabel("Magnitude (db)")
-		ax1.grid(True)
-		ax2.grid(True)
-		fig_suffix = "_AC_Analysis"
-
-	# Create the path that the figure is going to be saved
-	fig_path = plot_path + "/" + str(fig_id) + fig_suffix
-
-	# Plot everything and plot to single figure
-	for filename in filenames:
-		if tran:
-			plot_transient_file(filename, ax1)
-		else:
-			plot_ac_file(filename, ax1, ax2)
-
-	# Get handles and labels from one of the subplots
-	handles, labels = ax1.get_legend_handles_labels()
-	fig.legend(handles, labels, loc='center right', shadow=True)
-	fig.subplots_adjust(right=0.89)
-
-	# Save figure with a lower resolution to fit in sublime when someone opens it through it
-	plt.savefig(fig_path, dpi=85)
-	plt.show()
-
-
-def plot_transient_file(filename, ax1):
-	"""
-	Plot a single TRANSIENT output file into a figure containing
-	a single subplot ax1.
+	Plot a single dc or transient output file into a figure
+	containing a single subplot ax.
 	"""
 
 	# Get the Node name from the output file
-	v_label = filename.split("_")[2]
+	if "dc" in filename:
+		# v_label will contain .txt so we remove it [:-4]
+		v_label = filename.split("_")[3][:-4]
+	else:
+		v_label = filename.split("_")[2]
+
 	with open(filename, 'rb') as fd:
 		lines = [x.strip("\n") for x in fd.readlines()]
 
 	step_list = []
-	val_list = []
+	val_list  = []
 	pat = r"([0-9]+\.?[0-9]+)\s+(-?[0-9]+\.?[0-9]+)"
 
 	for line in lines[1:]:
@@ -104,19 +37,17 @@ def plot_transient_file(filename, ax1):
 			step_list.append(step)
 			val_list.append(val)
 
-	ax1.plot(step_list, val_list, label=v_label, linewidth=1.5)
+	ax_tr.plot(step_list, val_list, label=v_label, linewidth=1.5)
 
 
-def plot_ac_file(filename, ax1, ax2):
+def plot_ac_file(filename, ax_ac_1, ax_ac_2, sweep):
 	"""
 	Plot a single AC output file into a figure containing
 	two subplots ax1, ax2.
 	"""
 
 	# Get the Node name and the sweep type from the output file
-	tokens  = filename.split("_")
-	v_label = tokens[2]
-	sweep   = tokens[len(tokens)-1].split(".")[0]
+	v_label  = filename.split("_")[2]
 
 	with open(filename, 'rb') as fd:
 		lines = [x.strip("\n") for x in fd.readlines()]
@@ -137,79 +68,226 @@ def plot_ac_file(filename, ax1, ax2):
 			phase_list.append(phase)
 
 	if sweep == "LIN":
-		ax1.plot(freq_list, magn_list, label=v_label, linewidth=1.5)
-		ax2.plot(freq_list, phase_list, label=v_label, linewidth=1.5)
+		ax_ac_1.plot(freq_list, magn_list, label=v_label, linewidth=1.5)
+		ax_ac_2.plot(freq_list, phase_list, label=v_label, linewidth=1.5)
 	elif sweep == "LOG":
-		ax1.semilogx(freq_list, phase_list, label=v_label, linewidth=1.5)
-		ax2.semilogx(freq_list, magn_list, label=v_label, linewidth=1.5)
-	else:
-		print "Error: Sweep type '{}' from output file is wrong.".format(sweep)
+		ax_ac_1.semilogx(freq_list, phase_list, label=v_label, linewidth=1.5)
+		ax_ac_2.semilogx(freq_list, magn_list, label=v_label, linewidth=1.5)
+
+
+def plot_analyses(analyses, paths):
+	"""
+	Plots the output files from the analyses into a single figure and
+	saves the figure to the corresponding folder, indicated by the paths
+	dictionary.
+	"""
+
+	dc_files = analyses.get("DC")
+	tr_files = analyses.get("TRAN")
+	ac_files = analyses.get("AC")
+
+	# AC Analysis plot/figure
+	if len(ac_files):
+		sweep = get_sweep(ac_files)
+		fig_ac, (ax_ac_2, ax_ac_1) = plt.subplots(nrows=2, figsize=(14, 9))
+		fig_ac.suptitle("AC Analysis")
+		ax_ac_1.set_xlabel("Frequency (Hz)")
+		ax_ac_1.set_ylabel("Phase (degrees)")
+		ax_ac_2.set_xlabel("Frequency (Hz)")
+		if sweep == "LIN":
+			ax_ac_2.set_ylabel("Magnitude (volts)")
+		else:
+			ax_ac_2.set_ylabel("Magnitude (dB)")
+		ax_ac_1.grid(True)
+		ax_ac_2.grid(True)
+		fig_ac_suffix = "_AC_Analysis"
+
+		# Plot everything into a figure
+		for file in ac_files:
+			plot_ac_file(file, ax_ac_1, ax_ac_2, sweep)
+
+		# Create and adjust the legend
+		ac_handles, ac_labels = ax_ac_1.get_legend_handles_labels()
+		fig_ac.legend(ac_handles, ac_labels, loc='center right', shadow=True)
+		fig_ac.subplots_adjust(right=0.89)
+
+		# Save figure to path
+		ac_plot_path = paths.get("AC")
+		fig_id = len([fig for fig in os.listdir(ac_plot_path) if fig.endswith(".png")]) + 1
+		fig_ac.savefig(ac_plot_path + str(fig_id) + fig_ac_suffix)
+
+	# TRAN Analysis plot/figure
+	if len(tr_files):
+		fig_tr, ax_tr = plt.subplots(nrows=1, figsize=(14, 9))
+		fig_tr.suptitle("Transient Analysis")
+		ax_tr.set_xlabel("Time step (seconds)")
+		ax_tr.set_ylabel("Value (volts)")
+		ax_tr.grid(True)
+		fig_tr_suffix = "_Transient_Analysis"
+
+		# Plot everything into a figure
+		for file in tr_files:
+			plot_dc_or_transient_file(file, ax_tr)
+
+		# Create and adjust the legend
+		tr_handles, tr_labels = ax_tr.get_legend_handles_labels()
+		fig_tr.legend(tr_handles, tr_labels, loc='center right', shadow=True)
+		fig_tr.subplots_adjust(right=0.89)
+
+		# Save figure to path
+		tr_plot_path = paths.get("TRAN")
+		fig_id = len([fig for fig in os.listdir(tr_plot_path) if fig.endswith(".png")]) + 1
+		fig_tr.savefig(tr_plot_path + str(fig_id) + fig_tr_suffix)
+
+	# DC Analysis plot/figure
+	if len(dc_files):
+		fig_dc, ax_dc = plt.subplots(nrows=1, figsize=(14, 9))
+		fig_dc.suptitle("DC Analysis")
+		ax_dc.set_xlabel("Voltage step (volts)")
+		ax_dc.set_ylabel("Value (volts)")
+		ax_dc.grid(True)
+		fig_dc_suffix = "_DC_Analysis"
+
+		# Plot everything into a figure
+		for file in dc_files:
+			plot_dc_or_transient_file(file, ax_dc)
+
+		# Create and adjust the legend
+		dc_handles, dc_labels = ax_dc.get_legend_handles_labels()
+		fig_dc.legend(dc_handles, dc_labels, loc='center right', shadow=True)
+		fig_dc.subplots_adjust(right=0.89)
+
+		# Save figure to path
+		dc_plot_path = paths.get("DC")
+		fig_id = len([fig for fig in os.listdir(dc_plot_path) if fig.endswith(".png")]) + 1
+		fig_dc.savefig(dc_plot_path + str(fig_id) + fig_dc_suffix)
+
+	# Show all the created figures
+	plt.show()
+
+
+def get_analyses():
+	"""
+	Checks the output path for every analysis DC, TRAN or AC for output files
+	and returns a dictionary that includes these files for every analysis.
+	"""
+
+	analyses = {}
+	dc_files = []
+	tr_files = []
+	ac_files = []
+
+	dc_prefix = "dc_analysis_"
+	tr_prefix = "tr_analysis_"
+	ac_prefix = "ac_analysis_"
+
+	dc_path_files = os.listdir(dc_out_path)
+	tr_path_files = os.listdir(tr_out_path)
+	ac_path_files = os.listdir(ac_out_path)
+
+	for file in dc_path_files:
+		if dc_prefix in file:
+			dc_files.append(file)
+
+	for file in tr_path_files:
+		if tr_prefix in file:
+			tr_files.append(file)
+
+	for file in ac_path_files:
+		if ac_prefix in file:
+			ac_files.append(file)
+
+	analyses["DC"]   = dc_files
+	analyses["TRAN"] = tr_files
+	analyses["AC"]   = ac_files
+
+	return analyses
+
+def check_analyses(analyses):
+	"""
+	Given the analyses dictionary checks its values which are lists
+	for output files. In case all values/lists are empty i.e. False
+	it terminates the program.
+	"""
+
+	if not any(analyses.values()):
+		print "Error: Can't find any output files either for DC, TRAN or AC analysis."
+		sys.exit(0)
+
+
+def get_sweep(ac_files):
+	"""
+	Given the ac_files checks and returns the type of the sweep, either LIN or LOG.
+	"""
+
+	sweep = None
+	for file in ac_files:
+		if "LIN" in file:
+			sweep = "LIN"
+			break
+		elif "LOG" in file:
+			sweep = "LOG"
+			break
+
+	if sweep is None:
+		print "Error: Sweep type from output file is wrong."
 		print "Valid options (LIN, LOG)."
 		sys.exit(0)
 
+	return sweep
 
-def out_exist(out_path, prefix):
+
+def get_paths_create_folders(analyses):
 	"""
-	Checks if there are any transient/ac output files in the
-	out_path directory and returns the appropriate value
-	"""
-
-	files = os.listdir(out_path)
-	found = False
-	for file in files:
-		if prefix in file:
-			found = True
-	return found
-
-
-def get_options(analysis):
-	"""
-	Returns a tuple with the plot_path, out_path, prefix and type of analysis
-	according to the analysis string givem from the cmd.
+	Creates the required folders to store the figures after the plot is done.
+	And returns the path dictionary that contains the paths to that folders.
 	"""
 
-	analysis = analysis.upper()
+	paths   = {}
+	lists   = []
+	dc_list = analyses.get("DC")
+	tr_list = analyses.get("TRAN")
+	ac_list = analyses.get("AC")
 
-	if analysis == "TRAN" or analysis == "TR":
-		plot_path = plots_path + "/" + "TRAN"
-		out_path  = tr_out_path
-		prefix    = "tr_analysis_"
-		a_type    = "transient"
-	elif analysis == "AC":
-		plot_path = plots_path + "/" + "AC"
-		out_path  = ac_out_path
-		prefix    = "ac_analysis_"
-		a_type    = "ac"
-	else:
-		print "Error: Wrong input type '{}'".format(analysis)
-		print "Try again, valid options are TR,TRAN or AC, either uppercase or lowercase or mixed."
-		sys.exit(0)
+	if len(dc_list):
+		paths["DC"] = plots_path + "/DC/"
 
-	return (plot_path, out_path, prefix, a_type)
+	if len(tr_list):
+		paths["TRAN"] = plots_path + "/TRAN/"
+
+	if len(ac_list):
+		paths["AC"] = plots_path + "/AC/"
+
+	flag = False
+	for path in paths.values():
+		if not os.path.exists(path):
+			flag = True
+			os.makedirs(path)
+
+	if flag:
+		print "\nCreating plot directories..........OK",
+
+	return paths
 
 
 def main():
-	input_message = "\n--- Input can be either lowercase or uppercase or mixed ---\n"\
-					"What would you like to plot?\n"\
-					"Valid options: [TR, TRAN, AC]\n"
-	try:
-		analysis = raw_input(input_message)
 
-		plot_path, out_path, prefix, a_type = get_options(analysis)
+	# Get the analyses dictionary
+	analyses = get_analyses()
 
-		if not out_exist(out_path, prefix):
-			print "Error: Cannot find any {} output files.".format(a_type)
-			sys.exit(0)
+	# Check for errors
+	check_analyses(analyses)
 
-		print "\nCreating plots directory...........OK"
-		create_plots_dirs(plot_path)
+	paths = get_paths_create_folders(analyses)
 
-		print "Plotting requested analysis........OK"
-		plot_all(plot_path, out_path, prefix, a_type)
+	print "\nPlotting requested analyses........OK",
 
-		print "Saving figure to plots directory...OK"
-	except KeyboardInterrupt:
-		sys.exit(0)
+	plot_analyses(analyses, paths)
+
+	print "\nSaving figures to directories......OK"
 
 if __name__ == '__main__':
-	main()
+	try:
+		main()
+	except KeyboardInterrupt:
+		sys.exit(0)
