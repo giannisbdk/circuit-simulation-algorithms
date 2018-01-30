@@ -242,7 +242,8 @@ void create_tr_out_files(FILE *files[], tr_analysis_t tr_analysis) {
 			fprintf(stderr, "Error opening file: %s\n", strerror(errno));
 			exit(EXIT_FAILURE);
 		}
-		fprintf(files[j], "%-30s%-30s\n", "Time (seconds)", "Value (volts)");
+		fprintf(files[j], "%-30s%-30s\n", "Time (s)", "Voltage (V)");
+		fprintf(files[j], "-----------------------------------------\n");
 	}
 }
 

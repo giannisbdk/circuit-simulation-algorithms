@@ -92,10 +92,10 @@ def plot_analyses(analyses, paths):
 		fig_ac, (ax_ac_2, ax_ac_1) = plt.subplots(nrows=2, figsize=(14, 9))
 		fig_ac.suptitle("AC Analysis")
 		ax_ac_1.set_xlabel("Frequency (Hz)")
-		ax_ac_1.set_ylabel("Phase (degrees)")
+		ax_ac_1.set_ylabel(r"Phase ($^0$)")
 		ax_ac_2.set_xlabel("Frequency (Hz)")
 		if sweep == "LIN":
-			ax_ac_2.set_ylabel("Magnitude (volts)")
+			ax_ac_2.set_ylabel("Magnitude (V)")
 		else:
 			ax_ac_2.set_ylabel("Magnitude (dB)")
 		ax_ac_1.grid(True)
@@ -120,8 +120,8 @@ def plot_analyses(analyses, paths):
 	if len(tr_files):
 		fig_tr, ax_tr = plt.subplots(nrows=1, figsize=(14, 9))
 		fig_tr.suptitle("Transient Analysis")
-		ax_tr.set_xlabel("Time step (seconds)")
-		ax_tr.set_ylabel("Value (volts)")
+		ax_tr.set_xlabel("Time (s)")
+		ax_tr.set_ylabel("Voltage (V)")
 		ax_tr.grid(True)
 		fig_tr_suffix = "_Transient_Analysis"
 
@@ -143,8 +143,8 @@ def plot_analyses(analyses, paths):
 	if len(dc_files):
 		fig_dc, ax_dc = plt.subplots(nrows=1, figsize=(14, 9))
 		fig_dc.suptitle("DC Analysis")
-		ax_dc.set_xlabel("Voltage step (volts)")
-		ax_dc.set_ylabel("Value (volts)")
+		ax_dc.set_xlabel("Voltage sweep (V)")
+		ax_dc.set_ylabel("Voltage (V)")
 		ax_dc.grid(True)
 		fig_dc_suffix = "_DC_Analysis"
 
@@ -211,7 +211,7 @@ def check_analyses(analyses):
 	"""
 
 	if not any(analyses.values()):
-		print "Error: Can't find any output files either for DC, TRAN or AC analysis."
+		print "Error: Can't find any output files either from DC, TRAN or AC analysis."
 		sys.exit(0)
 
 

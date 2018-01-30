@@ -16,7 +16,8 @@ void dc_operating_point(hash_table_t *hash_table, double *sol_x) {
         fprintf(stderr, "Error opening file: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-    fprintf(file_out, "%-30s%-30s\n", "Node", "Value (voltage)");
+    fprintf(file_out, "%-30s%-30s\n", "Node", "Voltage (V)");
+    fprintf(file_out, "-----------------------------------------\n");
     for (int i = 0; i < hash_table->size; i++) {
         for (curr = hash_table->table[i]; curr != NULL; curr = curr->next) {
             /* Get node name */
@@ -118,7 +119,8 @@ void create_dc_out_files(FILE *files[], dc_analysis_t dc_analysis) {
             fprintf(stderr, "Error opening file: %s\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
-        fprintf(files[j], "%-30s%-30s\n", "Step (voltage)", "Value (voltage)");
+        fprintf(files[j], "%-30s%-30s\n", "Voltage Sweep (V)", "Voltage (V)");
+        fprintf(files[j], "-----------------------------------------\n");
     }
 }
 

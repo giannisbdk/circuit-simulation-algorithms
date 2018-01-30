@@ -103,8 +103,8 @@ void create_ac_out_files(FILE *files[], ac_analysis_t ac_analysis) {
 	char file_name[MAX_FILE_NAME];
 	/* Set the prefix name for the files */
 	char prefix[] = "ac_analysis_V(";
-	/* Will contain a string either Magnitude (voltage) or Magnitude (dB), according to the sweep type */
-	char magn_output[18];
+	/* Will contain a string either Magnitude (V) or Magnitude (dB), according to the sweep type */
+	char magn_output[15];
 
 	/* Open different files for each node in plot/print array */
 	for (int j = 0; j < ac_analysis.num_nodes; j++) {
@@ -123,7 +123,7 @@ void create_ac_out_files(FILE *files[], ac_analysis_t ac_analysis) {
 		switch (ac_analysis.sweep) {
 			case LIN:
 				strcat(file_name, "_LIN");
-				strcpy(magn_output, "Magnitude (volts)");
+				strcpy(magn_output, "Magnitude (V)");
 				break;
 			case LOG:
 				strcat(file_name, "_LOG");
@@ -140,7 +140,8 @@ void create_ac_out_files(FILE *files[], ac_analysis_t ac_analysis) {
 			fprintf(stderr, "Error opening file: %s\n", strerror(errno));
 			exit(EXIT_FAILURE);
 		}
-		fprintf(files[j], "%-30s%-30s%-30s\n", "Frequency (hertz)", magn_output, "Phase (degrees)");
+		fprintf(files[j], "%-30s%-30s%-30s\n", "Frequency (Hz)", magn_output, "Phase (degrees)");
+		fprintf(files[j], "---------------------------------------------------------------------------\n");
 	}
 }
 

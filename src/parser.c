@@ -299,7 +299,7 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
     printf("\nFinished parsing %d circuit elements.\n", index->size1 + index->size2);
     print_options(parser->options);
     print_netlist_info(parser->netlist);
-    print_dc_analysis_options(parser->dc_analysis, dc_counter, tr_counter, ac_counter);
+    print_dc_analysis_options(parser->dc_analysis, dc_counter);
     print_tr_analysis_options(parser->tr_analysis, tr_counter);
     print_ac_analysis_options(parser->ac_analysis, ac_counter);
 }
@@ -328,7 +328,7 @@ void print_netlist_info(netlist_t *netlist) {
 }
 
 /* Prints the dc analysis options */
-void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter, int tr_counter, int ac_counter) {
+void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter) {
     if (dc_counter <= 0) return;
     printf("\n--- DC Analysis Summary ---\n");
     for (int i = 0; i < dc_counter; i++) {
@@ -342,15 +342,12 @@ void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter, int t
         }
         printf("\n");
     }
-    if (!tr_counter && !ac_counter) {
-        printf("\n");
-    }
 }
 
 /* Prints the transient analysis options */
 void print_tr_analysis_options(tr_analysis_t *tr_analysis, int tr_counter) {
     if (tr_counter <= 0) return;
-    printf("\n--- TRANSIENT Analysis Summary ---\n");
+    printf("\n--- Transient Analysis Summary ---\n");
     for (int i = 0; i < tr_counter; i++) {
         printf("Time Step:  %lf\n", tr_analysis[i].time_step);
         printf("Final Time: %lf\n", tr_analysis[i].fin_time);
@@ -360,7 +357,6 @@ void print_tr_analysis_options(tr_analysis_t *tr_analysis, int tr_counter) {
         }
         printf("\n");
     }
-    printf("\n");
 }
 
 /* Prints the dc analysis options */
@@ -378,7 +374,6 @@ void print_ac_analysis_options(ac_analysis_t *ac_analysis, int ac_counter) {
         }
         printf("\n");
     }
-    printf("\n");
 }
 
 /* Free all the memory we allocated for the parser */

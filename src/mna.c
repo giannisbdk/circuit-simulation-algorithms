@@ -153,7 +153,7 @@ void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 			create_dense_trans_mna(mna, index, hash_table, options, tr_step, offset);
 		}
 	}
-	printf("Creation of MNA system...OK\n");
+	printf("\nCreation of MNA system...OK\n");
 }
 
 /* Constructs the AC MNA system either sparse or dense for AC analysis */
