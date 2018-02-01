@@ -143,17 +143,21 @@ void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz) {
 void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset) {
 	if (options->SPARSE) {
 		create_sparse_mna(mna, index, hash_table, options, offset);
-		if (options->TRAN) {
-			create_sparse_trans_mna(mna, index, hash_table, options, tr_step, offset);
-		}
 	}
 	else {
 		create_dense_mna(mna, index, hash_table, options, offset);
-		if (options->TRAN) {
-			create_dense_trans_mna(mna, index, hash_table, options, tr_step, offset);
-		}
 	}
 	printf("\nCreation of MNA system...OK\n");
+}
+
+/* Constructs the Transient MNA system either sparse or dense for Transient analysis */
+void create_tr_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double tr_step) {
+	if(options->SPARSE) {
+		create_sparse_trans_mna(mna, index, hash_table, options, offset, tr_step);
+	}
+	else {
+		create_dense_trans_mna(mna, index, hash_table, options, offset, tr_step);
+	}
 }
 
 /* Constructs the AC MNA system either sparse or dense for AC analysis */
@@ -257,7 +261,7 @@ void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tabl
 }
 
 /* Constructs the dense transient MNA system */
-void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset) {
+void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double tr_step) {
 	list1_t *curr;
 	double value, h;
 	int volt_sources_cnt = 0;
@@ -269,6 +273,7 @@ void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *has
 	else {
 		h = 1 / tr_step;
 	}
+
 	for (curr = index->head1; curr != NULL; curr = curr->next) {
 		int probe1_id = ht_get_id(hash_table, curr->probe1);
 		int probe2_id = ht_get_id(hash_table, curr->probe2);
@@ -543,8 +548,14 @@ void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 	}
 
 	/* Copy the data from A to A_base before LU factorization to build matrices in AC */
-	if (options->AC) {
+	if (options->AC || options->TRAN) {
 		mna->sp_matrix->A_base = _cs_di_copy(mna->sp_matrix->A);
+		if (options->TRAN) {
+			cs *A_base_comp = cs_compress(mna->sp_matrix->A_base);
+			cs_spfree(mna->sp_matrix->A_base);
+			mna->sp_matrix->A_base = A_base_comp;
+			cs_dupl(mna->sp_matrix->A_base);
+		}
 	}
 
 	/* Convert to compressed-column format (CCF) from triplet */
@@ -559,7 +570,7 @@ void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_tab
 	}
 }
 
-void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset) {
+void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double tr_step) {
 	list1_t *curr;
 	double value, h;
 	int volt_sources_cnt = 0;
@@ -645,14 +656,14 @@ void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *ha
 
 	/* Compute the matrices G + 1/h*C and G - 2/h*C */
 	/* cs_add takes compressed column matrices, the result is also compressed column matrix */
-	mna->sp_matrix->aGhC = cs_add(mna->sp_matrix->A, mna->sp_matrix->hC, 1, 1);
+	mna->sp_matrix->aGhC = cs_add(mna->sp_matrix->A_base, mna->sp_matrix->hC, 1, 1);
 	assert(mna->sp_matrix->aGhC != NULL);
 
 	/* In case Trapezoidal method is specified */
 	if (options->TR) {
 		/* cs_add takes compressed column matrices, the result is also compressed column matrix */
-		mna->sp_matrix->sGhC = cs_add(mna->sp_matrix->A, mna->sp_matrix->hC, 1, -1);
-		assert(mna->sp_matrix->aGhC != NULL);
+		mna->sp_matrix->sGhC = cs_add(mna->sp_matrix->A_base, mna->sp_matrix->hC, 1, -1);
+		assert(mna->sp_matrix->sGhC != NULL);
 		/* Free what is no longer needed */
 		cs_spfree(mna->sp_matrix->hC);
 	}

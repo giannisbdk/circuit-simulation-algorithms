@@ -112,13 +112,14 @@ mna_system_t *init_mna_system(int num_nodes, int num_g2_elem, options_t *options
 void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz);
 void init_dense_matrix(mna_system_t *mna, options_t *options);
 void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
+void create_tr_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double tr_step);
 void create_ac_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega);
 void create_sparse_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset);
 void create_dense_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset);
-void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
+void create_dense_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double tr_step);
 void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega);
 void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double omega);
-void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset);
+void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, int offset, double tr_step);
 void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_complex, options_t *options);
 void solve_lu(double **A, double *b, gsl_vector_view x, gsl_permutation *P, int dimension, bool is_decomp);
 void solve_complex_lu(gsl_matrix_complex *A, gsl_vector_complex *b, gsl_vector_complex *x, gsl_permutation *P, int dimension);

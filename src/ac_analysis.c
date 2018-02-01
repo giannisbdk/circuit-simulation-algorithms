@@ -9,8 +9,8 @@
 void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser,
 				 double *dc_op, gsl_vector_complex *sol_x) {
 	/* Set the flag that we're currently on an AC analysis */
-	int ac_counter = parser->netlist->ac_counter;
 	mna->ac_analysis_init = true;
+	int ac_counter = parser->netlist->ac_counter;
 
 	/* Run all the AC analysis according to the ac_counter */
 	for (int i = 0; i < ac_counter; i++) {

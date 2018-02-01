@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     dc_analysis(index->head1, hash_table, mna, parser, sol_x);
 
     /* Transient analysis to file */
-    tr_analysis(hash_table, mna, parser, dc_op, sol_x);
+    tr_analysis(index, hash_table, mna, parser, dc_op, sol_x);
 
     /* AC analysis to file */
     gsl_vector_complex *x_complex = init_gsl_complex_vector(mna->dimension);

@@ -4,25 +4,31 @@
 #include "transient_analysis.h"
 
 /* Do transient analysis */
-void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, double *init_sol, double *sol_x) {
-	/* Clear the decomposition flag for the mna system */
-	mna->is_decomp = false;
+void tr_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, double *init_sol, double *sol_x) {
+	/* Set the flag that we're currently on an Transient analysis */
 	mna->tr_analysis_init = true;
-
-	/* b is the RHS of the trapezoidal/backward euler */
-	double *prev_sol = init_vector(mna->dimension);
-	double *curr_response = init_vector(mna->dimension);
 	double *prev_response = NULL;
+	int tr_counter = parser->netlist->tr_counter;
 
-	/* In case it is trapezoidal method previous response e(tkn-1) is required */
-	if (parser->options->TR) {
-		prev_response = init_vector(mna->dimension);
-	}
-
-	for (int i = 0; i < parser->netlist->tr_counter; i++) {
+	for (int i = 0; i < tr_counter; i++) {
 		/* Create an array with files for every node and create/open them */
 		FILE *files[parser->tr_analysis[i].num_nodes];
 		create_tr_out_files(files, parser->tr_analysis[i]);
+
+		/* Clear the decomposition flag for the mna system */
+		mna->is_decomp = false;
+		mna->tr_analysis_init = true;
+
+		/* b is the RHS of the trapezoidal/backward euler */
+		double *prev_sol = init_vector(mna->dimension);
+		double *curr_response = init_vector(mna->dimension);
+
+		/* In case it is trapezoidal method previous response e(tkn-1) is required */
+		if (parser->options->TR) {
+			prev_response = init_vector(mna->dimension);
+		}
+
+		create_tr_mna_system(mna, index, hash_table, parser->options, parser->netlist->num_nodes, parser->tr_analysis[i].time_step);
 
 		/* Store the initial values to the prev_ vectors */
 		memcpy(prev_sol, init_sol, mna->dimension * sizeof(double));
@@ -31,14 +37,14 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 		}
 
 		/* Find how many steps are required */
-		int n_steps = parser->tr_analysis->fin_time / parser->tr_analysis->time_step;
+		int n_steps = parser->tr_analysis[i].fin_time / parser->tr_analysis[i].time_step;
 
 		for (int step = 0; step <= n_steps; step++) {
 			if (parser->options->TR) {
-				set_trapezoidal_rhs(mna, curr_response, prev_response, prev_sol, parser->tr_analysis->time_step, step, parser->options->SPARSE);
+				set_trapezoidal_rhs(mna, curr_response, prev_response, prev_sol, parser->tr_analysis[i].time_step, step, parser->options->SPARSE);
 			}
 			else {
-				set_backward_euler_rhs(mna, curr_response, prev_sol, parser->tr_analysis->time_step, step, parser->options->SPARSE);
+				set_backward_euler_rhs(mna, curr_response, prev_sol, parser->tr_analysis[i].time_step, step, parser->options->SPARSE);
 			}
 			/* Solve the system */
 			solve_mna_system(mna, &sol_x, NULL, parser->options);
@@ -51,21 +57,67 @@ void tr_analysis(hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, 
 		for (int j = 0; j < parser->tr_analysis[i].num_nodes; j++) {
 		    fclose(files[j]);
 		}
+
+		if (i < (tr_counter - 1)) { /* Means that we have another transient analysis to do, if not they'll be freed from free_mna_system */
+			init_transient_state(mna, parser, mna->dimension);
+		}
+
+		/* Free everything we allocated for this step */
+		free(prev_sol);
+		free(curr_response);
+		if (parser->options->TR) {
+			free(prev_response);
+		}
 	}
 
 	/* Set flag to false to indicate that we're no longer inside TRANSIENT analysis */
 	mna->tr_analysis_init = false;
-	if (parser->netlist->tr_counter) {
+	if (tr_counter) {
 		printf("Transient Analysis.......OK\n");
 	}
+}
 
-	/* Free everything we allocated */
-	free(prev_sol);
-	free(curr_response);
-	if (parser->options->TR) {
-		free(prev_response);
+/* Initialize the two fields of resp_t struct, nodes and value */ 
+void init_transient_state(mna_system_t *mna, parser_t *parser, int dimension) {
+	for (int i = 0; i < dimension; i++) {
+		/* Initialize hC[i][j] to zero to have it ready for the next transient analysis only for dense matrices and BE method */
+		if (!parser->options->SPARSE && parser->options->BE) {
+			for (int j = 0; j < dimension; i++) {
+				mna->matrix->hC[i][j] = 0.0;
+			}
+		}
+		/* Initialize nodes and value to zero to have it ready for the next transient analysis */
+		mna->resp->nodes[i] = NULL;
+		mna->resp->value[i] = 0.0;
+	}
+	if (parser->options->SPARSE) { /* Sparse Matrices */
+		if (parser->options->ITER) {
+			cs_di_spfree(mna->sp_matrix->aGhC);
+		}
+		else {
+			cs_di_sfree(mna->sp_matrix->A_symbolic);
+			cs_di_nfree(mna->sp_matrix->A_numeric);
+		}
+		/* sGhC only exists in Trapezoidal method */
+		if (parser->options->TR) {
+			cs_di_spfree(mna->sp_matrix->sGhC);
+			
+		}
+		if (parser->options->BE) {
+			cs_di_spfree(mna->sp_matrix->hC);
+		}
+		/* Create hC, because it was deallocated in create_dense_transe_mna for TR method, to have it ready for the next transient analysis */
+		/* Create hC, because it must initialized again for BE method, to have it ready for the next transient analysis */
+		mna->sp_matrix->hC = cs_di_spalloc(mna->dimension, mna->dimension, parser->netlist->nz, 1, 1);
+	}
+	else { /* Dense Matrices */
+		if (parser->options->TR) {
+			/* Create hC, because it was deallocated in create_dense_transe_mna for TR method, to have it ready for the next transient analysis */
+			mna->matrix->hC = init_array(mna->dimension, mna->dimension);
+		}
 	}
 }
+
 
 /*
  * Computes and stores the right hand side of the trapezoidal method at vector mna->b
