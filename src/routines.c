@@ -114,7 +114,7 @@ void mat_vec_mul_trans(double *Ax, double **A, double *x, int n) {
 
 /* Multiplies matrix A with vector x and stores the reuslt in supplied vector Ax */
 void cs_mat_vec_mul(double *Ax, cs *A, double *x) {
-	zero_out_vec(Ax, A->n);
+	zero_out_vector(Ax, A->n);
 	for (int j = 0; j < A->n; j++) {
 		for (int p = A->p[j]; p < A->p[j+1]; p++) {
 			Ax[A->i[p]] += A->x[p] * x[j];
@@ -124,7 +124,7 @@ void cs_mat_vec_mul(double *Ax, cs *A, double *x) {
 
 /* Multiplies matrix A with vector x and stores the reuslt in supplied vector Ax */
 void cs_mat_vec_mul_trans(double *Ax, cs *A, double *x) {
-	zero_out_vec(Ax, A->n);
+	zero_out_vector(Ax, A->n);
 	for (int j = 0; j < A->n; j++) {
 		for (int p = A->p[j]; p < A->p[j+1]; p++) {
 			Ax[j] += A->x[p] * x[A->i[p]];
@@ -261,9 +261,18 @@ void complex_precond_solve(gsl_vector_complex *M_fin, gsl_vector_complex *M, gsl
 }
 
 /* Zero outs the supplied vector x */
-void zero_out_vec(double *x, int dimension) {
+void zero_out_vector(double *x, int dimension) {
 	for (int i = 0; i < dimension; i++) {
 		x[i] = 0.0;
+	}
+}
+
+/* Zero outs the supplied 2d matrix */
+void zero_out_matrix(double **matrix, int row, int col) {
+	for (int i = 0; i < row; i++) {
+		for (int j = 0; j < col; j++) {
+			matrix[i][j] = 0.0;
+		}
 	}
 }
 

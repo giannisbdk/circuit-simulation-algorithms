@@ -40,8 +40,9 @@ void dc_operating_point(hash_table_t *hash_table, double *sol_x) {
 
 /* DC Sweep analysis and outputs the results to a file */
 void dc_analysis(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, double *sol_x) {
-    /* Cycle through dc analyisis targets */
-    for (int i = 0; i < parser->netlist->dc_counter; i++) {
+    /* Run all the DC analyses according to dc_counter */
+    int dc_counter = parser->netlist->dc_counter;
+    for (int i = 0; i < dc_counter; i++) {
         list1_t *curr;
         for (curr = head; curr != NULL; curr = curr->next) {
             /* Find the voltage source for the analysis */
@@ -59,7 +60,7 @@ void dc_analysis(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, par
 
                 /* We need to zero out the sol_x vector from the previous operating point analysis value */
                 int size = parser->netlist->num_nodes + parser->netlist->num_g2_elem;
-                zero_out_vec(sol_x, size);
+                zero_out_vector(sol_x, size);
 
                 //TODO Add a method in mna_dc.c to set the vector, so that we don't copy-pate the below
                 for (int step = 0; step <= n_steps; step++) {
@@ -94,7 +95,7 @@ void dc_analysis(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, par
             }
         }
     }
-    if (parser->netlist->dc_counter) {
+    if (dc_counter) {
         printf("DC Analysis..............OK\n");
     }
 }

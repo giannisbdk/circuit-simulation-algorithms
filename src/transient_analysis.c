@@ -8,19 +8,23 @@ void tr_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 	/* Set the flag that we're currently on an Transient analysis */
 	mna->tr_analysis_init = true;
 	double *prev_response = NULL;
-	int tr_counter = parser->netlist->tr_counter;
 
+	/* Run all the TRAN analyses according to tr_counter */
+	int tr_counter = parser->netlist->tr_counter;
 	for (int i = 0; i < tr_counter; i++) {
 		/* Create an array with files for every node and create/open them */
 		FILE *files[parser->tr_analysis[i].num_nodes];
 		create_tr_out_files(files, parser->tr_analysis[i]);
 
-		/* Clear the decomposition flag for the mna system */
+		/*
+		 * This flag has to be set to false in each transient analysis in order to
+		 * get the new decomposition of the new transient MNA system,
+		 * in case we've got direct methods. (LU, Choplesky)
+		 */
 		mna->is_decomp = false;
-		mna->tr_analysis_init = true;
 
-		/* b is the RHS of the trapezoidal/backward euler */
-		double *prev_sol = init_vector(mna->dimension);
+		/* Allocate the required vectors */
+		double *prev_sol      = init_vector(mna->dimension);
 		double *curr_response = init_vector(mna->dimension);
 
 		/* In case it is trapezoidal method previous response e(tkn-1) is required */
@@ -57,8 +61,8 @@ void tr_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 		for (int j = 0; j < parser->tr_analysis[i].num_nodes; j++) {
 		    fclose(files[j]);
 		}
-
-		if (i < (tr_counter - 1)) { /* Means that we have another transient analysis to do, if not they'll be freed from free_mna_system */
+		/* Means that we have another transient analysis to do, if not they'll be freed from free_mna_system */
+		if (i < (tr_counter - 1)) {
 			init_transient_state(mna, parser, mna->dimension);
 		}
 
@@ -70,26 +74,22 @@ void tr_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 		}
 	}
 
-	/* Set flag to false to indicate that we're no longer inside TRANSIENT analysis */
+	/* Set flag to false to indicate that we're no longer inside transient analysis */
 	mna->tr_analysis_init = false;
 	if (tr_counter) {
 		printf("Transient Analysis.......OK\n");
 	}
 }
 
-/* Initialize the two fields of resp_t struct, nodes and value */ 
+/*
+ * Initialize/Clear the transient state response, hC, etc. to start
+ * from a fresh state, for the next transient analysis.
+ */
 void init_transient_state(mna_system_t *mna, parser_t *parser, int dimension) {
-	for (int i = 0; i < dimension; i++) {
-		/* Initialize hC[i][j] to zero to have it ready for the next transient analysis only for dense matrices and BE method */
-		if (!parser->options->SPARSE && parser->options->BE) {
-			for (int j = 0; j < dimension; i++) {
-				mna->matrix->hC[i][j] = 0.0;
-			}
-		}
-		/* Initialize nodes and value to zero to have it ready for the next transient analysis */
-		mna->resp->nodes[i] = NULL;
-		mna->resp->value[i] = 0.0;
-	}
+	/* Clear the resp_t struct */
+	clear_response(mna->resp, dimension);
+
+	/* Free and Allocate whatever is needed for the next transient analysis */
 	if (parser->options->SPARSE) { /* Sparse Matrices */
 		if (parser->options->ITER) {
 			cs_di_spfree(mna->sp_matrix->aGhC);
@@ -101,23 +101,29 @@ void init_transient_state(mna_system_t *mna, parser_t *parser, int dimension) {
 		/* sGhC only exists in Trapezoidal method */
 		if (parser->options->TR) {
 			cs_di_spfree(mna->sp_matrix->sGhC);
-			
 		}
+		/* If Backward Euler method is used, hC won't be freed from inside create_sparse_trans_mna */
 		if (parser->options->BE) {
 			cs_di_spfree(mna->sp_matrix->hC);
 		}
-		/* Create hC, because it was deallocated in create_dense_transe_mna for TR method, to have it ready for the next transient analysis */
-		/* Create hC, because it must initialized again for BE method, to have it ready for the next transient analysis */
+		/*
+		 * hC matrix must be re-allocated for the next transient analysis because:
+		 * Method TR: It was deallocated inside create_sparse_trans_mna
+		 * Method BE: It was deallocated above because we need a new/fresh matrix in triplet form
+		 */
 		mna->sp_matrix->hC = cs_di_spalloc(mna->dimension, mna->dimension, parser->netlist->nz, 1, 1);
 	}
 	else { /* Dense Matrices */
-		if (parser->options->TR) {
-			/* Create hC, because it was deallocated in create_dense_transe_mna for TR method, to have it ready for the next transient analysis */
+		/* In case we've got BE method hC isn't deallocated like when we've got TR method. Thus, we need to zero it out */
+		if (parser->options->BE) {
+			zero_out_matrix(mna->matrix->hC, dimension, dimension);
+		}
+		else if (parser->options->TR) {
+			/* Create hC, because it was deallocated inside create_dense_trans_mna for TR method */
 			mna->matrix->hC = init_array(mna->dimension, mna->dimension);
 		}
 	}
 }
-
 
 /*
  * Computes and stores the right hand side of the trapezoidal method at vector mna->b

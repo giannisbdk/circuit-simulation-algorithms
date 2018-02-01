@@ -575,9 +575,6 @@ void create_sparse_trans_mna(mna_system_t *mna, index_t *index, hash_table_t *ha
 	double value, h;
 	int volt_sources_cnt = 0;
 
-	// memcpy(*mna->sp_matrix->G, *mna->sp_matrix->A, mna->dimension * mna->dimension * sizeof(double));
-	// assert(mna->sp_matrix->G != NULL);
-
 	/* Set the sampling step h according to the specified method (TRAP or BE) */
 	if (options->TR) {
 		h = 2 / tr_step;
@@ -985,6 +982,8 @@ void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_compl
 			}
 		}
 	}
+	//TODO we need to change the flag mna->is_decomp for better readability and logic in general, now it's a bit hacky
+	/* This is mainly for the DC operating point output */
 	if (!mna->is_decomp) {
 		mna->is_decomp = true;
 		if (!mna->ac_analysis_init && !mna->tr_analysis_init) {
@@ -1240,6 +1239,14 @@ cs_di *_cs_di_copy(cs_di *A) {
     for (p = 0; p < nz; p++) Cx[p] = Ax[p];
     if (triplet) C->nz = nz;
     return C;
+}
+
+/* Clears out the supplied response */
+void clear_response(resp_t *resp, int dimension) {
+	for (int i = 0; i < dimension; i++) {
+		resp->nodes[i] = NULL;
+		resp->value[i] = 0.0;
+	}
 }
 
 /* Free all the memory allocated for the MNA system */

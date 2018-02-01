@@ -320,17 +320,24 @@ void print_options(options_t *options) {
 /* Print the number of the different netlist elements info */
 void print_netlist_info(netlist_t *netlist) {
     printf("\n--- Netlist Elements and Analyses Summary ---\n");
-    printf("Number of nodes without ground:       %d\n", netlist->num_nodes);
-    printf("Number of group 2 elements:           %d\n", netlist->num_g2_elem);
-    printf("Number of dc analysis targets:        %d\n", netlist->dc_counter);
-    printf("Number of transient analysis targets: %d\n", netlist->tr_counter);
-    printf("Number of ac analysis targets:        %d\n", netlist->ac_counter);
+    printf("Number of nodes without ground: %d\n", netlist->num_nodes);
+    printf("Number of group 2 elements:     %d\n", netlist->num_g2_elem);
+    printf("Number of DC analyses:          %d\n", netlist->dc_counter);
+    printf("Number of Transient analyses:   %d\n", netlist->tr_counter);
+    printf("Number of AC analyses:          %d\n", netlist->ac_counter);
 }
 
 /* Prints the dc analysis options */
 void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter) {
-    if (dc_counter <= 0) return;
-    printf("\n--- DC Analysis Summary ---\n");
+    if (dc_counter <= 0) {
+        return;
+    }
+    else if (dc_counter == 1) {
+        printf("\n--- DC Analysis Summary ---\n");
+    }
+    else {
+        printf("\n--- DC Analyses Summary ---\n");
+    }
     for (int i = 0; i < dc_counter; i++) {
         printf("Voltage source: %s\n",  dc_analysis[i].volt_source);
         printf("Start:          %lf\n", dc_analysis[i].start);
@@ -341,13 +348,21 @@ void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter) {
             printf("%s ", dc_analysis[i].nodes[j]);
         }
         printf("\n");
+        if (i < (dc_counter - 1)) printf("\n");
     }
 }
 
 /* Prints the transient analysis options */
 void print_tr_analysis_options(tr_analysis_t *tr_analysis, int tr_counter) {
-    if (tr_counter <= 0) return;
-    printf("\n--- Transient Analysis Summary ---\n");
+    if (tr_counter <= 0) {
+        return;
+    }
+    else if (tr_counter == 1) {
+        printf("\n--- Transient Analysis Summary ---\n");
+    }
+    else {
+        printf("\n--- Transient Analyses Summary ---\n");
+    }
     for (int i = 0; i < tr_counter; i++) {
         printf("Time Step:  %lf\n", tr_analysis[i].time_step);
         printf("Final Time: %lf\n", tr_analysis[i].fin_time);
@@ -356,13 +371,21 @@ void print_tr_analysis_options(tr_analysis_t *tr_analysis, int tr_counter) {
             printf("%s ", tr_analysis[i].nodes[j]);
         }
         printf("\n");
+        if (i < (tr_counter - 1)) printf("\n");
     }
 }
 
 /* Prints the dc analysis options */
 void print_ac_analysis_options(ac_analysis_t *ac_analysis, int ac_counter) {
-    if (ac_counter <= 0) return;
-    printf("\n--- AC Analysis Summary ---\n");
+    if (ac_counter <= 0) {
+        return;
+    }
+    else if (ac_counter == 1) {
+        printf("\n--- AC Analysis Summary ---\n");
+    }
+    else {
+        printf("\n--- AC Analyses Summary ---\n");
+    }
     for (int i = 0; i < ac_counter; i++) {
         printf("Sweep:      %s\n",  ac_analysis[i].sweep ? "LOG" : "LIN");
         printf("Points:     %d\n",  ac_analysis[i].points);
@@ -373,6 +396,7 @@ void print_ac_analysis_options(ac_analysis_t *ac_analysis, int ac_counter) {
             printf("%s ", ac_analysis[i].nodes[j]);
         }
         printf("\n");
+        if (i < (ac_counter - 1)) printf("\n");
     }
 }
 

@@ -138,6 +138,7 @@ void print_vector(double *b, int dimension);
 void print_complex_vector(gsl_vector_complex *b, int dimension);
 void print_permutation(gsl_permutation *P);
 cs_di *_cs_di_copy (cs_di *A);
+void clear_response(resp_t *resp, int dimension);
 void free_mna_system(mna_system_t **mna, options_t *options);
 
 #endif
