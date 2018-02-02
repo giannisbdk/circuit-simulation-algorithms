@@ -8,6 +8,19 @@ dc_out_path = "./"
 tr_out_path = "./"
 ac_out_path = "./"
 
+# Set user defined parameters for pyplot
+params = {
+	"figure.titlesize"     : 18,
+	"figure.figsize"       : (15, 10),
+	"figure.subplot.right" : 0.89,
+	"axes.labelsize"       : 16,
+	"axes.grid"            : True,
+	"lines.linewidth"      : 2,
+	"legend.shadow"        : True,
+	"legend.loc"           : "center right"
+}
+plt.rcParams.update(params)
+
 
 def plot_dc_or_transient_file(filename, ax_tr):
 	"""
@@ -37,7 +50,7 @@ def plot_dc_or_transient_file(filename, ax_tr):
 			step_list.append(step)
 			val_list.append(val)
 
-	ax_tr.plot(step_list, val_list, label=v_label, linewidth=1.5)
+	ax_tr.plot(step_list, val_list, label=v_label)
 
 
 def plot_ac_file(filename, ax_ac_1, ax_ac_2, sweep):
@@ -68,11 +81,11 @@ def plot_ac_file(filename, ax_ac_1, ax_ac_2, sweep):
 			phase_list.append(phase)
 
 	if sweep == "LIN":
-		ax_ac_1.plot(freq_list, magn_list, label=v_label, linewidth=1.5)
-		ax_ac_2.plot(freq_list, phase_list, label=v_label, linewidth=1.5)
+		ax_ac_1.plot(freq_list, magn_list, label=v_label)
+		ax_ac_2.plot(freq_list, phase_list, label=v_label)
 	elif sweep == "LOG":
-		ax_ac_1.semilogx(freq_list, phase_list, label=v_label, linewidth=1.5)
-		ax_ac_2.semilogx(freq_list, magn_list, label=v_label, linewidth=1.5)
+		ax_ac_1.semilogx(freq_list, phase_list, label=v_label)
+		ax_ac_2.semilogx(freq_list, magn_list, label=v_label)
 
 
 def plot_analyses(analyses, paths):
@@ -89,7 +102,7 @@ def plot_analyses(analyses, paths):
 	# AC Analysis plot/figure
 	if len(ac_files):
 		sweep = get_sweep(ac_files)
-		fig_ac, (ax_ac_2, ax_ac_1) = plt.subplots(nrows=2, figsize=(14, 9))
+		fig_ac, (ax_ac_2, ax_ac_1) = plt.subplots(nrows=2)
 		fig_ac.suptitle("AC Analysis")
 		ax_ac_1.set_xlabel("Frequency (Hz)")
 		ax_ac_1.set_ylabel(r"Phase ($^0$)")
@@ -98,8 +111,6 @@ def plot_analyses(analyses, paths):
 			ax_ac_2.set_ylabel("Magnitude (V)")
 		else:
 			ax_ac_2.set_ylabel("Magnitude (dB)")
-		ax_ac_1.grid(True)
-		ax_ac_2.grid(True)
 		fig_ac_suffix = "_AC_Analysis"
 
 		# Plot everything into a figure
@@ -108,8 +119,7 @@ def plot_analyses(analyses, paths):
 
 		# Create and adjust the legend
 		ac_handles, ac_labels = ax_ac_1.get_legend_handles_labels()
-		fig_ac.legend(ac_handles, ac_labels, loc='center right', shadow=True)
-		fig_ac.subplots_adjust(right=0.89)
+		fig_ac.legend(ac_handles, ac_labels)
 
 		# Save figure to path
 		ac_plot_path = paths.get("AC")
@@ -118,11 +128,10 @@ def plot_analyses(analyses, paths):
 
 	# TRAN Analysis plot/figure
 	if len(tr_files):
-		fig_tr, ax_tr = plt.subplots(nrows=1, figsize=(14, 9))
+		fig_tr, ax_tr = plt.subplots(nrows=1)
 		fig_tr.suptitle("Transient Analysis")
 		ax_tr.set_xlabel("Time (s)")
 		ax_tr.set_ylabel("Voltage (V)")
-		ax_tr.grid(True)
 		fig_tr_suffix = "_Transient_Analysis"
 
 		# Plot everything into a figure
@@ -131,8 +140,7 @@ def plot_analyses(analyses, paths):
 
 		# Create and adjust the legend
 		tr_handles, tr_labels = ax_tr.get_legend_handles_labels()
-		fig_tr.legend(tr_handles, tr_labels, loc='center right', shadow=True)
-		fig_tr.subplots_adjust(right=0.89)
+		fig_tr.legend(tr_handles, tr_labels)
 
 		# Save figure to path
 		tr_plot_path = paths.get("TRAN")
@@ -141,11 +149,10 @@ def plot_analyses(analyses, paths):
 
 	# DC Analysis plot/figure
 	if len(dc_files):
-		fig_dc, ax_dc = plt.subplots(nrows=1, figsize=(14, 9))
+		fig_dc, ax_dc = plt.subplots(nrows=1)# figsize=(14, 9))
 		fig_dc.suptitle("DC Analysis")
 		ax_dc.set_xlabel("Voltage sweep (V)")
 		ax_dc.set_ylabel("Voltage (V)")
-		ax_dc.grid(True)
 		fig_dc_suffix = "_DC_Analysis"
 
 		# Plot everything into a figure
@@ -154,8 +161,7 @@ def plot_analyses(analyses, paths):
 
 		# Create and adjust the legend
 		dc_handles, dc_labels = ax_dc.get_legend_handles_labels()
-		fig_dc.legend(dc_handles, dc_labels, loc='center right', shadow=True)
-		fig_dc.subplots_adjust(right=0.89)
+		fig_dc.legend(dc_handles, dc_labels)
 
 		# Save figure to path
 		dc_plot_path = paths.get("DC")
@@ -285,6 +291,7 @@ def main():
 	plot_analyses(analyses, paths)
 
 	print "\nSaving figures to directories......OK"
+
 
 if __name__ == '__main__':
 	try:
