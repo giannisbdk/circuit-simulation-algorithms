@@ -776,39 +776,6 @@ void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_
 	}
 }
 
-/* Gets the response value according to the transient spec */
-double get_response_value(list1_t *curr) {
-	if (curr->type == 'I' || curr-> type == 'i' || curr->type == 'V' || curr->type == 'v') {
-		if (curr->trans_spec != NULL) {
-			switch (curr->trans_spec->type) {
-				case EXP:
-					return curr->trans_spec->exp->i1;
-				case SIN:
-					return curr->trans_spec->sin->i1;
-				case PULSE:
-					return curr->trans_spec->pulse->i1;
-				case PWL:
-					return curr->trans_spec->pwl->i[0];
-			}
-		}
-		else {
-			return curr->value;
-		}
-	}
-	return 0.0;
-}
-
-/* Searches through the g2_indx of the mna system and returns the index of the argument element */
-int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *element) {
-	for (int i = 0; i < num_g2_elem; i++) {
-		if (strcmp(element, g2_indx[i].element) == 0) {
-			/* Return the offset index */
-			return num_nodes + i;
-		}
-	}
-	return 0;
-}
-
 /* Solves the mna system according to the specified method provided by options argument
  * (LU, Cholesky, Iterative Conj_Grad / Bi-Conj_Grad) and stores the solution on the supplied vector x
  */
@@ -1129,6 +1096,47 @@ void solve_complex_sparse_cholesky(mna_system_t *mna, cs_complex_t *x) {
 	cs_ci_nfree(mna->sp_matrix->G_ac_numeric);
 }
 
+/* Gets the response value according to the transient spec */
+double get_response_value(list1_t *curr) {
+	if (curr->type == 'I' || curr-> type == 'i' || curr->type == 'V' || curr->type == 'v') {
+		if (curr->trans_spec != NULL) {
+			switch (curr->trans_spec->type) {
+				case EXP:
+					return curr->trans_spec->exp->i1;
+				case SIN:
+					return curr->trans_spec->sin->i1;
+				case PULSE:
+					return curr->trans_spec->pulse->i1;
+				case PWL:
+					return curr->trans_spec->pwl->i[0];
+			}
+		}
+		else {
+			return curr->value;
+		}
+	}
+	return 0.0;
+}
+
+/* Clears out the supplied response */
+void clear_response(resp_t *resp, int dimension) {
+	for (int i = 0; i < dimension; i++) {
+		resp->nodes[i] = NULL;
+		resp->value[i] = 0.0;
+	}
+}
+
+/* Searches through the g2_indx of the mna system and returns the index of the argument element */
+int g2_elem_indx(g2_indx_t *g2_indx, int num_nodes, int num_g2_elem, char *element) {
+	for (int i = 0; i < num_g2_elem; i++) {
+		if (strcmp(element, g2_indx[i].element) == 0) {
+			/* Return the offset index */
+			return num_nodes + i;
+		}
+	}
+	return 0;
+}
+
 /* Print the MNA system */
 void print_mna_system(mna_system_t *mna, options_t *options) {
 	if (!options->SPARSE) {
@@ -1239,14 +1247,6 @@ cs_di *_cs_di_copy(cs_di *A) {
     for (p = 0; p < nz; p++) Cx[p] = Ax[p];
     if (triplet) C->nz = nz;
     return C;
-}
-
-/* Clears out the supplied response */
-void clear_response(resp_t *resp, int dimension) {
-	for (int i = 0; i < dimension; i++) {
-		resp->nodes[i] = NULL;
-		resp->value[i] = 0.0;
-	}
 }
 
 /* Free all the memory allocated for the MNA system */

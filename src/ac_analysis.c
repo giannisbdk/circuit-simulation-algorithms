@@ -5,7 +5,7 @@
 
 #include "ac_analysis.h"
 
-/* Do AC analysis */
+/* AC analysis and outputs the result to file(s) */
 void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser,
 				 double *dc_op, gsl_vector_complex *sol_x) {
 	/* Set the flag that we're currently on an AC analysis */

@@ -1,6 +1,8 @@
 #ifndef TRANS_SPEC_H
 #define TRANS_SPEC_H
 
+
+/* We have support for the following transient sources listed below */
 typedef enum {
 	EXP,
 	SIN,
@@ -8,6 +10,7 @@ typedef enum {
 	PWL
 } trans_type;
 
+/* Exponential Waveform */
 typedef struct exp {
 	double i1;
 	double i2;
@@ -17,6 +20,7 @@ typedef struct exp {
 	double tc2;
 } exp_t;
 
+/* Sinusodial Waveform */
 typedef struct sin {
 	double i1;
 	double ia;
@@ -26,6 +30,7 @@ typedef struct sin {
 	double ph;
 } sin_t;
 
+/* Pulse Waveform */
 typedef struct pulse {
 	double i1;
 	double i2;
@@ -36,6 +41,7 @@ typedef struct pulse {
 	double per;
 } pulse_t;
 
+/* Piecewise Linear Waveform */
 typedef struct pwl {
 	/* n shows how many states there are in the arrays */
 	int n;
@@ -43,6 +49,7 @@ typedef struct pwl {
 	double *i;
 } pwl_t;
 
+/* Struct to hold the transient spec for a given TRAN analysis */
 typedef struct trans_spec {
 	trans_type type;
 	exp_t 	*exp;

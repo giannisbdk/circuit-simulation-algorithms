@@ -38,7 +38,7 @@ void dc_operating_point(hash_table_t *hash_table, double *sol_x) {
     printf("DC Operating Point.......OK\n");
 }
 
-/* DC Sweep analysis and outputs the results to a file */
+/* DC Sweep analysis and outputs the results to file(s) */
 void dc_analysis(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, double *sol_x) {
     /* Run all the DC analyses according to dc_counter */
     int dc_counter = parser->netlist->dc_counter;

@@ -12,8 +12,8 @@
 #include "stdbool.h"
 #include "ac_spec.h"
 
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a)  : (b))
+#define MIN(a, b) ((a) < (b) ? (a)  : (b))
 #define ABS(x)    ((x) < 0.0 ? (-x) : (x))
 
 #define COMPLEX_ZERO(z)    ((GSL_REAL(z) == 0.0 && GSL_IMAG(z) == 0.0))

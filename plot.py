@@ -149,7 +149,7 @@ def plot_analyses(analyses, paths):
 
 	# DC Analysis plot/figure
 	if len(dc_files):
-		fig_dc, ax_dc = plt.subplots(nrows=1)# figsize=(14, 9))
+		fig_dc, ax_dc = plt.subplots(nrows=1)
 		fig_dc.suptitle("DC Analysis")
 		ax_dc.set_xlabel("Voltage sweep (V)")
 		ax_dc.set_ylabel("Voltage (V)")

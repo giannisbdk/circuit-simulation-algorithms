@@ -20,6 +20,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "You must specify the input file (netlist) from cmd arguments.\nExiting....\n");
         exit(EXIT_FAILURE);
     }
+
     /* Initialize our double linked lists */
     index_t *index = init_lists();
 

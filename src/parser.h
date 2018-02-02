@@ -48,6 +48,7 @@ typedef struct dc_analysis {
 	int num_nodes;
 } dc_analysis_t;
 
+/* Struct to hold the different TRAN analysis options */
 typedef struct tr_analysis {
 	double time_step;
 	double fin_time;
@@ -56,11 +57,13 @@ typedef struct tr_analysis {
 	int num_nodes;
 } tr_analysis_t;
 
+/* Sweep enumeration for AC analysis */
 typedef enum ac_sweep {
 	LIN,
 	LOG
 } ac_sweep_t;
 
+/* Struct to hold the different AC analysis options */
 typedef struct ac_analysis {
 	double start_freq;
 	double end_freq;

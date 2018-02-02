@@ -3,7 +3,7 @@
 
 #include "transient_analysis.h"
 
-/* Do transient analysis */
+/* TRAN analysis and outputs the result to file(s) */
 void tr_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, double *init_sol, double *sol_x) {
 	/* Set the flag that we're currently on an Transient analysis */
 	mna->tr_analysis_init = true;
@@ -139,6 +139,7 @@ void set_trapezoidal_rhs(mna_system_t *mna, double *curr_response, double *prev_
 	add_vector(response_add, curr_response, prev_response, mna->dimension);
 	if (SPARSE) {
 		// cs_mat_vec_mul(sGhc_x, mna->sp_matrix->sGhC, prev_sol);
+		//TODO perhaps use our own method?
 		cs_gaxpy(mna->sp_matrix->sGhC, prev_sol, sGhc_x);
 	}
 	else {
@@ -164,6 +165,7 @@ void set_backward_euler_rhs(mna_system_t *mna, double *curr_response, double *pr
 	double *hC_x = init_vector(mna->dimension);
 	/* Compute: e(tk) + (1/h)C*x(tk-1) and save it to the mna->b vector */
 	if (SPARSE) {
+		//TODO perhaps use our own method?
 		cs_gaxpy(mna->sp_matrix->hC, prev_sol, hC_x);
 		// cs_mat_vec_mul(hC_x, mna->sp_matrix->hC, prev_sol);
 	}
