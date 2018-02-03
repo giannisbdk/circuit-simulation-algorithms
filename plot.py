@@ -15,6 +15,7 @@ params = {
 	"figure.subplot.right" : 0.89,
 	"axes.labelsize"       : 16,
 	"axes.grid"            : True,
+	"axes.ymargin"         : 0.05,
 	"lines.linewidth"      : 2,
 	"legend.shadow"        : True,
 	"legend.loc"           : "center right"
@@ -25,7 +26,8 @@ plt.rcParams.update(params)
 def plot_dc_or_transient_file(filename, ax_tr):
 	"""
 	Plot a single dc or transient output file into a figure
-	containing a single subplot ax.
+	containing a single subplot ax_tr.
+	ax_tr: The subplot with Time - Voltage
 	"""
 
 	# Get the Node name from the output file
@@ -56,7 +58,9 @@ def plot_dc_or_transient_file(filename, ax_tr):
 def plot_ac_file(filename, ax_ac_1, ax_ac_2, sweep):
 	"""
 	Plot a single AC output file into a figure containing
-	two subplots ax1, ax2.
+	two subplots ax_ac_1, ax_ac_2.
+	ax_ac_1: The subplot with Frequency - Phase
+	ax_ac_2: The subplot with Frequency - Magnitude
 	"""
 
 	# Get the Node name and the sweep type from the output file
@@ -81,11 +85,11 @@ def plot_ac_file(filename, ax_ac_1, ax_ac_2, sweep):
 			phase_list.append(phase)
 
 	if sweep == "LIN":
-		ax_ac_1.plot(freq_list, magn_list, label=v_label)
-		ax_ac_2.plot(freq_list, phase_list, label=v_label)
+		ax_ac_2.plot(freq_list, magn_list, label=v_label)
+		ax_ac_1.plot(freq_list, phase_list, label=v_label)
 	elif sweep == "LOG":
-		ax_ac_1.semilogx(freq_list, phase_list, label=v_label)
-		ax_ac_2.semilogx(freq_list, magn_list, label=v_label)
+		ax_ac_2.semilogx(freq_list, phase_list, label=v_label)
+		ax_ac_1.semilogx(freq_list, magn_list, label=v_label)
 
 
 def plot_analyses(analyses, paths):
