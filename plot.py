@@ -209,6 +209,7 @@ def get_analyses():
 
 	return analyses
 
+
 def check_analyses(analyses):
 	"""
 	Given the analyses dictionary checks its values which are lists

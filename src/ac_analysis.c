@@ -103,37 +103,27 @@ void create_ac_out_files(FILE *files[], ac_analysis_t ac_analysis) {
 	char file_name[MAX_FILE_NAME];
 	/* Set the prefix name for the files */
 	char prefix[] = "ac_analysis_V(";
-	/* Will contain a string either Magnitude (V) or Magnitude (dB), according to the sweep type */
-	char magn_output[15];
+	/* Temporary buffers */
+	char magn_output[15], sweep[4];
 
 	/* Open different files for each node in plot/print array */
 	for (int j = 0; j < ac_analysis.num_nodes; j++) {
-		/* Temp buffer */
-		char name[10];
-		/* Construct the file name */
-		strcpy(file_name, prefix);
-		strcat(file_name, ac_analysis.nodes[j]);
-		strcat(file_name, ")_");
-		sprintf(name, "%g", ac_analysis.start_freq);
-		strcat(file_name, name);
-		strcat(file_name, "_");
-		sprintf(name, "%g", ac_analysis.end_freq);
-		strcat(file_name, name);
-		/* Set the output string for the magnitude according to the sweep type */
 		switch (ac_analysis.sweep) {
 			case LIN:
-				strcat(file_name, "_LIN");
+				strcpy(sweep, "LIN");
 				strcpy(magn_output, "Magnitude (V)");
 				break;
 			case LOG:
-				strcat(file_name, "_LOG");
+				strcpy(sweep, "LOG");
 				strcpy(magn_output, "Magnitude (dB)");
 				break;
 			default:
 				fprintf(stderr, "Wrong sweep type.\n");
 				exit(EXIT_FAILURE);
 		}
-		strcat(file_name, ".txt");
+		/* Create the name of the output file */
+		sprintf(file_name, "%s%s)_%g_%g_%s.txt", prefix, ac_analysis.nodes[j], ac_analysis.start_freq,
+		        ac_analysis.end_freq, sweep);
 		/* Open the output file */
 		files[j] = fopen(file_name, "w");
 		if (files[j] == NULL) {

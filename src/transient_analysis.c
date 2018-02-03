@@ -284,18 +284,8 @@ void create_tr_out_files(FILE *files[], tr_analysis_t tr_analysis) {
 
 	/* Open different files for each node in plot/print array */
 	for (int j = 0; j < tr_analysis.num_nodes; j++) {
-		/* Temp buffer */
-		char name[10];
-		/* Construct the file name */
-		strcpy(file_name, prefix);
-		strcat(file_name, tr_analysis.nodes[j]);
-		strcat(file_name, ")_");
-		sprintf(name, "%g", tr_analysis.time_step);
-		strcat(file_name, name);
-		strcat(file_name, "_");
-		sprintf(name, "%g", tr_analysis.fin_time);
-		strcat(file_name, name);
-		strcat(file_name, ".txt");
+		/* Create the name of the output file */
+		sprintf(file_name, "%s%s)_%g_%g.txt", prefix, tr_analysis.nodes[j], tr_analysis.time_step, tr_analysis.fin_time);
 		/* Open the output file */
 		files[j] = fopen(file_name, "w");
 		if (files[j] == NULL) {

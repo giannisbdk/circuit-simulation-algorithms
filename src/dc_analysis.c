@@ -104,16 +104,13 @@ void dc_analysis(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, par
 void create_dc_out_files(FILE *files[], dc_analysis_t dc_analysis) {
     char file_name[MAX_FILE_NAME];
     /* Set the prefix name for the files */
-    char prefix[] = "dc_analysis_";
+    char prefix[] = "dc_analysis_V(";
 
     /* Open different files for each node in plot/print array */
     for (int j = 0; j < dc_analysis.num_nodes; j++) {
-        /* Construct the file name */
-        strcpy(file_name, prefix);
-        strcat(file_name, dc_analysis.volt_source);
-        strcat(file_name, "_V(");
-        strcat(file_name, dc_analysis.nodes[j]);
-        strcat(file_name, ").txt");
+        /* Create the name of the output file */
+        sprintf(file_name, "%s%s)_%s_%g_%g_%g.txt", prefix, dc_analysis.nodes[j], dc_analysis.volt_source,
+                dc_analysis.start, dc_analysis.end, dc_analysis.increment);
         /* Open the output file */
         files[j] = fopen(file_name, "w");
         if (files[j] == NULL) {
