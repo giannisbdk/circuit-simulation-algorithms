@@ -141,14 +141,14 @@ void write_ac_out_files(FILE *files[], ac_analysis_t ac_analysis, hash_table_t *
 	for (int j = 0; j < ac_analysis.num_nodes; j++) {
 		int offset = ht_get_id(hash_table, ac_analysis.nodes[j]) - 1;
 		/* Convert from complex to polar with magnitude and phase */
-		ac_t curr_ac = rect_to_polar(gsl_vector_complex_get(sol_x, offset));
+		ac_spec_t curr_ac = rect_to_polar(gsl_vector_complex_get(sol_x, offset));
 		/* In case it is a LOG sweep we need to output 20*log10(magnitude) */
 		switch (ac_analysis.sweep) {
 			case LIN:
 				fprintf(files[j], "%-30lf%-30lf%-30lf\n", freq_step, curr_ac.magnitude, curr_ac.phase);
 				break;
 			case LOG:
-				fprintf(files[j], "%-30lf%-30lf%-30lf\n", freq_step, 20 * log10(curr_ac.magnitude), curr_ac.phase);
+				fprintf(files[j], "%-30lf% -30lf%-30lf\n", freq_step, 20 * log10(curr_ac.magnitude), curr_ac.phase);
 				break;
 			default:
 				fprintf(stderr, "Wrong sweep type.\n");

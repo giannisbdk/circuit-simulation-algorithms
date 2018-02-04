@@ -41,7 +41,7 @@ void add_vector(double *dest, double *x, double *y, int n);
 void zero_out_vector(double *x, int dimension);
 void zero_out_matrix(double **matrix, int row, int col);
 void set_vec_val(double *x, double val, int dimension);
-ac_t rect_to_polar(gsl_complex z);
+ac_spec_t rect_to_polar(gsl_complex z);
 double to_degrees(double radians);
 double complex_abs(gsl_complex z);
 void real_to_gsl_complex_vector(gsl_vector_complex *x_complex, double *x, int dimension);

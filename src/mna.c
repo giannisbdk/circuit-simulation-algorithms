@@ -363,12 +363,12 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 	list1_t *curr;
 	int volt_sources_cnt = 0;
 
-	/* Copy the base for the AC matrix and zero-out the vector for the next step */
+	/* Copy the base of the AC matrix to G_ac and zero-out the vector for the next step */
 	for (int i = 0; i < mna->dimension; i++) {
 		gsl_complex z;
 		for (int j = 0; j < mna->dimension; j++) {
 			// mna->matrix->G_ac[i][j] = mna->matrix->A_base[i][j];
-			z = gsl_complex_rect(mna->matrix->A_base[i][j], 0);
+			z = gsl_complex_rect(mna->matrix->A_base[i][j], 0.0);
 			gsl_matrix_complex_set(mna->matrix->G_ac, i, j, z);
 		}
 		// mna->matrix->e_ac[i] = 0.0 + I * 0.0;
@@ -410,13 +410,13 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 			}
 		}
 		else if (curr->type == 'I' || curr->type == 'i') {
-			if (curr->ac == NULL) {
+			if (curr->ac_spec == NULL) {
 				// value = 0;
 				z = gsl_complex_rect(0.0, 0.0);
 			}
 			else {
-				// value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
-				z = gsl_complex_polar(curr->ac->magnitude, curr->ac->phase);
+				// value = pol_to_rect(curr->ac_spec->magnitude, curr->ac_spec->phase);
+				z = gsl_complex_polar(curr->ac_spec->magnitude, curr->ac_spec->phase);
 			}
 			if (probe1_id == 0) {
 				// mna->matrix->e_ac[j] += value;
@@ -438,7 +438,7 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 			}
 		}
 		else if (curr->type == 'L' || curr->type == 'l') {
-			/* Set the L value in the diagonal of g2 area in matrices */
+			/* Set the L value in the diagonal of g2 area in matrix */
 			// mna->matrix->G_ac[offset + volt_sources_cnt][offset + volt_sources_cnt] = - I * omega * curr->value;
 			z = gsl_complex_rect(0.0, -omega * curr->value);
 			gsl_matrix_complex_set(mna->matrix->G_ac, offset + volt_sources_cnt, offset + volt_sources_cnt, z);
@@ -446,13 +446,13 @@ void create_dense_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_t
 			volt_sources_cnt++;
 		}
 		else if (curr->type == 'V' || curr->type == 'v') {
-			if (curr->ac == NULL) {
+			if (curr->ac_spec == NULL) {
 				// value = 0;
 				z = gsl_complex_rect(0.0, 0.0);
 			}
 			else {
-				// value = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
-				z = gsl_complex_polar(curr->ac->magnitude, curr->ac->phase);
+				// value = pol_to_rect(curr->ac_spec->magnitude, curr->ac_spec->phase);
+				z = gsl_complex_polar(curr->ac_spec->magnitude, curr->ac_spec->phase);
 			}
 			/* Keep track of how many voltage sources or inductors, we have already found */
 			// mna->matrix->e_ac[offset + volt_sources_cnt] += value;
@@ -722,11 +722,11 @@ void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_
 		}
 		else if (curr->type == 'I' || curr->type == 'i') {
 			/* Check if ac spec exists for the current element */
-			if (curr->ac == NULL) {
+			if (curr->ac_spec == NULL) {
 				z = 0.0 + 0.0 * I;
 			}
 			else {
-				z = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+				z = pol_to_rect(curr->ac_spec->magnitude, curr->ac_spec->phase);
 			}
 			if (probe1_id == 0) {
 				mna->sp_matrix->e_ac[j] += z;
@@ -749,11 +749,11 @@ void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_
 		}
 		else if (curr->type == 'V' || curr->type == 'v') {
 			/* Check if ac spec exists for the current element */
-			if (curr->ac == NULL) {
+			if (curr->ac_spec == NULL) {
 				z = 0.0 + 0.0 * I;
 			}
 			else {
-				z = pol_to_rect(curr->ac->magnitude, curr->ac->phase);
+				z = pol_to_rect(curr->ac_spec->magnitude, curr->ac_spec->phase);
 			}
 			/* Keep track of how many voltage sources or inductors, we have already found */
 			mna->sp_matrix->e_ac[offset + volt_sources_cnt] += z;

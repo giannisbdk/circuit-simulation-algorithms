@@ -292,7 +292,7 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
     }
 
 #ifdef DEBUGL
-    printf("Printing the lists\n");
+    printf("\n--- Printing lists ---\n");
     print_lists(index, hash_table);
 #endif
 

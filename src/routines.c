@@ -284,8 +284,8 @@ void set_vec_val(double *x, double val, int dimension) {
 }
 
 /* Converts the complex z into polar form */
-ac_t rect_to_polar(gsl_complex z) {
-	ac_t ac;
+ac_spec_t rect_to_polar(gsl_complex z) {
+	ac_spec_t ac;
 	double real = GSL_REAL(z);
 	double imag = GSL_IMAG(z);
 	ac.magnitude = sqrt(real * real + imag * imag);

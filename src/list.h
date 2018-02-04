@@ -25,7 +25,7 @@ typedef struct list1 {
 	char *probe2;
 	long double value;
 	trans_spec_t *trans_spec;
-	ac_t *ac;
+	ac_spec_t    *ac_spec;
 	struct list1 *next;
 	struct list1 *prev;
 } list1_t;
@@ -74,6 +74,8 @@ bool check_ac(char **tokens, int num_tokens);
 void print_lists(index_t *index, hash_table_t *hash_table);
 void print_list1(list1_t *head, hash_table_t *hash_table);
 void print_list2(list2_t *head, hash_table_t *hash_table);
+void print_trans_spec(trans_spec_t *trans_spec);
+void print_ac_spec(ac_spec_t *ac_spec);
 void free_index(index_t **index);
 void free_list1(list1_t **head, list1_t **tail);
 void free_list2(list2_t **head, list2_t **tail);

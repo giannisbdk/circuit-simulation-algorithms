@@ -82,18 +82,18 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 	if (index->size1 == 0) {
 		new_node->prev = NULL;
 		new_node->next = NULL;
-		index->head1 = new_node;
-		index->tail1 = new_node;
+		index->head1   = new_node;
+		index->tail1   = new_node;
 #ifdef DEBUGL
 		printf("Adding node to the head of list1, new_node: %p, head1: %p, tail1: %p\n", new_node, index->head1, index->tail1);
 #endif
 	}
 	/* If it is not empty add element to the end of the list */
 	else {
-		new_node->prev = index->tail1;
+		new_node->prev     = index->tail1;
 		index->tail1->next = new_node;
-		index->tail1 = new_node;
-		new_node->next = NULL;
+		index->tail1       = new_node;
+		new_node->next     = NULL;
 #ifdef DEBUGL
 		printf("Adding node to the end of list1, new_node: %p, new_node->prev: %p\n", new_node, new_node->prev);
 #endif
@@ -119,7 +119,7 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 
 	/* Initialize to null both */
 	new_node->trans_spec = NULL;
-	new_node->ac         = NULL;
+	new_node->ac_spec    = NULL;
 
 	/* Get the total number of tokens */
 	int num_tokens = atoi(tokens[0]);
@@ -202,9 +202,9 @@ int add_to_list1(index_t *index, char **tokens, hash_table_t *hash_table) {
 		}
 		/* Set AC struct in case it exists in the tokens */
 		if (AC) {
-			new_node->ac = (ac_t *)malloc(sizeof(ac_t));
-			sscanf(tokens[ac_index + 1], "%lf",  &(new_node->ac->magnitude));
-			sscanf(tokens[ac_index + 2], "%lf",  &(new_node->ac->phase));
+			new_node->ac_spec = (ac_spec_t *)malloc(sizeof(ac_spec_t));
+			sscanf(tokens[ac_index + 1], "%lf",  &(new_node->ac_spec->magnitude));
+			sscanf(tokens[ac_index + 2], "%lf",  &(new_node->ac_spec->phase));
 		}
 	}
 	return SUCCESS;
@@ -340,6 +340,117 @@ bool is_transient(char *spec, trans_type *type) {
 	}
 }
 
+/* Print the lists */
+void print_lists(index_t *index, hash_table_t *hash_table) {
+	print_list1(index->head1, hash_table);
+	print_list2(index->head2, hash_table);
+}
+
+/* Print list1 elements */
+void print_list1(list1_t *head, hash_table_t *hash_table) {
+	list1_t *curr = head;
+	while (curr != NULL) {
+		printf("\nType:      %c\n", curr->type);
+		printf("Element:   %s\n",   curr->element);
+		printf("Probe1:    %s\n",   curr->probe1);
+		printf("Probe2:    %s\n",   curr->probe2);
+		printf("Value:     %Lf\n",  curr->value);
+		printf("Probe1 id: %d\n",   ht_get_id(hash_table, curr->probe1));
+		printf("Probe2 id: %d\n",   ht_get_id(hash_table, curr->probe2));
+		if (curr->trans_spec != NULL) {
+			print_trans_spec(curr->trans_spec);
+		}
+		if (curr->ac_spec != NULL) {
+			print_ac_spec(curr->ac_spec);
+		}
+		printf("\n");
+		curr = curr->next;
+	}
+}
+
+/* Prints the given transient spec */
+void print_trans_spec(trans_spec_t *trans_spec) {
+	switch (trans_spec->type) {
+		case EXP:
+			printf("Transient Spec: EXP\n");
+			printf("i1:  %lf\n", trans_spec->exp->i1);
+			printf("i2:  %lf\n", trans_spec->exp->i2);
+			printf("td1: %lf\n", trans_spec->exp->td1);
+			printf("tc1: %lf\n", trans_spec->exp->tc1);
+			printf("td2: %lf\n", trans_spec->exp->td2);
+			printf("tc2: %lf\n", trans_spec->exp->tc2);
+			break;
+		case SIN:
+			printf("Transient Spec: SIN\n");
+			printf("i1: %lf\n", trans_spec->sin->i1);
+			printf("ia: %lf\n", trans_spec->sin->ia);
+			printf("fr: %lf\n", trans_spec->sin->fr);
+			printf("td: %lf\n", trans_spec->sin->td);
+			printf("df: %lf\n", trans_spec->sin->df);
+			printf("ph: %lf\n", trans_spec->sin->ph);
+			break;
+		case PULSE:
+			printf("Transient Spec: PULSE\n");
+			printf("i1:  %lf\n", trans_spec->pulse->i1);
+			printf("i2:  %lf\n", trans_spec->pulse->i2);
+			printf("td:  %lf\n", trans_spec->pulse->td);
+			printf("tr:  %lf\n", trans_spec->pulse->tr);
+			printf("tf:  %lf\n", trans_spec->pulse->tf);
+			printf("pw:  %lf\n", trans_spec->pulse->pw);
+			printf("per: %lf\n", trans_spec->pulse->per);
+			break;
+		case PWL:
+			printf("Transient Spec: PWL\n");
+			for (int i = 0; i < trans_spec->pwl->n; i++) {
+				printf("t[%d]: %6g\ti[%d]: %6g\n", i, trans_spec->pwl->t[i], i, trans_spec->pwl->i[i]);
+			}
+			break;
+		default:
+			fprintf(stderr, "Wrong transient type %d\n", trans_spec->type);
+	}
+}
+
+/* Prints the given ac_spec */
+void print_ac_spec(ac_spec_t *ac_spec) {
+	printf("AC Spec:\n");
+	printf("Magnitude: %lf\n", ac_spec->magnitude);
+	printf("Phase:     %lf\n", ac_spec->phase);
+}
+
+/* Print list2 elements */
+void print_list2(list2_t *head, hash_table_t *hash_table) {
+	list2_t *curr = head;
+	while (curr != NULL) {
+		printf("\nType:      %c\n", curr->type);
+		printf("Element:   %s\n",   curr->element);
+		printf("Probe1:    %s\n",   curr->probe1);
+		printf("Probe2:    %s\n",   curr->probe2);
+		printf("Probe1 id: %d\n",   ht_get_id(hash_table, curr->probe1));
+		printf("Probe2 id: %d\n",   ht_get_id(hash_table, curr->probe2));
+		if (curr->probe3 != NULL) {
+			printf("Probe3:    %s\n", curr->probe3);
+			printf("Probe3 id: %d\n", ht_get_id(hash_table, curr->probe3));
+		}
+		else {
+			printf("Probe3:    NULL\n");
+		}
+		if (curr->probe4 != NULL) {
+			printf("Probe4:    %s\n", curr->probe4);
+			printf("Probe4 id: %d\n", ht_get_id(hash_table, curr->probe4));
+		}
+		else {
+			printf("Probe4: NULL\n");
+		}
+		printf("Model_name: %d\n",   curr->model_name);
+		printf("Area:       %d\n",   curr->area);
+		printf("Length:     %.Lf\n", curr->length);
+		printf("Width:      %.Lf\n", curr->width);
+		printf("\n");
+		//TODO Check if TRAN/AC spec is required to be printed
+		curr = curr->next;
+	}
+}
+
 /* Free all the dynamic memory allocated for the lists index */
 void free_index(index_t **index) {
 	/* Free the the lists */
@@ -383,8 +494,8 @@ void free_list1(list1_t **head, list1_t **tail) {
 			free(curr->trans_spec);
 		}
 		/* Remove AC struct in case it exists */
-		if (curr->ac != NULL) {
-			free(curr->ac);
+		if (curr->ac_spec != NULL) {
+			free(curr->ac_spec);
 		}
 		free(curr);
 		curr = next;
@@ -411,99 +522,4 @@ void free_list2(list2_t **head, list2_t **tail) {
 	}
 	/* Set head/tail to NULL to limit further acesses */
 	*head = *tail = NULL;
-}
-
-/* Print the lists */
-void print_lists(index_t *index, hash_table_t *hash_table) {
-	print_list1(index->head1, hash_table);
-	print_list2(index->head2, hash_table);
-}
-
-/* Print list1 elements */
-void print_list1(list1_t *head, hash_table_t *hash_table) {
-	list1_t *curr = head;
-	while (curr != NULL) {
-		printf("\nType: %c\n", curr->type);
-		printf("Element: %s\n", curr->element);
-		printf("Probe1: %s\n", curr->probe1);
-		printf("Probe2: %s\n", curr->probe2);
-		printf("Value: %.20Lf\n", curr->value);
-		printf("Probe1 id: %d\n", ht_get_id(hash_table, curr->probe1));
-		printf("Probe2 id: %d\n", ht_get_id(hash_table, curr->probe2));
-		if (curr->trans_spec != NULL) {
-			switch (curr->trans_spec->type) {
-				case EXP:
-					printf("Transient Spec: EXP\n");
-					printf("i1:  %lf\n", curr->trans_spec->exp->i1);
-					printf("i2:  %lf\n", curr->trans_spec->exp->i2);
-					printf("td1: %lf\n", curr->trans_spec->exp->td1);
-					printf("tc1: %lf\n", curr->trans_spec->exp->tc1);
-					printf("td2: %lf\n", curr->trans_spec->exp->td2);
-					printf("tc2: %lf\n", curr->trans_spec->exp->tc2);
-					break;
-				case SIN:
-					printf("Transient Spec: SIN\n");
-					printf("i1: %lf\n", curr->trans_spec->sin->i1);
-					printf("ia: %lf\n", curr->trans_spec->sin->ia);
-					printf("fr: %lf\n", curr->trans_spec->sin->fr);
-					printf("td: %lf\n", curr->trans_spec->sin->td);
-					printf("df: %lf\n", curr->trans_spec->sin->df);
-					printf("ph: %lf\n", curr->trans_spec->sin->ph);
-					break;
-				case PULSE:
-					printf("Transient Spec: PULSE\n");
-					printf("i1:  %lf\n", curr->trans_spec->pulse->i1);
-					printf("i2:  %lf\n", curr->trans_spec->pulse->i2);
-					printf("td:  %lf\n", curr->trans_spec->pulse->td);
-					printf("tr:  %lf\n", curr->trans_spec->pulse->tr);
-					printf("tf:  %lf\n", curr->trans_spec->pulse->tf);
-					printf("pw:  %lf\n", curr->trans_spec->pulse->pw);
-					printf("per: %lf\n", curr->trans_spec->pulse->per);
-					break;
-				case PWL:
-					printf("Transient Spec: PWL\n");
-					for (int i = 0; i < curr->trans_spec->pwl->n; i++) {
-						printf("t[%d]: %6g\ti[%d]: %6g\n", i, curr->trans_spec->pwl->t[i], i, curr->trans_spec->pwl->i[i]);
-					}
-					break;
-				default:
-					fprintf(stderr, "Wrong transient type %d\n", curr->trans_spec->type);
-					fprintf(stderr, "Element %s\n", curr->element);
-			}
-		}
-		printf("\n");
-		curr = curr->next;
-	}
-}
-
-/* Print list2 elements */
-void print_list2(list2_t *head, hash_table_t *hash_table) {
-	list2_t *curr = head;
-	while (curr != NULL) {
-		printf("Type: %c\n", curr->type);
-		printf("Element: %s\n", curr->element);
-		printf("Probe1: %s\n", curr->probe1);
-		printf("Probe2: %s\n", curr->probe2);
-		printf("Probe1 id: %d\n", ht_get_id(hash_table, curr->probe1));
-		printf("Probe2 id: %d\n", ht_get_id(hash_table, curr->probe2));
-		if (curr->probe3 != NULL) {
-			printf("Probe3: %s\n", curr->probe3);
-			printf("Probe3 id: %d\n", ht_get_id(hash_table, curr->probe3));
-		}
-		else {
-			printf("Probe3: NULL\n");
-		}
-		if (curr->probe4 != NULL) {
-			printf("Probe4: %s\n", curr->probe4);
-			printf("Probe4 id: %d\n", ht_get_id(hash_table, curr->probe4));
-		}
-		else {
-			printf("Probe4: NULL\n");
-		}
-		printf("Model_name: %d\n", curr->model_name);
-		printf("Area: %d\n", curr->area);
-		printf("Length %.20Lf\nWidth: %.20Lf\n", curr->length, curr->width);
-		printf("\n");
-		curr = curr->next;
-	}
 }
