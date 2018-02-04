@@ -39,7 +39,7 @@ parser_t *init_parser() {
     parser->dc_analysis->increment   = 0.0;
     parser->dc_analysis->num_nodes   = 0;
     parser->dc_analysis->volt_source = NULL;
-    parser->dc_analysis->nodes = NULL;
+    parser->dc_analysis->nodes       = NULL;
 
     /* Initializes the tr_analsysis array */
     parser->tr_analysis = (tr_analysis_t *)malloc(ANALYSIS_NUM * sizeof(tr_analysis_t));
@@ -47,7 +47,7 @@ parser_t *init_parser() {
     parser->tr_analysis->time_step = 0.0;
     parser->tr_analysis->fin_time  = 0.0;
     parser->tr_analysis->num_nodes = 0;
-    parser->tr_analysis->nodes = NULL;
+    parser->tr_analysis->nodes     = NULL;
 
     /* Initializes the ac_analsysis array */
     parser->ac_analysis = (ac_analysis_t *)malloc(ANALYSIS_NUM * sizeof(ac_analysis_t));
@@ -55,7 +55,7 @@ parser_t *init_parser() {
     parser->ac_analysis->start_freq = 0.0;
     parser->ac_analysis->end_freq   = 0.0;
     parser->ac_analysis->num_nodes  = 0;
-    parser->ac_analysis->nodes = NULL;
+    parser->ac_analysis->nodes      = NULL;
     return parser;
 }
 
@@ -271,7 +271,7 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
     }
     fclose(file_input);
 
-    /* dc,tr,ac counters holds the number of .DC/TRAN/AC we found in the netlist */
+    /* dc,tr,ac counters hold the number of .DC/TRAN/AC we found in the netlist */
     parser->netlist->nz = get_nz();
     parser->netlist->dc_counter = dc_counter;
     parser->netlist->tr_counter = tr_counter;

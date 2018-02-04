@@ -28,7 +28,7 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 		/* Fill sweep_points_freq buffer. This buffer contains all the sweep points (freq) for the AC analysis */
 		get_sweep_points(sweep_points_freq, parser->ac_analysis[i]);
 
-		/* For every sweep point/step solve the according MNA AC system */
+		/* For every sweep point/step solve the corresponding MNA AC system */
 		for (int step = 0; step < n_steps; step++) {
 			/* Find the current ω = 2πf */
 			double omega = 2 * M_PI * sweep_points_freq[step];
@@ -43,7 +43,7 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 		for (int j = 0; j < parser->ac_analysis[i].num_nodes; j++) {
 			fclose(files[j]);
 		}
-		/* Free sweep points matrix because in next AC analysis number of points might differ, we've to allocate again */
+		/* Free sweep points matrix because in next AC analysis, number of points might differ, we've to allocate again */
 		free(sweep_points_freq);
 	}
 	/* Indicate that we stopped the AC analysis */

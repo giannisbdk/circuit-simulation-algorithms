@@ -32,6 +32,7 @@ void tr_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 			prev_response = init_vector(mna->dimension);
 		}
 
+		/* Create the Transient MNA matrix for the transient analysis */
 		create_tr_mna_system(mna, index, hash_table, parser->options, parser->netlist->num_nodes, parser->tr_analysis[i].time_step);
 
 		/* Store the initial values to the prev_ vectors */
@@ -135,12 +136,10 @@ void set_trapezoidal_rhs(mna_system_t *mna, double *curr_response, double *prev_
 	set_response_vector(curr_response, mna->resp, h * k, mna->dimension);
 	/* Compute: e(tk) + e(tk-1) - sGhC*x(tk-1) and save it to the provided b vector */
 	double *response_add = init_vector(mna->dimension);
-	double *sGhc_x = init_vector(mna->dimension);
+	double *sGhc_x       = init_vector(mna->dimension);
 	add_vector(response_add, curr_response, prev_response, mna->dimension);
 	if (SPARSE) {
-		// cs_mat_vec_mul(sGhc_x, mna->sp_matrix->sGhC, prev_sol);
-		//TODO perhaps use our own method?
-		cs_gaxpy(mna->sp_matrix->sGhC, prev_sol, sGhc_x);
+		cs_mat_vec_mul(sGhc_x, mna->sp_matrix->sGhC, prev_sol);
 	}
 	else {
 		mat_vec_mul(sGhc_x, mna->matrix->sGhC, prev_sol, mna->dimension);
@@ -165,9 +164,7 @@ void set_backward_euler_rhs(mna_system_t *mna, double *curr_response, double *pr
 	double *hC_x = init_vector(mna->dimension);
 	/* Compute: e(tk) + (1/h)C*x(tk-1) and save it to the mna->b vector */
 	if (SPARSE) {
-		//TODO perhaps use our own method?
-		cs_gaxpy(mna->sp_matrix->hC, prev_sol, hC_x);
-		// cs_mat_vec_mul(hC_x, mna->sp_matrix->hC, prev_sol);
+		cs_mat_vec_mul(hC_x, mna->sp_matrix->hC, prev_sol);
 	}
 	else {
 		mat_vec_mul(hC_x, mna->matrix->hC, prev_sol, mna->dimension);
@@ -218,7 +215,7 @@ double eval_exp(exp_t *expon, double t) {
 	}
 	else {
 		return expon->i1 + (expon->i2 - expon->i1) *
-				(exp(-(t - expon->td2) / expon->tc2) - exp(-(t - expon->td1) / expon->tc1));
+		       (exp(-(t - expon->td2) / expon->tc2) - exp(-(t - expon->td1) / expon->tc1));
 	}
 }
 
@@ -229,8 +226,8 @@ double eval_sin(sin_t *sinus, double t) {
 	}
 	else {
 		return sinus->i1 + sinus->ia *
-				sin(2 * M_PI * sinus->fr * (t - sinus->td) + 2 * M_PI * sinus->ph / 360) *
-				exp(-(t - sinus->td) * sinus->df);
+		       sin(2 * M_PI * sinus->fr * (t - sinus->td) + 2 * M_PI * sinus->ph / 360) *
+		       exp(-(t - sinus->td) * sinus->df);
 	}
 }
 

@@ -5,18 +5,6 @@
 
 #include "iter.h"
 
-/* Print the complex vector */
-void _print_complex_vector(gsl_vector_complex *b, int dimension)
-{
-	gsl_complex z;
-	for (int i = 0; i < dimension; i++)
-	{
-		z = gsl_vector_complex_get(b, i);
-		printf("% 35.30lf %s %lfi\n", GSL_REAL(z), GSL_IMAG(z) >= 0 ? "+" : "-", ABS(GSL_IMAG(z)));
-	}
-	printf("\n");
-}
-
 /* 
  * Solve the SPD system with the iterative conjugate gradient method
  * store the result in vector x and also return the number of iterations
