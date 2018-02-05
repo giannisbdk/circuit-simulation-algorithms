@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import re
 import os
 import sys
+import numpy as np
 
 plots_path  = "./plots"
 dc_out_path = "./"
@@ -55,7 +56,7 @@ def plot_dc_or_transient_file(filename, ax_tr):
 	ax_tr.plot(step_list, val_list, label=v_label)
 
 
-def plot_ac_file(filename, ax_ac_1, ax_ac_2, sweep):
+def plot_ac_file(filename, ax_ac_1, ax_ac_2, sweep, last):
 	"""
 	Plot a single AC output file into a figure containing
 	two subplots ax_ac_1, ax_ac_2.
@@ -87,9 +88,35 @@ def plot_ac_file(filename, ax_ac_1, ax_ac_2, sweep):
 	if sweep == "LIN":
 		ax_ac_2.plot(freq_list, magn_list, label=v_label)
 		ax_ac_1.plot(freq_list, phase_list, label=v_label)
+		# In case it is Linear Sweep and the last file set manually the
+		# x_ticks. That's because pyplot auto x_ticks are "bad" sometimes
+		if last:
+			set_xticks(freq_list, ax_ac_1, ax_ac_2)
 	elif sweep == "LOG":
 		ax_ac_2.semilogx(freq_list, phase_list, label=v_label)
 		ax_ac_1.semilogx(freq_list, magn_list, label=v_label)
+
+
+def set_xticks(freq_list, ax_ac_1, ax_ac_2):
+	"""
+	Sets the ticks of the x axis in an evenly spaced manner, for the
+	subplots ax_ac_1 and ax_ac_2.
+	"""
+
+	# Convert list from string to float and finally to int
+	freq_list = map(int, map(float, freq_list))
+
+	# Get the required values
+	start = freq_list[0]
+	step  = int(freq_list[1] - freq_list[0])
+	end   = freq_list[-1]
+	ticks = np.arange(start, end, step)
+
+	# Set limits and ticks
+	ax_ac_1.set_xlim(left=start, right=end)
+	ax_ac_2.set_xlim(left=start, right=end)
+	ax_ac_1.set_xticks(ticks)
+	ax_ac_2.set_xticks(ticks)
 
 
 def plot_analyses(analyses, paths):
@@ -118,8 +145,11 @@ def plot_analyses(analyses, paths):
 		fig_ac_suffix = "_AC_Analysis"
 
 		# Plot everything into a figure
-		for file in ac_files:
-			plot_ac_file(file, ax_ac_1, ax_ac_2, sweep)
+		last = False
+		for index, file in enumerate(ac_files):
+			# In case we're last indicate it to the function
+			if index == len(ac_files)-1: last = True
+			plot_ac_file(file, ax_ac_1, ax_ac_2, sweep, last)
 
 		# Create and adjust the legend
 		ac_handles, ac_labels = ax_ac_1.get_legend_handles_labels()
