@@ -12,9 +12,15 @@
 #include "stdbool.h"
 #include "ac_spec.h"
 
+/* Commment/Uncomment this flag in order to get Positive+Negative/Positive only angles */
+// #define ONLY_POSITIVE_ANGLES
+
 #define MAX(a, b) ((a) > (b) ? (a)  : (b))
 #define MIN(a, b) ((a) < (b) ? (a)  : (b))
 #define ABS(x)    ((x) < 0.0 ? (-x) : (x))
+
+#define RAD_CONST (180.0 / M_PI)
+#define DEG_CONST (M_PI / 180.0)
 
 #define COMPLEX_ZERO(z)    ((GSL_REAL(z) == 0.0 && GSL_IMAG(z) == 0.0))
 #define CS_COMPLEX_NEG(z)  __cs_complex_neg(z)
@@ -43,6 +49,7 @@ void zero_out_matrix(double **matrix, int row, int col);
 void set_vec_val(double *x, double val, int dimension);
 ac_spec_t rect_to_polar(gsl_complex z);
 double to_degrees(double radians);
+double to_radians(double degrees);
 double complex_abs(gsl_complex z);
 void real_to_gsl_complex_vector(gsl_vector_complex *x_complex, double *x, int dimension);
 void real_to_cs_complex_vector(cs_complex_t *x_complex, double *x, int dimension);
@@ -55,9 +62,10 @@ double *init_val_vector(int row, double val);
 gsl_permutation *init_permutation(int dimension);
 void gsl_to_cs_complex(cs_complex_t *dst, gsl_vector_complex *src, int dimension);
 void cs_complex_to_gsl(gsl_vector_complex *dst, cs_complex_t *src, int dimension);
-cs_complex_t pol_to_rect(double magnitude, double phase);
 gsl_complex __gsl_complex_conj(gsl_complex x);
 gsl_complex __gsl_complex_neg(gsl_complex x);
+gsl_complex __gsl_pol_to_rect(double magnitude, double phase);
+cs_complex_t __cs_pol_to_rect(double magnitude, double phase);
 cs_complex_t __cs_complex_neg(cs_complex_t x);
 cs_complex_t __cs_complex_conj(cs_complex_t x);
 

@@ -286,18 +286,31 @@ void set_vec_val(double *x, double val, int dimension) {
 /* Converts the complex z into polar form */
 ac_spec_t rect_to_polar(gsl_complex z) {
 	ac_spec_t ac;
-	double real = GSL_REAL(z);
-	double imag = GSL_IMAG(z);
+	double real  = GSL_REAL(z);
+	double imag  = GSL_IMAG(z);
 	ac.magnitude = sqrt(real * real + imag * imag);
-	ac.phase = to_degrees(atan2(imag, real));
+	ac.phase     = to_degrees(atan2(imag, real));
 	return ac;
 }
 
 /* Converts radians to degrees in the range of 0-360 */
 double to_degrees(double radians) {
-	double degrees = radians * (180.0 / M_PI);
-	degrees = fmod(degrees + 360.0, 360.0);
+	double degrees = radians * RAD_CONST;
+	if (degrees > 360.0) {
+		degrees = fmod(degrees, 360.0);
+	}
+#ifdef ONLY_POSITIVE_ANGLES
+	else if (degrees < 0.0) {
+		degrees = fmod(degrees + 360.0, 360.0);
+	}
+#endif
 	return degrees;
+}
+
+/* Converts degrees to radians */
+double to_radians(double degrees) {
+	double radians = degrees * DEG_CONST;
+	return radians;
 }
 
 /* Converts a real vector x to a gsl complex one with 0 imaginary parts */
@@ -466,8 +479,19 @@ cs_complex_t __cs_complex_conj(cs_complex_t x) {
 	return z;
 }
 
-/* Convert from polar to rectangular form */
-cs_complex_t pol_to_rect(double magnitude, double phase) {
-    cs_complex_t z = magnitude * cos(phase) + magnitude * sin(phase) * I;
+/* Converts from polar to rectangular form. Phase is measured in degrees */
+gsl_complex __gsl_pol_to_rect(double magnitude, double phase) {
+	gsl_complex z;
+	/* Convert from degrees to radians in order to use the trigonometric functions */
+	phase = to_radians(phase);
+	GSL_SET_REAL(&z, magnitude * cos(phase)); GSL_SET_IMAG(&z, magnitude * sin(phase));
+	return z;
+}
+
+/* Converts from polar to rectangular form. Phase is measured in degrees */
+cs_complex_t __cs_pol_to_rect(double magnitude, double phase) {
+	/* Convert from degrees to radians in order to use the trigonometric functions */
+	phase = to_radians(phase);
+	cs_complex_t z = (magnitude * cos(phase)) + (magnitude * sin(phase) * I);
     return z;
 }
