@@ -31,7 +31,7 @@ void dc_operating_point(hash_table_t *hash_table, double *sol_x) {
             /* Get the corresponding cell of the solution vector */
             value = sol_x[id];
             /* Output to the file */
-            fprintf(file_out, "%-30s%-30lf\n", curr->key, value);
+            fprintf(file_out, "%-30s%-30.12lf\n", curr->key, value);
         }
     }
     fclose(file_out);
@@ -127,6 +127,6 @@ void write_dc_out_files(FILE *files[], dc_analysis_t dc_analysis, hash_table_t *
     int offset;
     for (int j = 0; j < dc_analysis.num_nodes; j++) {
         offset = ht_get_id(hash_table, dc_analysis.nodes[j]) - 1;
-        fprintf(files[j], "%-30lf%-30lf\n", value, sol_x[offset]);
+        fprintf(files[j], "%-30.12lf%-30.12lf\n", value, sol_x[offset]);
     }
 }

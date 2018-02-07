@@ -298,6 +298,6 @@ void create_tr_out_files(FILE *files[], tr_analysis_t tr_analysis) {
 void write_tr_out_files(FILE *files[], tr_analysis_t tr_analysis, hash_table_t *hash_table, double *sol_x, int step) {
 	for (int j = 0; j < tr_analysis.num_nodes; j++) {
 		int offset = ht_get_id(hash_table, tr_analysis.nodes[j]) - 1;
-		fprintf(files[j], "%-30lf%-30lf\n", step * tr_analysis.time_step, sol_x[offset]);
+		fprintf(files[j], "%-30.12lf%-30.12lf\n", step * tr_analysis.time_step, sol_x[offset]);
 	}
 }

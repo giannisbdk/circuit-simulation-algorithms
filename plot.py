@@ -32,11 +32,7 @@ def plot_dc_or_transient_file(filename, ax_tr):
 	"""
 
 	# Get the Node name from the output file
-	if "dc" in filename:
-		# v_label will contain .txt so we remove it [:-4]
-		v_label = filename.split("_")[3][:-4]
-	else:
-		v_label = filename.split("_")[2]
+	v_label = filename.split("_")[2]
 
 	with open(filename, 'rb') as fd:
 		lines = [x.strip("\n") for x in fd.readlines()]
@@ -100,17 +96,25 @@ def plot_ac_file(filename, ax_ac_1, ax_ac_2, sweep, last):
 def set_xticks(freq_list, ax_ac_1, ax_ac_2):
 	"""
 	Sets the ticks of the x axis in an evenly spaced manner, for the
-	subplots ax_ac_1 and ax_ac_2.
+	subplots ax_ac_1 and ax_ac_2. Only use this when we deal with numbers > 0.
 	"""
 
 	# Convert list from string to float and finally to int
 	freq_list = map(int, map(float, freq_list))
 
+	# In case we're dealing with numbers below 0 better let the x_axis as is from pyplot
+	if freq_list.count(0) > 2:
+		return
+
 	# Get the required values
 	start = freq_list[0]
-	step  = int(freq_list[1] - freq_list[0])
+	step  = int(freq_list[-1] - freq_list[-2])
 	end   = freq_list[-1]
 	ticks = np.arange(start, end, step)
+
+	# Include the end value to the plot
+	if end not in ticks:
+		ticks = np.append(ticks, end)
 
 	# Set limits and ticks
 	ax_ac_1.set_xlim(left=start, right=end)
