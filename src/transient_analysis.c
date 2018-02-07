@@ -4,7 +4,7 @@
 #include "transient_analysis.h"
 
 /* TRAN analysis and outputs the result to file(s) */
-void tr_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, double *init_sol, double *sol_x) {
+void tr_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, double *dc_op, double *sol_x) {
 	/* Set the flag that we're currently on an Transient analysis */
 	mna->tr_analysis_init = true;
 	double *prev_response = NULL;
@@ -36,15 +36,18 @@ void tr_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 		create_tr_mna_system(mna, index, hash_table, parser->options, parser->netlist->num_nodes, parser->tr_analysis[i].time_step);
 
 		/* Store the initial values to the prev_ vectors */
-		memcpy(prev_sol, init_sol, mna->dimension * sizeof(double));
+		memcpy(prev_sol, dc_op, mna->dimension * sizeof(double));
 		if (parser->options->TR) {
 			memcpy(prev_response, mna->resp->value, mna->dimension * sizeof(double));
 		}
 
-		/* Find how many steps are required */
-		int n_steps = parser->tr_analysis[i].fin_time / parser->tr_analysis[i].time_step;
+		/* Explicitly output the DC OP point for the t=0 */
+		write_tr_out_files(files, parser->tr_analysis[0], hash_table, dc_op, 0);
 
-		for (int step = 0; step <= n_steps; step++) {
+		/* Find how many steps are required, exlcude 1 because at t=0 we use the DC operating point */
+		int n_steps = (parser->tr_analysis[i].fin_time / parser->tr_analysis[i].time_step);
+
+		for (int step = 1; step <= n_steps; step++) {
 			if (parser->options->TR) {
 				set_trapezoidal_rhs(mna, curr_response, prev_response, prev_sol, parser->tr_analysis[i].time_step, step, parser->options->SPARSE);
 			}

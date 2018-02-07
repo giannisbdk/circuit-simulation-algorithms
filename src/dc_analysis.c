@@ -39,7 +39,7 @@ void dc_operating_point(hash_table_t *hash_table, double *sol_x) {
 }
 
 /* DC Sweep analysis and outputs the results to file(s) */
-void dc_analysis(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, double *sol_x) {
+void dc_sweep_analysis(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, double *sol_x) {
     /* Run all the DC analyses according to dc_counter */
     int dc_counter = parser->netlist->dc_counter;
     for (int i = 0; i < dc_counter; i++) {
@@ -96,7 +96,7 @@ void dc_analysis(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, par
         }
     }
     if (dc_counter) {
-        printf("DC Analysis..............OK\n");
+        printf("DC Sweep Analysis........OK\n");
     }
 }
 
@@ -104,7 +104,7 @@ void dc_analysis(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, par
 void create_dc_out_files(FILE *files[], dc_analysis_t dc_analysis) {
     char file_name[MAX_FILE_NAME];
     /* Set the prefix name for the files */
-    char prefix[] = "dc_analysis_V(";
+    char prefix[] = "dc_sweep_analysis_V(";
 
     /* Open different files for each node in plot/print array */
     for (int j = 0; j < dc_analysis.num_nodes; j++) {

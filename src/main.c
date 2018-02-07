@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     memcpy(dc_op, sol_x, mna->dimension * sizeof(double));
 
     /* DC Sweep analysis to file */
-    dc_analysis(index->head1, hash_table, mna, parser, sol_x);
+    dc_sweep_analysis(index->head1, hash_table, mna, parser, sol_x);
 
     /* Transient analysis to file */
     tr_analysis(index, hash_table, mna, parser, dc_op, sol_x);

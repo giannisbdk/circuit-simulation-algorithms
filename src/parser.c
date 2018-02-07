@@ -148,29 +148,29 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
         if (tokens == NULL) continue;
         sscanf(tokens[0], "%d", &num_tokens);
         if (tokens[1][0] == '.') {
-            if (strcmp(".OPTIONS", &tokens[1][0]) == 0) {
+            if (strcasecmp(".OPTIONS", &tokens[1][0]) == 0) {
                 for (int i = 2; i <= num_tokens; i++) {
-                    if (strcmp("SPD", &tokens[i][0]) == 0) {
+                    if (strcasecmp("SPD", &tokens[i][0]) == 0) {
                         parser->options->SPD = true;
                     }
-                    if (strcmp("ITER", &tokens[i][0]) == 0) {
+                    if (strcasecmp("ITER", &tokens[i][0]) == 0) {
                         parser->options->ITER = true;
                     }
-                    if (strcmp("SPARSE", &tokens[i][0]) == 0) {
+                    if (strcasecmp("SPARSE", &tokens[i][0]) == 0) {
                         parser->options->SPARSE = true;
                     }
-                    if (strncmp("ITOL", &tokens[i][0], 4) == 0) {
+                    if (strncasecmp("ITOL", &tokens[i][0], 4) == 0) {
                         sscanf((&tokens[i][0]) + 5, "%lf", &parser->options->ITOL);
                     }
-                    if (strcmp("METHOD=BE", &tokens[i][0]) == 0) {
+                    if (strcasecmp("METHOD=BE", &tokens[i][0]) == 0) {
                         parser->options->BE = true;
                     }
-                    else if(strcmp("METHOD=TR", &tokens[i][0]) == 0) {
+                    else if(strcasecmp("METHOD=TR", &tokens[i][0]) == 0) {
                         parser->options->TR = true;
                     }
                 }
             }
-            else if (strcmp(".DC", &tokens[1][0]) == 0) {
+            else if (strcasecmp(".DC", &tokens[1][0]) == 0) {
                 parser->dc_analysis[dc_counter].volt_source = (char *)malloc((strlen(&tokens[2][0]) + 1) * sizeof(char));
                 assert(parser->dc_analysis[dc_counter].volt_source != NULL);
                 sscanf(tokens[2], "%s",   parser->dc_analysis[dc_counter].volt_source);
@@ -178,13 +178,13 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
                 sscanf(tokens[4], "%lf", &parser->dc_analysis[dc_counter].end);
                 sscanf(tokens[5], "%lf", &parser->dc_analysis[dc_counter].increment);
             }
-            else if (strcmp(".TRAN", &tokens[1][0]) == 0) {
+            else if (strcasecmp(".TRAN", &tokens[1][0]) == 0) {
                 sscanf(tokens[2], "%lf", &parser->tr_analysis[tr_counter].time_step);
                 sscanf(tokens[3], "%lf", &parser->tr_analysis[tr_counter].fin_time);
                 tran = true;
             }
-            else if (strcmp(".AC", &tokens[1][0]) == 0) {
-                if (strcmp(tokens[2], "LIN") == 0) {
+            else if (strcasecmp(".AC", &tokens[1][0]) == 0) {
+                if (strcasecmp(tokens[2], "LIN") == 0) {
                     parser->ac_analysis[ac_counter].sweep = LIN;
                 } 
                 else {
@@ -195,7 +195,7 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
                 sscanf(tokens[5], "%lf", &parser->ac_analysis[ac_counter].end_freq);
                 ac = true;
             }
-            else if (strcmp(".PLOT", &tokens[1][0]) == 0 || strcmp(".PRINT", &tokens[1][0]) == 0) {
+            else if (strcasecmp(".PLOT", &tokens[1][0]) == 0 || strcasecmp(".PRINT", &tokens[1][0]) == 0) {
                 if (tran) {
                     /* Allocate a 2d array that each row contains the node name */
                     parser->tr_analysis[tr_counter].nodes = (char **)malloc(num_tokens * sizeof(char *));
@@ -299,7 +299,7 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
     printf("\nFinished parsing %d circuit elements.\n", index->size1 + index->size2);
     print_options(parser->options);
     print_netlist_info(parser->netlist);
-    print_dc_analysis_options(parser->dc_analysis, dc_counter);
+    print_dc_sweep_analysis_options(parser->dc_analysis, dc_counter);
     print_tr_analysis_options(parser->tr_analysis, tr_counter);
     print_ac_analysis_options(parser->ac_analysis, ac_counter);
 }
@@ -328,22 +328,22 @@ void print_netlist_info(netlist_t *netlist) {
 }
 
 /* Prints the dc analysis options */
-void print_dc_analysis_options(dc_analysis_t *dc_analysis, int dc_counter) {
+void print_dc_sweep_analysis_options(dc_analysis_t *dc_analysis, int dc_counter) {
     if (dc_counter <= 0) {
         return;
     }
     else if (dc_counter == 1) {
-        printf("\n--- DC Analysis Summary ---\n");
+        printf("\n--- DC Sweep Analysis Summary ---\n");
     }
     else {
-        printf("\n--- DC Analyses Summary ---\n");
+        printf("\n--- DC Sweep Analyses Summary ---\n");
     }
     for (int i = 0; i < dc_counter; i++) {
-        printf("Voltage source: %s\n",  dc_analysis[i].volt_source);
-        printf("Start:          %lf\n", dc_analysis[i].start);
-        printf("End:            %lf\n", dc_analysis[i].end);
-        printf("Increment:      %lf\n", dc_analysis[i].increment);
-        printf("Nodes:          ");
+        printf("Source:    %s\n", dc_analysis[i].volt_source);
+        printf("Start:     %e\n", dc_analysis[i].start);
+        printf("End:       %e\n", dc_analysis[i].end);
+        printf("Increment: %e\n", dc_analysis[i].increment);
+        printf("Nodes:     ");
         for (int j = 0; j < dc_analysis[i].num_nodes; j++) {
             printf("%s ", dc_analysis[i].nodes[j]);
         }
@@ -364,8 +364,8 @@ void print_tr_analysis_options(tr_analysis_t *tr_analysis, int tr_counter) {
         printf("\n--- Transient Analyses Summary ---\n");
     }
     for (int i = 0; i < tr_counter; i++) {
-        printf("Time Step:  %lf\n", tr_analysis[i].time_step);
-        printf("Final Time: %lf\n", tr_analysis[i].fin_time);
+        printf("Time Step:  %e\n", tr_analysis[i].time_step);
+        printf("Final Time: %e\n", tr_analysis[i].fin_time);
         printf("Nodes:      ");
         for (int j = 0; j < tr_analysis[i].num_nodes; j++) {
             printf("%s ", tr_analysis[i].nodes[j]);
@@ -389,8 +389,8 @@ void print_ac_analysis_options(ac_analysis_t *ac_analysis, int ac_counter) {
     for (int i = 0; i < ac_counter; i++) {
         printf("Sweep:      %s\n",  ac_analysis[i].sweep ? "LOG" : "LIN");
         printf("Points:     %d\n",  ac_analysis[i].points);
-        printf("Start freq: %g\n", ac_analysis[i].start_freq);
-        printf("End freq:   %g\n", ac_analysis[i].end_freq);
+        printf("Start freq: %e\n", ac_analysis[i].start_freq);
+        printf("End freq:   %e\n", ac_analysis[i].end_freq);
         printf("Nodes:      ");
         for (int j = 0; j < ac_analysis[i].num_nodes; j++) {
             printf("%s ", ac_analysis[i].nodes[j]);

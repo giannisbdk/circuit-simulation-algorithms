@@ -7,8 +7,7 @@
 
 #define MAX_FILE_NAME 50
 
-void tr_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, double *init_sol,
-                 double *sol_x);
+void tr_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, double *dc_op, double *sol_x);
 void set_trapezoidal_rhs(mna_system_t *mna, double *curr_response, double *prev_response, double *prev_sol, double h,
                          int k, bool SPARSE);
 void set_backward_euler_rhs(mna_system_t *mna, double *curr_response, double *prev_sol, double h, int k, bool SPARSE);

@@ -32,7 +32,10 @@ def plot_dc_or_transient_file(filename, ax_tr):
 	"""
 
 	# Get the Node name from the output file
-	v_label = filename.split("_")[2]
+	if "dc" in filename:
+		v_label = filename.split("_")[3]
+	else:
+		v_label = filename.split("_")[2]
 
 	with open(filename, 'rb') as fd:
 		lines = [x.strip("\n") for x in fd.readlines()]
@@ -188,10 +191,10 @@ def plot_analyses(analyses, paths):
 	# DC Analysis plot/figure
 	if len(dc_files):
 		fig_dc, ax_dc = plt.subplots(nrows=1)
-		fig_dc.suptitle("DC Analysis")
+		fig_dc.suptitle("DC Sweep Analysis")
 		ax_dc.set_xlabel("Voltage sweep (V)")
 		ax_dc.set_ylabel("Voltage (V)")
-		fig_dc_suffix = "_DC_Analysis"
+		fig_dc_suffix = "_DC_Sweep_Analysis"
 
 		# Plot everything into a figure
 		for file in dc_files:
@@ -221,7 +224,7 @@ def get_analyses():
 	tr_files = []
 	ac_files = []
 
-	dc_prefix = "dc_analysis_"
+	dc_prefix = "dc_sweep_analysis_"
 	tr_prefix = "tr_analysis_"
 	ac_prefix = "ac_analysis_"
 

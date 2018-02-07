@@ -309,7 +309,7 @@ int add_to_list2(index_t *index, char **tokens, hash_table_t *hash_table) {
 
 /* Check if AC exists inside tokens */
 bool check_ac(char **tokens, int num_tokens) {
-	if (strcmp(tokens[num_tokens - 2], "AC") == 0) {
+	if (strcasecmp(tokens[num_tokens - 2], "AC") == 0) {
 		return true;
 	}
 	return false;
@@ -317,19 +317,19 @@ bool check_ac(char **tokens, int num_tokens) {
 
 /* Check if it is a transient or ac and in case it is transient it sets type to the appropriate enum */
 bool is_transient(char *spec, trans_type *type) {
-	if (strcmp(spec, "EXP") == 0) {
+	if (strcasecmp(spec, "EXP") == 0) {
 		*type = EXP;
 		return true;
 	}
-	else if (strcmp(spec, "SIN") == 0) {
+	else if (strcasecmp(spec, "SIN") == 0) {
 		*type = SIN;
 		return true;
 	}
-	else if (strcmp(spec, "PULSE") == 0) {
+	else if (strcasecmp(spec, "PULSE") == 0) {
 		*type = PULSE;
 		return true;
 	}
-	else if (strcmp(spec, "PWL") == 0) {
+	else if (strcasecmp(spec, "PWL") == 0) {
 		*type = PWL;
 		return true;
 	}
