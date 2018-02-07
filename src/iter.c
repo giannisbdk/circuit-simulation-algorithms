@@ -54,13 +54,13 @@ int conj_grad(double **A, cs *C, double *x, double *b, double *M, int dimension,
 			axpy(p, beta, p, z, dimension);
 		}
 		rho1 = rho;
-		if (!SPARSE) {
-			/* q = A*p */
-			mat_vec_mul(q, A, p, dimension);
-		}
-		else {
+		if (SPARSE) {
 			/* q = A*p, C is CCF of A */
 			cs_mat_vec_mul(q, C, p);
+		}
+		else {
+			/* q = A*p */
+			mat_vec_mul(q, A, p, dimension);
 		}
 		/* a = rho / p*q */
 		alpha = rho / dot_product(p, q, dimension);
@@ -133,12 +133,13 @@ int complex_conj_grad(gsl_matrix_complex *A, cs_ci *C, gsl_vector_complex *x, gs
 			complex_axpy(p, beta, p, z, dimension);
 		}
 		rho1 = rho;
-		if (!SPARSE) {
-			/* q = A*p */
-			gsl_blas_zgemv(CblasNoTrans, GSL_COMPLEX_ONE, A, p, GSL_COMPLEX_ZERO, q);
+		if (SPARSE) {
+			/* q = A*p, C is CCF of A */
+			complex_cs_mat_vec_mul(q, C, p);
 		}
 		else {
-			//TODO add sparse
+			/* q = A*p */
+			gsl_blas_zgemv(CblasNoTrans, GSL_COMPLEX_ONE, A, p, GSL_COMPLEX_ZERO, q);
 		}
 		/* a = rho / p*q */
 		alpha = gsl_complex_div(rho, complex_dot_product(p, q, dimension));
@@ -184,13 +185,13 @@ int bi_conj_grad(double **A, cs *C, double *x, double *b, double *M, int dimensi
 	double r_norm, b_norm, rho, rho1, alpha, beta, omega;
 	int iter = 0;
 
-	if (!SPARSE) {
-		/* Compute A*x and store it to Ax */
-		mat_vec_mul(Ax, A, x, dimension);
-	}
-	else {
+	if (SPARSE) {
 		/* Compute A*x and store it ot Ax , C is CCF of A */
 		cs_mat_vec_mul(Ax, C, x);
+	}
+	else {
+		/* Compute A*x and store it to Ax */
+		mat_vec_mul(Ax, A, x, dimension);
 	}
 
 	/* Compute r = b - Ax */
@@ -232,17 +233,17 @@ int bi_conj_grad(double **A, cs *C, double *x, double *b, double *M, int dimensi
 			axpy(p_tilde, beta, p_tilde, z_tilde, dimension);
 		}
 		rho1 = rho;
-		if (!SPARSE) {
-			/* q = A*p */
-			mat_vec_mul(q, A, p, dimension);
-			/* q_tilde = A'*p_tilde, A' = A */
-			mat_vec_mul_trans(q_tilde, A, p_tilde, dimension);
-		}
-		else {
+		if (SPARSE) {
 			/* q = A*p, C is CCF of A */
 			cs_mat_vec_mul(q, C, p);
 			/* q_tilde = A'*p_tilde, A' = A, C is CCF of A */
 			cs_mat_vec_mul_trans(q_tilde, C, p_tilde);
+		}
+		else {
+			/* q = A*p */
+			mat_vec_mul(q, A, p, dimension);
+			/* q_tilde = A'*p_tilde, A' = A */
+			mat_vec_mul_trans(q_tilde, A, p_tilde, dimension);
 		}
 		/* omega = p_tilde * q */
 		omega = dot_product(p_tilde, q, dimension);
