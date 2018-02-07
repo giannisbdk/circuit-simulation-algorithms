@@ -1,12 +1,23 @@
 #include <stdio.h>
 #include <time.h>
+#include <math.h>
 
-clock_t start, end;
+static clock_t start, end;
 
 void print_exec_time(char *msg) {
-#if 1
-    printf("%s\t .... %lf seconds\n", msg, ((double)(end - start)) / CLOCKS_PER_SEC);
-#endif
+	int mins;
+	double secs;
+	double elapsed_time = (double)((end - start)) / CLOCKS_PER_SEC;
+
+	/* In case we've got more than 1 minute print it with minutes included */
+	if (elapsed_time > 60.0) {
+		mins = elapsed_time / 60;
+		secs = fmod(elapsed_time, 60.0);
+		printf("\n%s: %d minutes %.6lf seconds\n", msg, mins, secs);
+	}
+	else {
+		printf("\n%s: %.6lf seconds\n", msg, elapsed_time);
+	}
 }
 
 void start_timer() {

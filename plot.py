@@ -12,7 +12,7 @@ ac_out_path = "./"
 # Set user defined parameters for pyplot
 params = {
 	"figure.titlesize"     : 18,
-	"figure.figsize"       : (15, 10),
+	"figure.figsize"       : (14, 9),
 	"figure.subplot.right" : 0.89,
 	"axes.labelsize"       : 16,
 	"axes.grid"            : True,

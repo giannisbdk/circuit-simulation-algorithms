@@ -35,13 +35,13 @@ void dc_operating_point(hash_table_t *hash_table, double *sol_x) {
         }
     }
     fclose(file_out);
-    printf("DC Operating Point.......OK\n");
 }
 
 /* DC Sweep analysis and outputs the results to file(s) */
 void dc_sweep_analysis(list1_t *head, hash_table_t *hash_table, mna_system_t *mna, parser_t *parser, double *sol_x) {
     /* Run all the DC analyses according to dc_counter */
     int dc_counter = parser->netlist->dc_counter;
+    if (dc_counter) printf("DC Sweep Analysis........");
     for (int i = 0; i < dc_counter; i++) {
         list1_t *curr;
         for (curr = head; curr != NULL; curr = curr->next) {
@@ -96,7 +96,7 @@ void dc_sweep_analysis(list1_t *head, hash_table_t *hash_table, mna_system_t *mn
         }
     }
     if (dc_counter) {
-        printf("DC Sweep Analysis........OK\n");
+        printf("OK\n");
     }
 }
 

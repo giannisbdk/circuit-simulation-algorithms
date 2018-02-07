@@ -11,6 +11,7 @@ void tr_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 
 	/* Run all the TRAN analyses according to tr_counter */
 	int tr_counter = parser->netlist->tr_counter;
+	if (tr_counter) printf("Transient Analysis.......");
 	for (int i = 0; i < tr_counter; i++) {
 		/* Create an array with files for every node and create/open them */
 		FILE *files[parser->tr_analysis[i].num_nodes];
@@ -81,7 +82,7 @@ void tr_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 	/* Set flag to false to indicate that we're no longer inside transient analysis */
 	mna->tr_analysis_init = false;
 	if (tr_counter) {
-		printf("Transient Analysis.......OK\n");
+		printf("OK\n");
 	}
 }
 

@@ -21,6 +21,12 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    /* Make stdout stream to not buffer */
+    setbuf(stdout, NULL);
+
+    /* Start the timer */
+    start_timer();
+
     /* Initialize our double linked lists */
     index_t *index = init_lists();
 
@@ -65,6 +71,10 @@ int main(int argc, char *argv[]) {
     /* AC analysis to file */
     gsl_vector_complex *x_complex = init_gsl_complex_vector(mna->dimension);
     ac_analysis(index, hash_table, mna, parser, dc_op, x_complex);
+
+    /* Stop the timer and print the execution time */
+    stop_timer();
+    print_exec_time("Total execution time");
 
     /* Free all the dynamic allocated memory */
     free_index(&index);

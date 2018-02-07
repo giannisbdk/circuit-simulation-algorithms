@@ -141,13 +141,14 @@ void init_sparse_matrix(mna_system_t *mna, options_t *options, int nz) {
 
 /* Constructs the MNA system either sparse or dense for DC or TRAN analysis */
 void create_mna_system(mna_system_t *mna, index_t *index, hash_table_t *hash_table, options_t *options, double tr_step, int offset) {
+	printf("\nMNA system creation......");
 	if (options->SPARSE) {
 		create_sparse_mna(mna, index, hash_table, options, offset);
 	}
 	else {
 		create_dense_mna(mna, index, hash_table, options, offset);
 	}
-	printf("\nCreation of MNA system...OK\n");
+	printf("OK\n");
 }
 
 /* Constructs the Transient MNA system either sparse or dense for Transient analysis */
@@ -780,6 +781,13 @@ void create_sparse_ac_mna(mna_system_t *mna, index_t *index, hash_table_t *hash_
  * (LU, Cholesky, Iterative Conj_Grad / Bi-Conj_Grad) and stores the solution on the supplied vector x
  */
 void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_complex, options_t *options) {
+	/* In case we're in the DC operating point print */
+	if (!mna->is_decomp) {
+		if (!mna->ac_analysis_init && !mna->tr_analysis_init) {
+			printf("DC Operating Point.......");
+		}
+	}
+
 	/* Set the maximum number of iterations CG/bi-CG */
 	int iterations, maxiter = mna->dimension;
 
@@ -954,7 +962,7 @@ void solve_mna_system(mna_system_t *mna, double **x, gsl_vector_complex *x_compl
 	if (!mna->is_decomp) {
 		mna->is_decomp = true;
 		if (!mna->ac_analysis_init && !mna->tr_analysis_init) {
-    		printf("Solution of MNA system...OK\n");
+			printf("OK\n");
     	}
 	}
 }

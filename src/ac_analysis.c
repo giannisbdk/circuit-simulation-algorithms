@@ -13,6 +13,7 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 
 	/* Run all the AC analyses according to ac_counter */
 	int ac_counter = parser->netlist->ac_counter;
+	if (ac_counter) printf("AC Analysis..............");
 	for (int i = 0; i < ac_counter; i++) {
 		/* Create an array with files for every node and create/open them */
 		FILE *files[parser->ac_analysis[i].num_nodes];
@@ -49,7 +50,7 @@ void ac_analysis(index_t *index, hash_table_t *hash_table, mna_system_t *mna, pa
 	/* Indicate that we stopped the AC analysis */
 	mna->ac_analysis_init = false;
 	if (ac_counter) {
-		printf("AC Analysis..............OK\n");
+		printf("OK\n");
 	}
 }
 
