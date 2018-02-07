@@ -306,15 +306,15 @@ void parse_netlist(parser_t *parser, char *file_name, index_t *index, hash_table
 
 /* Print all the specified options from the netlist */
 void print_options(options_t *options) {
-	printf("\n--- Netlist Specified Options ---\n");
-	printf("SPD:\t%s\n",    options->SPD    ? "true" : "false");
-	printf("ITER:\t%s\n",   options->ITER   ? "true" : "false");
-	printf("SPARSE:\t%s\n", options->SPARSE ? "true" : "false");
-    printf("TRAN:\t%s\n",   options->TRAN   ? "true" : "false");
-    printf("TR:\t%s\n",     options->TR     ? "true" : "false");
-    printf("BE:\t%s\n",     options->BE     ? "true" : "false");
-    printf("AC:\t%s\n",     options->AC     ? "true" : "false");
-    printf("ITOL:\t%g\n",   options->ITOL);
+    printf("\n--- Netlist Specified Options ---\n");
+    printf("SPD:     %s\n", options->SPD    ? "true" : "false");
+    printf("ITER:    %s\n", options->ITER   ? "true" : "false");
+    printf("SPARSE:  %s\n", options->SPARSE ? "true" : "false");
+    printf("TRAN:    %s\n", options->TRAN   ? "true" : "false");
+    printf("TR:      %s\n", options->TR     ? "true" : "false");
+    printf("BE:      %s\n", options->BE     ? "true" : "false");
+    printf("AC:      %s\n", options->AC     ? "true" : "false");
+    printf("ITOL:    %g\n", options->ITOL);
 }
 
 /* Print the number of the different netlist elements info */
