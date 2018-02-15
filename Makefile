@@ -146,9 +146,16 @@ download_ibm5:
 download_ibm6:
 	./download_ibm.sh ibm6	
 
+# Plots the output files
 plot:
 	@echo "Executing $(PLT_SRC)..."
 	@python2.7 $(PLT_SRC)
+
+# Installs dependencies
+deps:
+	@echo "Installing dependencies..."
+	sudo apt install libgsl0-dev
+	sudo apt install python-matplotlib
 
 .PHONY: clean
 # Clean the output files

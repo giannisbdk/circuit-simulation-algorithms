@@ -16,7 +16,14 @@ This project requires `GSL` library to be installed for **C**.
 In order to plot the transient analysis `matplotlib` for **python** is also required.
 
 
-Install them using:
+You can install them by issuing the following command to the Makefile:
+
+```bash
+make deps
+```
+
+or  manually
+
 ```bash
 1. sudo apt install libgsl0-dev
 2. sudo apt install python-matplotlib
