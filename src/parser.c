@@ -112,18 +112,18 @@ char **tokenizer(char *line) {
 
 	token = strtok(line, delim);
 
-	while (token != NULL && i <= num_tokens) {
-		tokens[i] = (char *)malloc((strlen(token) + 1) * sizeof(char));
-		assert(tokens[i] != NULL);
-		strcpy(tokens[i], token);
-		token = strtok(NULL, delim);
-		i++;
-	}
-	/* Trim '\n' if necessary */
-	if (tokens[i-1][strlen(tokens[i-1])-1] == '\n') {
-		tokens[i-1][strlen(tokens[i-1])-1] = '\0';
-	}
-	return tokens;
+    while (token != NULL && i <= num_tokens) {
+	tokens[i] = (char *)malloc((strlen(token) + 1) * sizeof(char));
+	assert(tokens[i] != NULL);
+	strcpy(tokens[i], token);
+	token = strtok(NULL, delim);
+	i++;
+    }
+    /* Trim '\n' if necessary */
+    if (tokens[i-1][strlen(tokens[i-1])-1] == '\n') {
+        tokens[i-1][strlen(tokens[i-1])-1] = '\0';
+    }
+    return tokens;
 }
 
 /* Parses the given netlist with <file_name> and returns the parser struct that holds all the required information */

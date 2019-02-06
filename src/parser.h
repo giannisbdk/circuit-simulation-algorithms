@@ -23,7 +23,8 @@ typedef struct options {
 	double ITOL;
 } options_t;
 
-/*
+
+/* 
  * Struct to hold the information of netlists, such as
  * number of nodes, number of group2 elements and
  * number of dc analysis targets

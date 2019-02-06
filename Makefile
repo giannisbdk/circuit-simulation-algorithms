@@ -163,7 +163,7 @@ clean:
 	$(RM) dc_*.txt tr_*.txt ac_*.txt
 
 .PHONY: clean_ibm
-# Clean the output files
+# Clean the ibm files
 clean_ibm:
 	rm -rf ibm_netlists
 

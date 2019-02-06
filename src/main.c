@@ -2,17 +2,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "parser.h"
-#include "list.h"
-#include "hash_table.h"
-#include "mna.h"
-#include "routines.h"
-#include "dc_analysis.h"
-#include "transient_analysis.h"
-#include "ac_analysis.h"
-#include "time_tools.h"
+/* This header includes all the reuqired headers of our implementation files */
+#include "main.h"
 
-/* This is defined here because we specify the length from main */
 #define HASH_TABLE_SIZE 59999
 
 int main(int argc, char *argv[]) {
@@ -85,5 +77,5 @@ int main(int argc, char *argv[]) {
     free(sol_x);
     free(dc_op);
 
-	return 0;
+    return 0;
 }
